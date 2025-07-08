@@ -15,6 +15,7 @@ import LeagueDetail from "@/pages/LeagueDetail";
 import LeagueDashboard from "@/pages/LeagueDashboard";
 import MatchDetail from "@/pages/MatchDetail";
 import CreateMatch from "@/pages/CreateMatch";
+import LineupPage from "@/pages/LineupPage";
 import TierListPage from "@/pages/TierListPage";
 import Results from "@/pages/Results";
 import NotFound from "@/pages/not-found";
@@ -74,6 +75,13 @@ function Router() {
         <ProtectedRoute>
           <Navbar />
           <MatchDetail />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/matches/:matchId/lineup">
+        <ProtectedRoute>
+          <Navbar />
+          <LineupPage />
         </ProtectedRoute>
       </Route>
       
