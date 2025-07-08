@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import Navbar from "@/components/Navbar";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Overview from "@/pages/Overview";
@@ -21,18 +22,21 @@ function Router() {
       {/* Protected Routes */}
       <Route path="/overview">
         <ProtectedRoute>
+          <Navbar />
           <Overview />
         </ProtectedRoute>
       </Route>
       
       <Route path="/league/:id">
         <ProtectedRoute>
+          <Navbar />
           <LeagueHub />
         </ProtectedRoute>
       </Route>
       
       <Route path="/">
         <ProtectedRoute>
+          <Navbar />
           <Overview />
         </ProtectedRoute>
       </Route>
