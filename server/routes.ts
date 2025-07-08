@@ -392,7 +392,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Invalid input', errors: result.error.issues });
       }
 
-      const match = await storage.createMatch(result.data);
+      // Add the authenticated user as the creator
+      const matchData = {
+        ...result.data,
+        createdBy: req.user!.id
+      };
+
+      const match = await storage.createMatch(matchData);
       res.json(match);
     } catch (error) {
       console.error('Error creating match:', error);

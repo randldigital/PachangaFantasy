@@ -54,6 +54,7 @@ export default function CreateMatch() {
     createMatchMutation.mutate({
       ...data,
       leagueId: parseInt(leagueId!),
+      date: new Date(data.date), // Ensure date is properly formatted
     });
   };
 
