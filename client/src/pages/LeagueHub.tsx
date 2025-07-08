@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import MobileBottomNav from "@/components/league/MobileBottomNav";
 import MatchContextHeader from "@/components/league/MatchContextHeader";
+import TeamAssignmentPreview from "@/components/league/TeamAssignmentPreview";
 import LineupSection from "@/components/league/LineupSection";
 import ClasificacionSection from "@/components/league/ClasificacionSection";
 import HistorialSection from "@/components/league/HistorialSection";
@@ -135,6 +136,13 @@ export default function LeagueHub() {
           // Refresh matches data
         }}
       />
+
+      {/* Team Assignment Preview - Show when there's an active match */}
+      {activeMatch && (
+        <div className="container mx-auto px-4 pb-4">
+          <TeamAssignmentPreview match={activeMatch} />
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 pb-20 lg:pb-6">

@@ -92,6 +92,21 @@
     "error": "Error",
     "success": "Success",
     "cancel": "Cancel",
-    "save": "Save"
+    "save": "Save",
+    "joining": "Joining...",
+    "admin": "Admin",
+    "participants": "Participants",
+    "backToOverview": "Back to Overview"
+  },
+  "match": {
+    "view": "View Match",
+    "details": "Match Details",
+    "full": "Match Full",
+    "teamAssignment": "Team Assignment",
+    "noParticipants": "No participants yet",
+    "beFirstToJoin": "Be the first to join this match!",
+    "awaitingPlayers": "Awaiting {{count}} more players",
+    "readyToStart": "Ready to Start!",
+    "startingSoon": "Starting Soon"
   }
 }

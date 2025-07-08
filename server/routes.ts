@@ -2,7 +2,9 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import jwt from "jsonwebtoken";
 import { storage } from "./storage";
-import { insertUserSchema, insertLeagueSchema, insertPlayerSchema, insertTierListSchema, loginSchema, joinLeagueSchema, insertMatchSchema, insertLineupSchema, insertStatReportSchema, verifyStatSchema, type User, type Match, type Lineup, type StatReport } from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
+import { users, matchParticipants, insertUserSchema, insertLeagueSchema, insertPlayerSchema, insertTierListSchema, loginSchema, joinLeagueSchema, insertMatchSchema, insertLineupSchema, insertStatReportSchema, verifyStatSchema, type User, type Match, type Lineup, type StatReport } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || "pachanga-secret-key";
 
@@ -439,6 +441,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ ...match, participants });
     } catch (error) {
       console.error('Error fetching match:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get match participants with user details
+  app.get('/api/matches/:id/participants', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      
+      const participants = await db
+        .select({
+          matchId: matchParticipants.matchId,
+          userId: matchParticipants.userId,
+          status: matchParticipants.status,
+          username: users.username,
+          userRole: users.role
+        })
+        .from(matchParticipants)
+        .innerJoin(users, eq(matchParticipants.userId, users.id))
+        .where(eq(matchParticipants.matchId, matchId));
+      
+      res.json(participants);
+    } catch (error) {
+      console.error('Error fetching match participants:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   });

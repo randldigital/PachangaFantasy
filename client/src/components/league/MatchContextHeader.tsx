@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Calendar, Clock, Users, Plus, UserPlus } from "lucide-react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { Calendar, Clock, Users, Plus, UserPlus, Eye, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import CreateMatchForm from "@/components/league/CreateMatchForm";
+import TeamAssignmentPreview from "@/components/league/TeamAssignmentPreview";
 import type { Match, League, User } from "@shared/schema";
 
 interface MatchContextHeaderProps {
@@ -17,6 +18,14 @@ interface MatchContextHeaderProps {
   user?: User;
   matches: Match[];
   onMatchAction?: () => void;
+}
+
+interface ParticipantWithUser {
+  matchId: number;
+  userId: number;
+  status: string;
+  username: string;
+  userRole: string;
 }
 
 export default function MatchContextHeader({ 
@@ -30,6 +39,27 @@ export default function MatchContextHeader({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showCreateMatch, setShowCreateMatch] = useState(false);
+  const [showMatchDetails, setShowMatchDetails] = useState(false);
+
+  // Check if user has joined the match
+  const { data: participants = [], isLoading: participantsLoading } = useQuery<ParticipantWithUser[]>({
+    queryKey: [`/api/matches/${match?.id}/participants`],
+    queryFn: async () => {
+      if (!match) return [];
+      const response = await fetch(`/api/matches/${match.id}/participants`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch participants');
+      return response.json();
+    },
+    enabled: !!match
+  });
+
+  const userHasJoined = participants.some(p => p.userId === user?.id && p.status === 'accepted');
+  const acceptedParticipants = participants.filter(p => p.status === 'accepted');
+  const isMatchFull = acceptedParticipants.length >= 10;
 
   const joinMatchMutation = useMutation({
     mutationFn: async (matchId: number) => {
@@ -41,6 +71,7 @@ export default function MatchContextHeader({
         description: t('match.joinedDescription'),
       });
       queryClient.invalidateQueries({ queryKey: [`/api/leagues/${league.id}/matches`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/matches/${match?.id}/participants`] });
       onMatchAction?.();
     },
     onError: (error: any) => {
@@ -75,41 +106,83 @@ export default function MatchContextHeader({
 
   if (match) {
     return (
-      <Card className="mx-4 my-4 bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 border-emerald-500/30">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-emerald-400">
-                <Calendar className="w-4 h-4" />
-                <span className="font-medium">{formatDate(match.date)}</span>
+      <>
+        <Card className="mx-4 my-4 bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 border-emerald-500/30">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2 text-emerald-400">
+                  <Calendar className="w-4 h-4" />
+                  <span className="font-medium">{formatDate(match.date)}</span>
+                </div>
+                <div className="flex items-center space-x-2 text-emerald-400">
+                  <Clock className="w-4 h-4" />
+                  <span className="font-medium">{formatTime(match.date)}</span>
+                </div>
+                <Badge variant="secondary" className="bg-emerald-600 text-white">
+                  {t(`match.status.${match.status}`)}
+                </Badge>
               </div>
-              <div className="flex items-center space-x-2 text-emerald-400">
-                <Clock className="w-4 h-4" />
-                <span className="font-medium">{formatTime(match.date)}</span>
+              
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 text-slate-300">
+                  <Users className="w-4 h-4" />
+                  <span className="text-sm">
+                    {participantsLoading ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      `${acceptedParticipants.length}/10`
+                    )}
+                  </span>
+                </div>
+                
+                {userHasJoined ? (
+                  <Button
+                    onClick={() => setShowMatchDetails(true)}
+                    size="sm"
+                    variant="outline"
+                    className="border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white"
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    {t('match.view')}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleJoinMatch}
+                    disabled={joinMatchMutation.isPending || isMatchFull}
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
+                  >
+                    {joinMatchMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <UserPlus className="w-4 h-4 mr-2" />
+                    )}
+                    {joinMatchMutation.isPending 
+                      ? t('common.joining') 
+                      : isMatchFull 
+                        ? t('match.full') 
+                        : t('match.join')
+                    }
+                  </Button>
+                )}
               </div>
-              <Badge variant="secondary" className="bg-emerald-600 text-white">
-                {t(`match.status.${match.status}`)}
-              </Badge>
             </div>
-            
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2 text-slate-300">
-                <Users className="w-4 h-4" />
-                <span className="text-sm">{/* participants count */}</span>
-              </div>
-              <Button
-                onClick={handleJoinMatch}
-                disabled={joinMatchMutation.isPending}
-                size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                <UserPlus className="w-4 h-4 mr-2" />
-                {joinMatchMutation.isPending ? t('common.joining') : t('match.join')}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Dialog open={showMatchDetails} onOpenChange={setShowMatchDetails}>
+          <DialogContent className="bg-slate-800 border-slate-700 max-w-4xl">
+            <DialogHeader>
+              <DialogTitle className="text-white flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-emerald-400" />
+                {t('match.details')} - {formatDate(match.date)}
+              </DialogTitle>
+            </DialogHeader>
+            <TeamAssignmentPreview match={match} />
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
