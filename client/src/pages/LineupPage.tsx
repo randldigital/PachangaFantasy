@@ -28,25 +28,38 @@ export default function LineupPage() {
 
   // Fetch match details
   const { data: match, isLoading: matchLoading, error: matchError } = useQuery<Match>({
-    queryKey: [`/api/matches/${matchId}`],
+    queryKey: ['/api/matches', matchId],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/matches/${matchId}`);
+      return response.json();
+    },
     enabled: !!matchId
   });
 
-  // Debug logging
-  console.log('LineupPage - matchId:', matchId);
-  console.log('LineupPage - match:', match);
-  console.log('LineupPage - matchLoading:', matchLoading);
-  console.log('LineupPage - matchError:', matchError);
+  // Debug logging - can be removed in production
+  // console.log('LineupPage - matchId:', matchId);
+  // console.log('LineupPage - match:', match);
+  // console.log('LineupPage - matchLoading:', matchLoading);
+  // console.log('LineupPage - matchError:', matchError);
 
   // Fetch available players for the league
   const { data: players, isLoading: playersLoading } = useQuery<Player[]>({
-    queryKey: [`/api/players/${match?.leagueId}`],
+    queryKey: ['/api/players', match?.leagueId],
+    queryFn: async () => {
+      if (!match?.leagueId) return [];
+      const response = await apiRequest('GET', `/api/players/${match.leagueId}`);
+      return response.json();
+    },
     enabled: !!match?.leagueId
   });
 
   // Fetch existing lineup
   const { data: existingLineup, isLoading: lineupLoading } = useQuery<Lineup>({
-    queryKey: [`/api/matches/${matchId}/lineup`],
+    queryKey: ['/api/matches', matchId, 'lineup'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/matches/${matchId}/lineup`);
+      return response.json();
+    },
     enabled: !!matchId
   });
 
@@ -63,7 +76,7 @@ export default function LineupPage() {
         title: "Success",
         description: "Lineup saved successfully!"
       });
-      queryClient.invalidateQueries({ queryKey: [`/api/matches/${matchId}/lineup`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/matches', matchId, 'lineup'] });
     },
     onError: (error: any) => {
       toast({

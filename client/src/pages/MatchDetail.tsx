@@ -87,7 +87,7 @@ export default function MatchDetail() {
   }
 
   const isParticipant = match.participants.some(p => p.userId === user?.id);
-  const acceptedParticipants = match.participants.filter(p => p.accepted);
+  const acceptedParticipants = match.participants.filter(p => p.status === 'accepted');
   const teamA = match.matchTeams?.teamA || [];
   const teamB = match.matchTeams?.teamB || [];
 
