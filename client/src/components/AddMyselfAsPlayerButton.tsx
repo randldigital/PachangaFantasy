@@ -31,9 +31,7 @@ export default function AddMyselfAsPlayerButton({ leagueId }: AddMyselfAsPlayerB
   // Add user as player mutation
   const addMyselfMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest(`/api/leagues/${leagueId}/add-me-as-player`, {
-        method: 'POST'
-      });
+      return apiRequest('POST', `/api/leagues/${leagueId}/add-me-as-player`);
     },
     onSuccess: (data) => {
       // Invalidate queries to refresh data

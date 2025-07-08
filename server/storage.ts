@@ -187,14 +187,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTierList(tierList: InsertTierList & { leagueId: number; userId: number }): Promise<TierList> {
+    // Explicitly type the values to match the database schema
+    const insertValues = {
+      leagueId: tierList.leagueId,
+      userId: tierList.userId,
+      playerOrder: tierList.playerOrder as number[],
+      submitted: tierList.submitted ?? false
+    };
+    
     const [newTierList] = await db
       .insert(tierLists)
-      .values({
-        leagueId: tierList.leagueId,
-        userId: tierList.userId,
-        playerOrder: tierList.playerOrder,
-        submitted: tierList.submitted ?? false
-      })
+      .values(insertValues)
       .returning();
     return newTierList;
   }
