@@ -284,39 +284,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   async addPlayerToMatch(matchId: number, playerId: number): Promise<MatchParticipant> {
-    // Check if this player is already in the match
-    const existingParticipant = await db
-      .select()
-      .from(matchParticipants)
-      .where(
-        and(
-          eq(matchParticipants.matchId, matchId),
-          eq(matchParticipants.playerId, playerId)
+    try {
+      // Check if this player is already in the match
+      const existingParticipant = await db
+        .select()
+        .from(matchParticipants)
+        .where(
+          and(
+            eq(matchParticipants.matchId, matchId),
+            eq(matchParticipants.playerId, playerId)
+          )
         )
-      )
-      .limit(1);
+        .limit(1);
 
-    if (existingParticipant.length > 0) {
-      // Player is already a participant, just return the existing record
-      return existingParticipant[0];
+      if (existingParticipant.length > 0) {
+        // Player is already a participant, just return the existing record
+        return existingParticipant[0];
+      }
+
+      // Player is not a participant yet, add them
+      const [participant] = await db
+        .insert(matchParticipants)
+        .values({ matchId, playerId, status: 'accepted' })
+        .returning();
+      return participant;
+    } catch (error) {
+      console.error('Error adding player to match:', error);
+      throw new Error('Failed to add player to match');
     }
-
-    // Player is not a participant yet, add them
-    const [participant] = await db
-      .insert(matchParticipants)
-      .values({ matchId, playerId, status: 'accepted' })
-      .returning();
-    return participant;
   }
 
   async getMatchParticipants(matchId: number): Promise<MatchParticipant[]> {
     return await db
-      .select({
-        matchId: matchParticipants.matchId,
-        userId: matchParticipants.userId,
-        playerId: matchParticipants.playerId,
-        status: matchParticipants.status
-      })
+      .select()
       .from(matchParticipants)
       .where(eq(matchParticipants.matchId, matchId));
   }
