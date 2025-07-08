@@ -193,4 +193,10 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Import storage implementations
+import { replitStorage } from './replitStorage';
+
+// Use Replit DB in production, memory storage in development for testing
+export const storage = process.env.NODE_ENV === 'development' && process.env.USE_MEMORY_STORAGE === 'true' 
+  ? new MemStorage() 
+  : replitStorage;

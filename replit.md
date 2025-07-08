@@ -18,10 +18,11 @@ Pachanga Fantasy is a fullstack web application for creating and managing fantas
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript
-- **Database**: PostgreSQL with Drizzle ORM (schema-first approach)
+- **Database**: Replit DB (key-value store) with PostgreSQL schema compatibility
 - **Authentication**: JWT-based authentication with bcrypt for password hashing
-- **Storage**: Currently using in-memory storage with interface for easy database migration
+- **Storage**: Persistent Replit DB storage with fallback to in-memory for development testing
 - **API Design**: RESTful API with structured error handling
+- **Data Layer**: Custom database abstraction layer supporting both Replit DB and PostgreSQL
 
 ### Project Structure
 ```
@@ -131,13 +132,21 @@ Pachanga Fantasy is a fullstack web application for creating and managing fantas
 - Environment variables for database connection and JWT secrets
 
 ### Database Strategy
-- Drizzle ORM with PostgreSQL dialect
-- Migration-based schema management
-- Currently using in-memory storage for development
-- Ready for PostgreSQL deployment with environment configuration
+- **Primary**: Replit DB key-value store for persistence and scalability
+- **Schema**: PostgreSQL-compatible schema maintained for future migration
+- **Storage Interface**: Abstracted storage layer supporting multiple backends
+- **Data Structure**: Organized with prefixed keys (user:, league:, player:, tierlist:)
+- **Indexing**: Custom indexes for fast lookups (email, username, invite codes)
+- **Migration Ready**: Easy migration path to PostgreSQL or other databases
 
 ## Changelog
-- July 08, 2025. Initial setup
+- July 08, 2025: Initial setup with React frontend and Express backend
+- July 08, 2025: Implemented Replit DB persistent storage layer
+  - Added comprehensive database abstraction with key-value storage
+  - Created helper functions for all CRUD operations
+  - Implemented market value calculation system
+  - Added database seeding and migration utilities
+  - Maintained schema compatibility for future PostgreSQL migration
 
 ## User Preferences
 

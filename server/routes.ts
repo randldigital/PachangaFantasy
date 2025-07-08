@@ -180,10 +180,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user already submitted
       const existing = await storage.getTierList(parseInt(leagueId), req.user!.id);
       if (existing) {
-        const updated = await storage.updateTierList(existing.id, {
-          playerOrder: Array.isArray(tierListData.playerOrder) ? tierListData.playerOrder as number[] : []
-        });
-        return res.json(updated);
+        // For Replit DB, we need to use the custom update method
+        if ('updateTierListByLeagueAndUser' in storage) {
+          const updated = await (storage as any).updateTierListByLeagueAndUser(parseInt(leagueId), req.user!.id, {
+            playerOrder: Array.isArray(tierListData.playerOrder) ? tierListData.playerOrder as number[] : []
+          });
+          return res.json(updated);
+        } else {
+          // Fallback for memory storage
+          const updated = await storage.updateTierList(existing.id, {
+            playerOrder: Array.isArray(tierListData.playerOrder) ? tierListData.playerOrder as number[] : []
+          });
+          return res.json(updated);
+        }
       }
 
       const tierList = await storage.createTierList({
