@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -14,10 +14,12 @@ export const users = pgTable("users", {
 export const leagues = pgTable("leagues", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  description: text("description").default(""),
   inviteCode: text("invite_code").notNull().unique(),
   createdBy: integer("created_by").notNull(),
   status: text("status").notNull().default("open"), // "open" | "voting" | "closed"
   participants: jsonb("participants").$type<number[]>().notNull().default([]),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const players = pgTable("players", {
@@ -44,8 +46,13 @@ export const insertUserSchema = createInsertSchema(users).pick({
   role: true,
 });
 
-export const insertLeagueSchema = createInsertSchema(leagues).pick({
-  name: true,
+export const insertLeagueSchema = createInsertSchema(leagues).omit({
+  id: true,
+  inviteCode: true,
+  createdBy: true,
+  status: true,
+  participants: true,
+  createdAt: true,
 });
 
 export const insertPlayerSchema = createInsertSchema(players).pick({
@@ -54,8 +61,11 @@ export const insertPlayerSchema = createInsertSchema(players).pick({
   emoji: true,
 });
 
-export const insertTierListSchema = createInsertSchema(tierLists).pick({
-  playerOrder: true,
+export const insertTierListSchema = createInsertSchema(tierLists).omit({
+  id: true,
+  leagueId: true,
+  userId: true,
+  submitted: true,
 });
 
 export const loginSchema = z.object({

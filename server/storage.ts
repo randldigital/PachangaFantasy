@@ -1,9 +1,11 @@
 import { users, leagues, players, tierLists, type User, type InsertUser, type League, type InsertLeague, type Player, type InsertPlayer, type TierList, type InsertTierList } from "@shared/schema";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import { db } from "./db";
+import { eq, and, arrayContains } from "drizzle-orm";
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { nanoid } from 'nanoid';
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
-
+// Storage interface
 export interface IStorage {
   // Users
   getUser(id: number): Promise<User | undefined>;
@@ -32,171 +34,145 @@ export interface IStorage {
   updateTierList(id: number, updates: Partial<TierList>): Promise<TierList | undefined>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private leagues: Map<number, League>;
-  private players: Map<number, Player>;
-  private tierLists: Map<number, TierList>;
-  private currentUserId: number;
-  private currentLeagueId: number;
-  private currentPlayerId: number;
-  private currentTierListId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.leagues = new Map();
-    this.players = new Map();
-    this.tierLists = new Map();
-    this.currentUserId = 1;
-    this.currentLeagueId = 1;
-    this.currentPlayerId = 1;
-    this.currentTierListId = 1;
-  }
-
+// PostgreSQL Database Storage Implementation
+export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.email === email);
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.username === username);
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const hashedPassword = await bcrypt.hash(insertUser.password, 10);
-    const id = this.currentUserId++;
-    const user: User = {
-      id,
-      email: insertUser.email,
-      username: insertUser.username,
-      password: hashedPassword,
-      role: insertUser.role || 'player',
-      leagueId: null,
-    };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...insertUser,
+        password: hashedPassword,
+      })
+      .returning();
     return user;
   }
 
   async authenticateUser(email: string, password: string): Promise<{ user: User; token: string } | null> {
     const user = await this.getUserByEmail(email);
     if (!user) return null;
-
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) return null;
-
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
+    
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) return null;
+    
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'development-secret-key', { expiresIn: '7d' });
+    
     return { user, token };
   }
 
   async getLeague(id: number): Promise<League | undefined> {
-    return this.leagues.get(id);
+    const [league] = await db.select().from(leagues).where(eq(leagues.id, id));
+    return league || undefined;
   }
 
   async getLeagueByInviteCode(inviteCode: string): Promise<League | undefined> {
-    return Array.from(this.leagues.values()).find(league => league.inviteCode === inviteCode);
+    const [league] = await db.select().from(leagues).where(eq(leagues.inviteCode, inviteCode));
+    return league || undefined;
   }
 
-  async createLeague(insertLeague: InsertLeague, createdBy: number): Promise<League> {
-    const id = this.currentLeagueId++;
-    const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const league: League = {
-      ...insertLeague,
-      id,
-      inviteCode,
-      createdBy,
-      status: "open",
-      participants: [createdBy],
-    };
-    this.leagues.set(id, league);
-    return league;
+  async createLeague(league: InsertLeague, createdBy: number): Promise<League> {
+    const [newLeague] = await db
+      .insert(leagues)
+      .values({
+        name: league.name,
+        description: league.description,
+        inviteCode: nanoid(6).toUpperCase(),
+        createdBy,
+        participants: [createdBy],
+        status: 'open',
+        createdAt: new Date(),
+      })
+      .returning();
+    return newLeague;
   }
 
   async updateLeague(id: number, updates: Partial<League>): Promise<League | undefined> {
-    const league = this.leagues.get(id);
-    if (!league) return undefined;
-
-    const updatedLeague = { ...league, ...updates };
-    this.leagues.set(id, updatedLeague);
-    return updatedLeague;
+    const [updated] = await db
+      .update(leagues)
+      .set(updates)
+      .where(eq(leagues.id, id))
+      .returning();
+    return updated || undefined;
   }
 
   async getUserLeagues(userId: number): Promise<League[]> {
-    return Array.from(this.leagues.values()).filter(league => 
-      league.participants && league.participants.includes(userId)
-    );
+    return await db.select().from(leagues).where(arrayContains(leagues.participants, [userId]));
   }
 
   async getPlayer(id: number): Promise<Player | undefined> {
-    return this.players.get(id);
+    const [player] = await db.select().from(players).where(eq(players.id, id));
+    return player || undefined;
   }
 
   async getPlayersByLeague(leagueId: number): Promise<Player[]> {
-    return Array.from(this.players.values()).filter(player => player.leagueId === leagueId);
+    return await db.select().from(players).where(eq(players.leagueId, leagueId));
   }
 
   async createPlayer(player: InsertPlayer & { leagueId: number }): Promise<Player> {
-    const id = this.currentPlayerId++;
-    const newPlayer: Player = {
-      id,
-      name: player.name,
-      position: player.position,
-      emoji: player.emoji || '⚽',
-      leagueId: player.leagueId,
-      marketValue: 0,
-    };
-    this.players.set(id, newPlayer);
+    const [newPlayer] = await db
+      .insert(players)
+      .values(player)
+      .returning();
     return newPlayer;
   }
 
   async updatePlayer(id: number, updates: Partial<Player>): Promise<Player | undefined> {
-    const player = this.players.get(id);
-    if (!player) return undefined;
-
-    const updatedPlayer = { ...player, ...updates };
-    this.players.set(id, updatedPlayer);
-    return updatedPlayer;
+    const [updated] = await db
+      .update(players)
+      .set(updates)
+      .where(eq(players.id, id))
+      .returning();
+    return updated || undefined;
   }
 
   async getTierList(leagueId: number, userId: number): Promise<TierList | undefined> {
-    return Array.from(this.tierLists.values()).find(
-      tierList => tierList.leagueId === leagueId && tierList.userId === userId
-    );
+    const [tierList] = await db
+      .select()
+      .from(tierLists)
+      .where(and(eq(tierLists.leagueId, leagueId), eq(tierLists.userId, userId)));
+    return tierList || undefined;
   }
 
   async getTierListsByLeague(leagueId: number): Promise<TierList[]> {
-    return Array.from(this.tierLists.values()).filter(tierList => tierList.leagueId === leagueId);
+    return await db.select().from(tierLists).where(eq(tierLists.leagueId, leagueId));
   }
 
   async createTierList(tierList: InsertTierList & { leagueId: number; userId: number }): Promise<TierList> {
-    const id = this.currentTierListId++;
-    const newTierList: TierList = {
-      id,
-      leagueId: tierList.leagueId,
-      userId: tierList.userId,
-      playerOrder: Array.isArray(tierList.playerOrder) ? tierList.playerOrder as number[] : [],
-      submitted: true,
-    };
-    this.tierLists.set(id, newTierList);
+    const [newTierList] = await db
+      .insert(tierLists)
+      .values({
+        leagueId: tierList.leagueId,
+        userId: tierList.userId,
+        playerOrder: tierList.playerOrder,
+        submitted: tierList.submitted || false,
+      })
+      .returning();
     return newTierList;
   }
 
   async updateTierList(id: number, updates: Partial<TierList>): Promise<TierList | undefined> {
-    const tierList = this.tierLists.get(id);
-    if (!tierList) return undefined;
-
-    const updatedTierList = { ...tierList, ...updates };
-    this.tierLists.set(id, updatedTierList);
-    return updatedTierList;
+    const [updated] = await db
+      .update(tierLists)
+      .set(updates)
+      .where(eq(tierLists.id, id))
+      .returning();
+    return updated || undefined;
   }
 }
 
-// Import storage implementations
-import { replitStorage } from './replitStorage';
-
-// Use Replit DB in production, memory storage in development for testing
-export const storage = process.env.NODE_ENV === 'development' && process.env.USE_MEMORY_STORAGE === 'true' 
-  ? new MemStorage() 
-  : replitStorage;
+export const storage = new DatabaseStorage();
