@@ -24,12 +24,6 @@ export default function LineupPage() {
   const [captainId, setCaptainId] = useState<number | null>(null);
   const [budget, setBudget] = useState(100);
 
-  // Calculate total cost of selected players
-  const totalCost = selectedPlayers.reduce((sum, playerId) => {
-    const player = players?.find(p => p.id === playerId);
-    return sum + (player?.marketValue || 0);
-  }, 0);
-
   // Fetch match details
   const { data: match, isLoading: matchLoading, error: matchError } = useQuery<Match>({
     queryKey: ['/api/matches', matchId],
@@ -153,9 +147,18 @@ export default function LineupPage() {
     lineupMutation.mutate({
       playerIds: selectedPlayers,
       captainId: captainId!,
-      totalCost: totalCost
+      totalCost: selectedPlayers.reduce((sum, playerId) => {
+        const player = players?.find(p => p.id === playerId);
+        return sum + (player?.marketValue || 0);
+      }, 0)
     });
   };
+
+  // Calculate total cost of selected players
+  const totalCost = selectedPlayers.reduce((sum, playerId) => {
+    const player = players?.find(p => p.id === playerId);
+    return sum + (player?.marketValue || 0);
+  }, 0);
 
   const isOverBudget = totalCost > budget;
 
