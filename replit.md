@@ -132,12 +132,12 @@ Pachanga Fantasy is a fullstack web application for creating and managing fantas
 - Environment variables for database connection and JWT secrets
 
 ### Database Strategy
-- **Primary**: Replit DB key-value store for persistence and scalability
-- **Schema**: PostgreSQL-compatible schema maintained for future migration
-- **Storage Interface**: Abstracted storage layer supporting multiple backends
-- **Data Structure**: Organized with prefixed keys (user:, league:, player:, tierlist:)
-- **Indexing**: Custom indexes for fast lookups (email, username, invite codes)
-- **Migration Ready**: Easy migration path to PostgreSQL or other databases
+- **Primary**: PostgreSQL with Neon serverless database for production scalability
+- **ORM**: Drizzle ORM with type-safe queries and schema management
+- **Schema**: Comprehensive normalized schema supporting current and future features
+- **Structure**: Modular schema files in /db/schema/ for maintainability
+- **Features**: Support for users, leagues, players, tier lists, matches, lineups, stats, voting, and scoring
+- **Extensions**: Ready for match system, player statistics, and advanced fantasy features
 
 ## Changelog
 - July 08, 2025: Initial setup with React frontend and Express backend
@@ -153,6 +153,12 @@ Pachanga Fantasy is a fullstack web application for creating and managing fantas
   - Implemented proper password hashing with bcrypt
   - Updated all database operations to use SQL queries
   - Maintained API compatibility with existing frontend
+- July 08, 2025: Designed comprehensive scalable database schema
+  - Created modular schema structure in /db/schema/ folder
+  - Implemented normalized tables for matches, lineups, stats, voting, scoring
+  - Added proper foreign key relationships and constraints
+  - Created seed scripts and migration utilities
+  - Extended schema supports future match system and advanced fantasy features
 
 ## User Preferences
 

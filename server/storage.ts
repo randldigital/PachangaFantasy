@@ -159,7 +159,7 @@ export class DatabaseStorage implements IStorage {
         leagueId: tierList.leagueId,
         userId: tierList.userId,
         playerOrder: tierList.playerOrder,
-        submitted: tierList.submitted || false,
+        submitted: false,
       })
       .returning();
     return newTierList;
