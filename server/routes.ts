@@ -86,8 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const leagueData = insertLeagueSchema.parse(req.body);
       const league = await storage.createLeague(leagueData, req.user!.id);
       
-      // Update user role to admin for this league
-      await storage.createUser({ ...req.user!, role: 'admin', leagueId: league.id });
+      // Note: User role management can be handled differently in production
       
       res.json(league);
     } catch (error) {
@@ -104,12 +103,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'League not found' });
       }
 
-      if (league.participants.includes(req.user!.id)) {
+      if (league.participants && league.participants.includes(req.user!.id)) {
         return res.status(400).json({ message: 'Already in league' });
       }
 
+      const currentParticipants = league.participants || [];
       const updatedLeague = await storage.updateLeague(league.id, {
-        participants: [...league.participants, req.user!.id]
+        participants: [...currentParticipants, req.user!.id]
       });
 
       res.json(updatedLeague);
@@ -127,7 +127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { id } = req.params;
     const league = await storage.getLeague(parseInt(id));
     
-    if (!league || !league.participants.includes(req.user!.id)) {
+    if (!league || !league.participants || !league.participants.includes(req.user!.id)) {
       return res.status(404).json({ message: 'League not found' });
     }
 
@@ -157,7 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { leagueId } = req.params;
     const league = await storage.getLeague(parseInt(leagueId));
     
-    if (!league || !league.participants.includes(req.user!.id)) {
+    if (!league || !league.participants || !league.participants.includes(req.user!.id)) {
       return res.status(404).json({ message: 'League not found' });
     }
 
@@ -171,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { leagueId } = req.params;
       const league = await storage.getLeague(parseInt(leagueId));
       
-      if (!league || !league.participants.includes(req.user!.id)) {
+      if (!league || !league.participants || !league.participants.includes(req.user!.id)) {
         return res.status(404).json({ message: 'League not found' });
       }
 
@@ -180,7 +180,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user already submitted
       const existing = await storage.getTierList(parseInt(leagueId), req.user!.id);
       if (existing) {
-        const updated = await storage.updateTierList(existing.id, tierListData);
+        const updated = await storage.updateTierList(existing.id, {
+          playerOrder: Array.isArray(tierListData.playerOrder) ? tierListData.playerOrder : []
+        });
         return res.json(updated);
       }
 
@@ -200,7 +202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { leagueId } = req.params;
     const league = await storage.getLeague(parseInt(leagueId));
     
-    if (!league || !league.participants.includes(req.user!.id)) {
+    if (!league || !league.participants || !league.participants.includes(req.user!.id)) {
       return res.status(404).json({ message: 'League not found' });
     }
 

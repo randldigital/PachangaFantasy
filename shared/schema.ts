@@ -17,7 +17,7 @@ export const leagues = pgTable("leagues", {
   inviteCode: text("invite_code").notNull().unique(),
   createdBy: integer("created_by").notNull(),
   status: text("status").notNull().default("open"), // "open" | "voting" | "closed"
-  participants: jsonb("participants").$type<number[]>().default([]),
+  participants: jsonb("participants").$type<number[]>().notNull().default([]),
 });
 
 export const players = pgTable("players", {

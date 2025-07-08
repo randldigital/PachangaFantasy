@@ -69,9 +69,11 @@ export class MemStorage implements IStorage {
     const hashedPassword = await bcrypt.hash(insertUser.password, 10);
     const id = this.currentUserId++;
     const user: User = {
-      ...insertUser,
       id,
+      email: insertUser.email,
+      username: insertUser.username,
       password: hashedPassword,
+      role: insertUser.role || 'player',
       leagueId: null,
     };
     this.users.set(id, user);
@@ -123,7 +125,7 @@ export class MemStorage implements IStorage {
 
   async getUserLeagues(userId: number): Promise<League[]> {
     return Array.from(this.leagues.values()).filter(league => 
-      league.participants.includes(userId)
+      league.participants && league.participants.includes(userId)
     );
   }
 
@@ -138,8 +140,11 @@ export class MemStorage implements IStorage {
   async createPlayer(player: InsertPlayer & { leagueId: number }): Promise<Player> {
     const id = this.currentPlayerId++;
     const newPlayer: Player = {
-      ...player,
       id,
+      name: player.name,
+      position: player.position,
+      emoji: player.emoji || '⚽',
+      leagueId: player.leagueId,
       marketValue: 0,
     };
     this.players.set(id, newPlayer);
@@ -168,8 +173,10 @@ export class MemStorage implements IStorage {
   async createTierList(tierList: InsertTierList & { leagueId: number; userId: number }): Promise<TierList> {
     const id = this.currentTierListId++;
     const newTierList: TierList = {
-      ...tierList,
       id,
+      leagueId: tierList.leagueId,
+      userId: tierList.userId,
+      playerOrder: Array.isArray(tierList.playerOrder) ? tierList.playerOrder : [],
       submitted: true,
     };
     this.tierLists.set(id, newTierList);

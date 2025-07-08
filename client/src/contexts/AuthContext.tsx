@@ -22,6 +22,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: !!token,
     retry: false,
+    onError: () => {
+      // If authentication fails, clear the invalid token
+      setToken(null);
+    },
   });
 
   const loginMutation = useMutation({
@@ -65,17 +69,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Add token to API requests
   useEffect(() => {
     if (token) {
-      // Update the default headers for future requests
-      const originalFetch = window.fetch;
-      window.fetch = function(input, init = {}) {
-        init.headers = {
-          ...init.headers,
-          'Authorization': `Bearer ${token}`,
-        };
-        return originalFetch(input, init);
-      };
+      // Store token for apiRequest function to use
+      localStorage.setItem('token', token);
+    } else {
+      localStorage.removeItem('token');
     }
   }, [token]);
+
+  // Handle case where token exists but user fetch returns null (server restart)
+  useEffect(() => {
+    if (token && user === null && !isLoading) {
+      setToken(null);
+    }
+  }, [token, user, isLoading]);
 
   return (
     <AuthContext.Provider
