@@ -28,10 +28,18 @@ export default function LeagueDetail() {
 
   const { data: league, isLoading: leagueLoading } = useQuery<League>({
     queryKey: ['/api/leagues', id],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/leagues/${id}`);
+      return response.json();
+    },
   });
 
   const { data: players, isLoading: playersLoading } = useQuery<Player[]>({
     queryKey: ['/api/players', id],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/players/${id}`);
+      return response.json();
+    },
   });
 
   const form = useForm<InsertPlayer>({
