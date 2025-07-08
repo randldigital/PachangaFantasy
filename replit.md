@@ -165,6 +165,8 @@ Pachanga Fantasy is a fullstack web application for creating and managing fantas
   - Implemented complete user authentication through PostgreSQL database
   - All protected endpoints now properly validate JWT tokens
   - League access and user management fully functional with database backend
+  - Fixed frontend LeagueDetail queries with explicit queryFn functions
+  - Resolved password hash compatibility issues for existing user accounts
 
 ## User Preferences
 
