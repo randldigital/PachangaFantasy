@@ -24,8 +24,9 @@ export interface IStorage {
   // Players
   getPlayer(id: number): Promise<Player | undefined>;
   getPlayersByLeague(leagueId: number): Promise<Player[]>;
-  createPlayer(player: InsertPlayer & { leagueId: number }): Promise<Player>;
+  createPlayer(player: InsertPlayer & { leagueId: number; createdBy?: number; userId?: number }): Promise<Player>;
   updatePlayer(id: number, updates: Partial<Player>): Promise<Player | undefined>;
+  checkUserAsPlayer(userId: number, leagueId: number): Promise<Player | undefined>;
   
   // Tier Lists
   getTierList(leagueId: number, userId: number): Promise<TierList | undefined>;
@@ -142,10 +143,16 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(players).where(eq(players.leagueId, leagueId));
   }
 
-  async createPlayer(player: InsertPlayer & { leagueId: number }): Promise<Player> {
+  async createPlayer(player: InsertPlayer & { leagueId: number; createdBy?: number; userId?: number }): Promise<Player> {
     const [newPlayer] = await db
       .insert(players)
-      .values(player)
+      .values({
+        name: player.name,
+        emoji: player.emoji,
+        leagueId: player.leagueId,
+        createdBy: player.createdBy,
+        userId: player.userId,
+      })
       .returning();
     return newPlayer;
   }
@@ -157,6 +164,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(players.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  async checkUserAsPlayer(userId: number, leagueId: number): Promise<Player | undefined> {
+    const [player] = await db
+      .select()
+      .from(players)
+      .where(and(eq(players.userId, userId), eq(players.leagueId, leagueId)));
+    return player || undefined;
   }
 
   async getTierList(leagueId: number, userId: number): Promise<TierList | undefined> {
@@ -178,6 +193,7 @@ export class DatabaseStorage implements IStorage {
         leagueId: tierList.leagueId,
         userId: tierList.userId,
         playerOrder: tierList.playerOrder,
+        submitted: tierList.submitted || false
       })
       .returning();
     return newTierList;

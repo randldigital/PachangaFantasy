@@ -28,6 +28,8 @@ export const players = pgTable("players", {
   leagueId: integer("league_id").notNull(),
   marketValue: integer("market_value").default(0),
   emoji: text("emoji").notNull().default("⚽"),
+  createdBy: integer("created_by"),
+  userId: integer("user_id"), // Optional FK to users.id for user-players
 });
 
 export const tierLists = pgTable("tier_lists", {

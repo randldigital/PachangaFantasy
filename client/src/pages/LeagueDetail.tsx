@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Users, Copy, Plus, Play, StopCircle } from 'lucide-react';
+import AddMyselfAsPlayerButton from '@/components/AddMyselfAsPlayerButton';
 
 const playerEmojis = ['⚽', '🏃', '🛡️', '🎯', '🥅', '⚡', '🔥', '💎', '👑', '🌟'];
 
@@ -202,6 +203,11 @@ export default function LeagueDetail() {
               {joinLeagueMutation.isPending ? t('common.loading') : 'Join League as Player'}
             </Button>
           </div>
+        )}
+
+        {/* Add Myself as Player Button */}
+        {league.participants.includes(user?.id || 0) && (
+          <AddMyselfAsPlayerButton leagueId={league.id} />
         )}
 
         {league.participants.includes(user?.id || 0) && league.status === 'open' && (

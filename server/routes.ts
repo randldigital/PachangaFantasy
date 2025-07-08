@@ -332,6 +332,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add user as player in league
+  app.post('/api/leagues/:leagueId/add-me-as-player', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const leagueId = parseInt(req.params.leagueId);
+      const league = await storage.getLeague(leagueId);
+      
+      if (!league) {
+        return res.status(404).json({ message: 'League not found' });
+      }
+
+      // Check if user is a participant in the league
+      if (!league.participants.includes(req.user!.id)) {
+        return res.status(403).json({ message: 'You must be a participant in this league' });
+      }
+
+      // Check if user is already a player in this league
+      const existingPlayer = await storage.checkUserAsPlayer(req.user!.id, leagueId);
+      if (existingPlayer) {
+        return res.status(400).json({ message: 'You are already a player in this league', player: existingPlayer });
+      }
+
+      // Create user as player
+      const userPlayer = await storage.createPlayer({
+        name: req.user!.username,
+        emoji: '👤',
+        leagueId: leagueId,
+        createdBy: req.user!.id,
+        userId: req.user!.id
+      });
+
+      console.log('User added themselves as player:', { league: leagueId, player: userPlayer.id, username: req.user!.username });
+      res.json(userPlayer);
+    } catch (error) {
+      console.error('Add user as player error:', error);
+      res.status(500).json({ message: 'Failed to add user as player' });
+    }
+  });
+
+  // Check if user is already a player in league
+  app.get('/api/leagues/:leagueId/check-user-player', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const leagueId = parseInt(req.params.leagueId);
+      const existingPlayer = await storage.checkUserAsPlayer(req.user!.id, leagueId);
+      
+      res.json({ isPlayer: !!existingPlayer, player: existingPlayer || null });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to check user player status' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
