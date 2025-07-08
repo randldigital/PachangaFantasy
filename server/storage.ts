@@ -176,7 +176,7 @@ export class MemStorage implements IStorage {
       id,
       leagueId: tierList.leagueId,
       userId: tierList.userId,
-      playerOrder: Array.isArray(tierList.playerOrder) ? tierList.playerOrder : [],
+      playerOrder: Array.isArray(tierList.playerOrder) ? tierList.playerOrder as number[] : [],
       submitted: true,
     };
     this.tierLists.set(id, newTierList);

@@ -181,7 +181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existing = await storage.getTierList(parseInt(leagueId), req.user!.id);
       if (existing) {
         const updated = await storage.updateTierList(existing.id, {
-          playerOrder: Array.isArray(tierListData.playerOrder) ? tierListData.playerOrder : []
+          playerOrder: Array.isArray(tierListData.playerOrder) ? tierListData.playerOrder as number[] : []
         });
         return res.json(updated);
       }

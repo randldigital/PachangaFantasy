@@ -16,9 +16,16 @@ export default function Dashboard() {
     queryKey: ['/api/leagues'],
     queryFn: getQueryFn({ on401: "throw" }),
     retry: 1,
+    enabled: !!user, // Only fetch when user is authenticated
   });
 
-  console.log('Dashboard render:', { user, leagues, isLoading, error });
+  console.log('Dashboard render:', { 
+    user: !!user, 
+    leagues: leagues?.length, 
+    isLoading, 
+    error: error?.message,
+    hasToken: !!localStorage.getItem('token')
+  });
 
   if (isLoading) {
     return (

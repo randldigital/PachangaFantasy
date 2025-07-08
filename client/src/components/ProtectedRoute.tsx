@@ -10,10 +10,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
 
-  console.log('ProtectedRoute render:', { user, loading });
+  console.log('ProtectedRoute render:', { user, loading, hasToken: !!localStorage.getItem('token') });
 
   useEffect(() => {
     if (!loading && !user) {
+      console.log('No user, redirecting to login');
       setLocation('/login');
     }
   }, [user, loading, setLocation]);
@@ -30,7 +31,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-primary">
+        <p className="text-text-secondary">Redirecting to login...</p>
+      </div>
+    );
   }
 
   return <>{children}</>;

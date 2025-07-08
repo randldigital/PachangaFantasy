@@ -17,16 +17,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const queryClient = useQueryClient();
 
-  const { data: user, isLoading } = useQuery<{ user: User } | null>({
+  const { data: user, isLoading, error } = useQuery<{ user: User } | null>({
     queryKey: ['/api/auth/me'],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: !!token,
     retry: false,
-    onError: () => {
-      // If authentication fails, clear the invalid token
-      setToken(null);
-    },
   });
+
+  // Handle authentication errors
+  useEffect(() => {
+    if (error && token) {
+      console.log('Auth query error, clearing token:', error);
+      setToken(null);
+      localStorage.removeItem('token');
+    }
+  }, [error, token]);
 
   const loginMutation = useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
@@ -34,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return response.json();
     },
     onSuccess: (data) => {
+      console.log('Login successful, setting token');
       localStorage.setItem('token', data.token);
       setToken(data.token);
       queryClient.setQueryData(['/api/auth/me'], data);
@@ -47,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return response.json();
     },
     onSuccess: (data) => {
+      console.log('Register successful, setting token');
       localStorage.setItem('token', data.token);
       setToken(data.token);
       queryClient.setQueryData(['/api/auth/me'], data);
@@ -65,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    console.log('Logging out, clearing all auth state');
     localStorage.removeItem('token');
     setToken(null);
     queryClient.clear();
