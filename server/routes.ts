@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import jwt from "jsonwebtoken";
 import { storage } from "./storage";
-import { insertUserSchema, insertLeagueSchema, insertPlayerSchema, insertTierListSchema, loginSchema, joinLeagueSchema, type User } from "@shared/schema";
+import { insertUserSchema, insertLeagueSchema, insertPlayerSchema, insertTierListSchema, loginSchema, joinLeagueSchema, insertMatchSchema, insertLineupSchema, insertStatReportSchema, verifyStatSchema, type User, type Match, type Lineup, type StatReport } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || "pachanga-secret-key";
 
@@ -379,6 +379,216 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ isPlayer: !!existingPlayer, player: existingPlayer || null });
     } catch (error) {
       res.status(500).json({ message: 'Failed to check user player status' });
+    }
+  });
+
+  // v0.2 - Match Management Routes
+  
+  // Create a new match (admin only)
+  app.post('/api/matches', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const result = insertMatchSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: 'Invalid input', errors: result.error.issues });
+      }
+
+      const match = await storage.createMatch(result.data);
+      res.json(match);
+    } catch (error) {
+      console.error('Error creating match:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get matches for a league
+  app.get('/api/leagues/:leagueId/matches', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const leagueId = parseInt(req.params.leagueId);
+      const matches = await storage.getMatchesByLeague(leagueId);
+      res.json(matches);
+    } catch (error) {
+      console.error('Error fetching matches:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get match details
+  app.get('/api/matches/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const match = await storage.getMatch(matchId);
+      
+      if (!match) {
+        return res.status(404).json({ message: 'Match not found' });
+      }
+
+      const participants = await storage.getMatchParticipants(matchId);
+      res.json({ ...match, participants });
+    } catch (error) {
+      console.error('Error fetching match:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Join a match
+  app.post('/api/matches/:id/join', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const userId = req.user!.id;
+
+      const participant = await storage.joinMatch(matchId, userId);
+      
+      // Check if we have enough participants to balance teams (e.g., 10 players)
+      const participants = await storage.getMatchParticipants(matchId);
+      const acceptedParticipants = participants.filter(p => p.accepted);
+      
+      if (acceptedParticipants.length >= 10) {
+        const playerIds = acceptedParticipants.map(p => p.userId);
+        const teams = await storage.balanceTeams(matchId, playerIds);
+        await storage.updateMatch(matchId, { status: 'ready' });
+      }
+
+      res.json(participant);
+    } catch (error) {
+      console.error('Error joining match:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // v0.2 - Lineup Management Routes
+
+  // Create/update lineup
+  app.post('/api/matches/:matchId/lineup', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.matchId);
+      const userId = req.user!.id;
+      
+      const result = insertLineupSchema.safeParse({
+        ...req.body,
+        matchId,
+        userId
+      });
+      
+      if (!result.success) {
+        return res.status(400).json({ message: 'Invalid input', errors: result.error.issues });
+      }
+
+      // Check if lineup already exists, update or create
+      const existingLineup = await storage.getLineup(matchId, userId);
+      
+      if (existingLineup) {
+        const updated = await storage.updateLineup(existingLineup.id, result.data);
+        res.json(updated);
+      } else {
+        const lineup = await storage.createLineup(result.data);
+        res.json(lineup);
+      }
+    } catch (error) {
+      console.error('Error creating/updating lineup:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get user's lineup for a match
+  app.get('/api/matches/:matchId/lineup', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.matchId);
+      const userId = req.user!.id;
+      
+      const lineup = await storage.getLineup(matchId, userId);
+      res.json(lineup || null);
+    } catch (error) {
+      console.error('Error fetching lineup:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // v0.2 - Stats & Scoring Routes
+
+  // Submit stat report
+  app.post('/api/matches/:matchId/stats', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.matchId);
+      const userId = req.user!.id;
+
+      const result = insertStatReportSchema.safeParse({
+        ...req.body,
+        matchId,
+        userId
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ message: 'Invalid input', errors: result.error.issues });
+      }
+
+      const statReport = await storage.createStatReport(result.data);
+      res.json(statReport);
+    } catch (error) {
+      console.error('Error creating stat report:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get stat reports for a match
+  app.get('/api/matches/:matchId/stats', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.matchId);
+      const statReports = await storage.getStatReportsForMatch(matchId);
+      res.json(statReports);
+    } catch (error) {
+      console.error('Error fetching stat reports:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Verify a stat report
+  app.post('/api/stats/:reportId/verify', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const verifiedBy = req.user!.id;
+
+      const result = verifyStatSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: 'Invalid input', errors: result.error.issues });
+      }
+
+      const statReport = await storage.verifyStatReport(reportId, verifiedBy, result.data.status);
+      
+      if (!statReport) {
+        return res.status(404).json({ message: 'Stat report not found or unauthorized' });
+      }
+
+      res.json(statReport);
+    } catch (error) {
+      console.error('Error verifying stat report:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Calculate match scores (after verification complete)
+  app.post('/api/matches/:matchId/calculate-scores', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.matchId);
+      
+      const scores = await storage.calculateMatchScores(matchId);
+      await storage.updateMatch(matchId, { status: 'completed' });
+      
+      res.json(scores);
+    } catch (error) {
+      console.error('Error calculating match scores:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Get league rankings
+  app.get('/api/leagues/:leagueId/rankings', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const leagueId = parseInt(req.params.leagueId);
+      const rankings = await storage.getLeagueRankings(leagueId);
+      res.json(rankings);
+    } catch (error) {
+      console.error('Error fetching league rankings:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
   });
 

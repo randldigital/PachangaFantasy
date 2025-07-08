@@ -1,4 +1,4 @@
-import { users, leagues, players, tierLists, type User, type InsertUser, type League, type InsertLeague, type Player, type InsertPlayer, type TierList, type InsertTierList } from "@shared/schema";
+import { users, leagues, players, tierLists, matches, matchParticipants, lineups, statReports, scores, type User, type InsertUser, type League, type InsertLeague, type Player, type InsertPlayer, type TierList, type InsertTierList, type Match, type InsertMatch, type MatchParticipant, type Lineup, type InsertLineup, type StatReport, type InsertStatReport, type Score } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, arrayContains, or, sql } from "drizzle-orm";
 import bcrypt from 'bcrypt';
@@ -33,6 +33,27 @@ export interface IStorage {
   getTierListsByLeague(leagueId: number): Promise<TierList[]>;
   createTierList(tierList: InsertTierList & { leagueId: number; userId: number }): Promise<TierList>;
   updateTierList(id: number, updates: Partial<TierList>): Promise<TierList | undefined>;
+  
+  // v0.2 - Matches
+  getMatch(id: number): Promise<Match | undefined>;
+  getMatchesByLeague(leagueId: number): Promise<Match[]>;
+  createMatch(match: InsertMatch): Promise<Match>;
+  updateMatch(id: number, updates: Partial<Match>): Promise<Match | undefined>;
+  joinMatch(matchId: number, userId: number): Promise<MatchParticipant>;
+  getMatchParticipants(matchId: number): Promise<MatchParticipant[]>;
+  balanceTeams(matchId: number, playerIds: number[]): Promise<{ teamA: number[], teamB: number[] }>;
+  
+  // v0.2 - Lineups
+  getLineup(matchId: number, userId: number): Promise<Lineup | undefined>;
+  createLineup(lineup: InsertLineup): Promise<Lineup>;
+  updateLineup(id: number, updates: Partial<Lineup>): Promise<Lineup | undefined>;
+  
+  // v0.2 - Stats & Scoring
+  createStatReport(statReport: InsertStatReport): Promise<StatReport>;
+  getStatReportsForMatch(matchId: number): Promise<StatReport[]>;
+  verifyStatReport(reportId: number, verifiedBy: number, status: 'confirmed' | 'disputed'): Promise<StatReport | undefined>;
+  calculateMatchScores(matchId: number): Promise<Score[]>;
+  getLeagueRankings(leagueId: number): Promise<{ userId: number, username: string, totalPoints: number }[]>;
 }
 
 // PostgreSQL Database Storage Implementation
@@ -209,6 +230,193 @@ export class DatabaseStorage implements IStorage {
       .where(eq(tierLists.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  // v0.2 - Matches Implementation
+  async getMatch(id: number): Promise<Match | undefined> {
+    const [match] = await db.select().from(matches).where(eq(matches.id, id));
+    return match || undefined;
+  }
+
+  async getMatchesByLeague(leagueId: number): Promise<Match[]> {
+    return await db.select().from(matches).where(eq(matches.leagueId, leagueId));
+  }
+
+  async createMatch(match: InsertMatch): Promise<Match> {
+    const [created] = await db.insert(matches).values(match).returning();
+    return created;
+  }
+
+  async updateMatch(id: number, updates: Partial<Match>): Promise<Match | undefined> {
+    const [match] = await db
+      .update(matches)
+      .set(updates)
+      .where(eq(matches.id, id))
+      .returning();
+    return match || undefined;
+  }
+
+  async joinMatch(matchId: number, userId: number): Promise<MatchParticipant> {
+    const [participant] = await db
+      .insert(matchParticipants)
+      .values({ matchId, userId, accepted: true })
+      .returning();
+    return participant;
+  }
+
+  async getMatchParticipants(matchId: number): Promise<MatchParticipant[]> {
+    return await db
+      .select()
+      .from(matchParticipants)
+      .where(eq(matchParticipants.matchId, matchId));
+  }
+
+  async balanceTeams(matchId: number, playerIds: number[]): Promise<{ teamA: number[], teamB: number[] }> {
+    // Get players with their market values for balancing
+    const playersData = await db
+      .select()
+      .from(players)
+      .where(sql`id = ANY(${playerIds})`);
+
+    // Sort by market value and distribute alternately for balance
+    const sortedPlayers = playersData.sort((a, b) => (b.marketValue || 0) - (a.marketValue || 0));
+    const teamA: number[] = [];
+    const teamB: number[] = [];
+
+    sortedPlayers.forEach((player, index) => {
+      if (index % 2 === 0) {
+        teamA.push(player.id);
+      } else {
+        teamB.push(player.id);
+      }
+    });
+
+    const teams = { teamA, teamB };
+    
+    // Update match with balanced teams
+    await this.updateMatch(matchId, { matchTeams: teams });
+    
+    return teams;
+  }
+
+  // v0.2 - Lineups Implementation
+  async getLineup(matchId: number, userId: number): Promise<Lineup | undefined> {
+    const [lineup] = await db
+      .select()
+      .from(lineups)
+      .where(and(eq(lineups.matchId, matchId), eq(lineups.userId, userId)));
+    return lineup || undefined;
+  }
+
+  async createLineup(lineup: InsertLineup): Promise<Lineup> {
+    const [created] = await db.insert(lineups).values(lineup).returning();
+    return created;
+  }
+
+  async updateLineup(id: number, updates: Partial<Lineup>): Promise<Lineup | undefined> {
+    const [lineup] = await db
+      .update(lineups)
+      .set(updates)
+      .where(eq(lineups.id, id))
+      .returning();
+    return lineup || undefined;
+  }
+
+  // v0.2 - Stats & Scoring Implementation
+  async createStatReport(statReport: InsertStatReport): Promise<StatReport> {
+    // Auto-assign verifier (different participant)
+    const participants = await this.getMatchParticipants(statReport.matchId);
+    const verifier = participants.find(p => p.userId !== statReport.userId);
+    
+    const [created] = await db
+      .insert(statReports)
+      .values({
+        ...statReport,
+        verifiedBy: verifier?.userId || null,
+      })
+      .returning();
+    return created;
+  }
+
+  async getStatReportsForMatch(matchId: number): Promise<StatReport[]> {
+    return await db
+      .select()
+      .from(statReports)
+      .where(eq(statReports.matchId, matchId));
+  }
+
+  async verifyStatReport(reportId: number, verifiedBy: number, status: 'confirmed' | 'disputed'): Promise<StatReport | undefined> {
+    const [report] = await db
+      .update(statReports)
+      .set({ verifiedStatus: status })
+      .where(and(eq(statReports.id, reportId), eq(statReports.verifiedBy, verifiedBy)))
+      .returning();
+    return report || undefined;
+  }
+
+  async calculateMatchScores(matchId: number): Promise<Score[]> {
+    const reports = await this.getStatReportsForMatch(matchId);
+    const confirmedReports = reports.filter(r => r.verifiedStatus === 'confirmed');
+    
+    const match = await this.getMatch(matchId);
+    const teams = match?.matchTeams;
+    
+    let teamAWins = false;
+    let teamBWins = false;
+    
+    if (teams) {
+      const teamAGoals = confirmedReports
+        .filter(r => teams.teamA.includes(r.userId))
+        .reduce((sum, r) => sum + (r.goals || 0), 0);
+      
+      const teamBGoals = confirmedReports
+        .filter(r => teams.teamB.includes(r.userId))
+        .reduce((sum, r) => sum + (r.goals || 0), 0);
+      
+      teamAWins = teamAGoals > teamBGoals;
+      teamBWins = teamBGoals > teamAGoals;
+    }
+
+    const matchScores: Score[] = [];
+    
+    for (const report of confirmedReports) {
+      const points = 
+        (report.goals || 0) * 3 + 
+        (report.assists || 0) * 2 + 
+        (teams && 
+          ((teamAWins && teams.teamA.includes(report.userId)) || 
+           (teamBWins && teams.teamB.includes(report.userId))) ? 1 : 0);
+      
+      const [score] = await db
+        .insert(scores)
+        .values({
+          userId: report.userId,
+          matchId: report.matchId,
+          points,
+        })
+        .returning();
+      
+      matchScores.push(score);
+    }
+    
+    return matchScores;
+  }
+
+  async getLeagueRankings(leagueId: number): Promise<{ userId: number, username: string, totalPoints: number }[]> {
+    const result = await db
+      .select({
+        userId: users.id,
+        username: users.username,
+        totalPoints: sql<number>`COALESCE(SUM(${scores.points}), 0)`,
+      })
+      .from(users)
+      .leftJoin(scores, eq(users.id, scores.userId))
+      .leftJoin(matches, eq(scores.matchId, matches.id))
+      .where(eq(matches.leagueId, leagueId))
+      .groupBy(users.id, users.username)
+      .orderBy(sql`COALESCE(SUM(${scores.points}), 0) DESC`);
+    
+    return result;
   }
 }
 

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -40,6 +40,53 @@ export const tierLists = pgTable("tier_lists", {
   submitted: boolean("submitted").default(false),
 });
 
+// v0.2 Features - Matches System
+export const matches = pgTable("matches", {
+  id: serial("id").primaryKey(),
+  leagueId: integer("league_id").notNull().references(() => leagues.id),
+  date: timestamp("date").notNull(),
+  lineupBudget: integer("lineup_budget").default(100),
+  status: text("status").$type<'open' | 'ready' | 'completed'>().default('open'),
+  matchTeams: json("match_teams").$type<{ teamA: number[], teamB: number[] }>(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const matchParticipants = pgTable("match_participants", {
+  id: serial("id").primaryKey(),
+  matchId: integer("match_id").notNull().references(() => matches.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  accepted: boolean("accepted").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const lineups = pgTable("lineups", {
+  id: serial("id").primaryKey(),
+  matchId: integer("match_id").notNull().references(() => matches.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  playerIds: integer("player_ids").array().notNull(),
+  totalCost: integer("total_cost").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const statReports = pgTable("stat_reports", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  matchId: integer("match_id").notNull().references(() => matches.id),
+  goals: integer("goals").default(0),
+  assists: integer("assists").default(0),
+  verifiedBy: integer("verified_by").references(() => users.id),
+  verifiedStatus: text("verified_status").$type<'pending' | 'confirmed' | 'disputed'>().default('pending'),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const scores = pgTable("scores", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  matchId: integer("match_id").notNull().references(() => matches.id),
+  points: integer("points").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   email: true,
@@ -75,6 +122,31 @@ export const joinLeagueSchema = z.object({
   inviteCode: z.string().min(1),
 });
 
+// v0.2 Insert Schemas
+export const insertMatchSchema = createInsertSchema(matches).omit({
+  id: true,
+  status: true,
+  matchTeams: true,
+  createdAt: true,
+});
+
+export const insertLineupSchema = createInsertSchema(lineups).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertStatReportSchema = createInsertSchema(statReports).omit({
+  id: true,
+  verifiedBy: true,
+  verifiedStatus: true,
+  createdAt: true,
+});
+
+export const verifyStatSchema = z.object({
+  reportId: z.number(),
+  status: z.enum(['confirmed', 'disputed']),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertLeague = z.infer<typeof insertLeagueSchema>;
@@ -85,3 +157,14 @@ export type InsertTierList = z.infer<typeof insertTierListSchema>;
 export type TierList = typeof tierLists.$inferSelect;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type JoinLeagueInput = z.infer<typeof joinLeagueSchema>;
+
+// v0.2 Types
+export type Match = typeof matches.$inferSelect;
+export type InsertMatch = z.infer<typeof insertMatchSchema>;
+export type MatchParticipant = typeof matchParticipants.$inferSelect;
+export type Lineup = typeof lineups.$inferSelect;
+export type InsertLineup = z.infer<typeof insertLineupSchema>;
+export type StatReport = typeof statReports.$inferSelect;
+export type InsertStatReport = z.infer<typeof insertStatReportSchema>;
+export type Score = typeof scores.$inferSelect;
+export type VerifyStatInput = z.infer<typeof verifyStatSchema>;

@@ -12,6 +12,9 @@ import Dashboard from "@/pages/Dashboard";
 import CreateLeague from "@/pages/CreateLeague";
 import JoinLeague from "@/pages/JoinLeague";
 import LeagueDetail from "@/pages/LeagueDetail";
+import LeagueDashboard from "@/pages/LeagueDashboard";
+import MatchDetail from "@/pages/MatchDetail";
+import CreateMatch from "@/pages/CreateMatch";
 import TierListPage from "@/pages/TierListPage";
 import Results from "@/pages/Results";
 import NotFound from "@/pages/not-found";
@@ -49,6 +52,28 @@ function Router() {
         <ProtectedRoute>
           <Navbar />
           <LeagueDetail />
+        </ProtectedRoute>
+      </Route>
+      
+      {/* v0.2 - New Match System Routes */}
+      <Route path="/leagues/:id/dashboard">
+        <ProtectedRoute>
+          <Navbar />
+          <LeagueDashboard />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/leagues/:id/create-match">
+        <ProtectedRoute>
+          <Navbar />
+          <CreateMatch />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/matches/:id">
+        <ProtectedRoute>
+          <Navbar />
+          <MatchDetail />
         </ProtectedRoute>
       </Route>
       

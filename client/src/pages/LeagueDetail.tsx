@@ -227,6 +227,17 @@ export default function LeagueDetail() {
                   </Link>
                 </div>
               )}
+              
+              {/* Match Dashboard Action */}
+              <div className="text-center">
+                <Button
+                  onClick={() => window.location.href = `/leagues/${league.id}/dashboard`}
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 px-8 rounded-xl hover:shadow-lg hover:shadow-purple-500/25 transform hover:scale-105 transition-all duration-300"
+                >
+                  <Play className="w-5 h-5 mr-2" />
+                  Match Dashboard (v0.2)
+                </Button>
+              </div>
             </div>
           )}
         </div>
