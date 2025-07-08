@@ -68,8 +68,8 @@ export default function LeagueDashboard() {
     );
   }
 
-  const upcomingMatch = matches.find(m => m.status === 'open' || m.status === 'ready');
-  const completedMatches = matches.filter(m => m.status === 'completed');
+  const upcomingMatch = matches?.find(m => m.status === 'open' || m.status === 'ready');
+  const completedMatches = matches?.filter(m => m.status === 'completed') || [];
 
   return (
     <div className="min-h-screen bg-[#121212] text-[#e0e0e0] p-6">
@@ -87,7 +87,7 @@ export default function LeagueDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-400">Total Matches</p>
-                  <p className="text-2xl font-bold">{matches.length}</p>
+                  <p className="text-2xl font-bold">{matches?.length || 0}</p>
                 </div>
                 <Calendar className="h-8 w-8 text-blue-400" />
               </div>
@@ -99,7 +99,7 @@ export default function LeagueDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-400">Players</p>
-                  <p className="text-2xl font-bold">{players.length}</p>
+                  <p className="text-2xl font-bold">{players?.length || 0}</p>
                 </div>
                 <Users className="h-8 w-8 text-green-400" />
               </div>

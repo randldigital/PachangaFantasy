@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import React from 'react';
 import { render, screen, waitFor, fireEvent } from '../test-utils';
 import userEvent from '@testing-library/user-event';
 import LeagueDashboard from '@/pages/LeagueDashboard';
@@ -226,6 +227,26 @@ describe('LeagueDashboard', () => {
     await waitFor(() => {
       expect(screen.getByText(mockLeague.name)).toBeInTheDocument();
     });
+  });
+
+  it('should handle null/undefined matches array without crashing', async () => {
+    // Mock null matches response to test the exact error case
+    const mockInvalidResponse = vi.fn().mockResolvedValueOnce({
+      json: () => null // This simulates the error case
+    });
+    
+    global.fetch = mockInvalidResponse as any;
+    
+    render(<LeagueDashboard />, { initialUser: mockUser });
+
+    // Should still render without crashing
+    await waitFor(() => {
+      // Should show 0 for total matches when matches is null/undefined
+      expect(screen.getByText('0')).toBeInTheDocument();
+    });
+    
+    // Reset fetch mock
+    vi.restoreAllMocks();
   });
 
   it('should show responsive design elements', async () => {

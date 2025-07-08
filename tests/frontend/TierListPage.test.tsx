@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import React from 'react';
 import { render, screen, waitFor, fireEvent } from '../test-utils';
 import userEvent from '@testing-library/user-event';
 import TierListPage from '@/pages/TierListPage';
