@@ -13,8 +13,7 @@ import type { Match, Player, Lineup } from "@shared/schema";
 
 interface LineupFormData {
   playerIds: number[];
-  formation: string;
-  strategy: string;
+  captainId: number;
   budget: number;
 }
 
@@ -22,8 +21,7 @@ export default function LineupPage() {
   const { matchId } = useParams<{ matchId: string }>();
   const { toast } = useToast();
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
-  const [formation, setFormation] = useState("4-4-2");
-  const [strategy, setStrategy] = useState("");
+  const [captainId, setCaptainId] = useState<number | null>(null);
   const [budget, setBudget] = useState(100);
 
   // Fetch match details
@@ -91,21 +89,24 @@ export default function LineupPage() {
   if (existingLineup && selectedPlayers.length === 0) {
     const playerIds = Array.isArray(existingLineup.playerIds) ? existingLineup.playerIds : [];
     setSelectedPlayers(playerIds);
-    setFormation(existingLineup.formation || "4-4-2");
-    setStrategy(existingLineup.strategy || "");
+    setCaptainId(existingLineup.captainId || null);
     setBudget(existingLineup.budget || 100);
   }
 
   const handlePlayerToggle = (playerId: number) => {
     setSelectedPlayers(prev => {
       if (prev.includes(playerId)) {
+        // If removing player and they're captain, clear captain
+        if (captainId === playerId) {
+          setCaptainId(null);
+        }
         return prev.filter(id => id !== playerId);
-      } else if (prev.length < 11) {
+      } else if (prev.length < 5) {
         return [...prev, playerId];
       } else {
         toast({
           title: "Maximum players reached",
-          description: "You can only select up to 11 players",
+          description: "You can only select up to 5 players",
           variant: "destructive"
         });
         return prev;
@@ -113,13 +114,34 @@ export default function LineupPage() {
     });
   };
 
+  const handleSetCaptain = (playerId: number) => {
+    if (selectedPlayers.includes(playerId)) {
+      setCaptainId(playerId);
+    } else {
+      toast({
+        title: "Invalid captain selection",
+        description: "Captain must be one of your selected players",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (selectedPlayers.length !== 11) {
+    if (selectedPlayers.length !== 5) {
       toast({
         title: "Invalid lineup",
-        description: "Please select exactly 11 players",
+        description: "Please select exactly 5 players",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!captainId) {
+      toast({
+        title: "Captain required",
+        description: "Please select a captain from your lineup",
         variant: "destructive"
       });
       return;
@@ -127,8 +149,7 @@ export default function LineupPage() {
 
     lineupMutation.mutate({
       playerIds: selectedPlayers,
-      formation,
-      strategy,
+      captainId,
       budget
     });
   };
@@ -192,7 +213,7 @@ export default function LineupPage() {
               Available Players
             </CardTitle>
             <CardDescription>
-              Select 11 players for your lineup ({selectedPlayers.length}/11 selected)
+              Select 5 players for your lineup ({selectedPlayers.length}/5 selected)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -216,6 +237,19 @@ export default function LineupPage() {
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4" />
                     <span className="font-mono">{player.marketValue || 0}</span>
+                    {selectedPlayers.includes(player.id) && (
+                      <Button
+                        size="sm"
+                        variant={captainId === player.id ? "default" : "outline"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSetCaptain(player.id);
+                        }}
+                        className="ml-2"
+                      >
+                        {captainId === player.id ? "Captain" : "Set Captain"}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -228,30 +262,14 @@ export default function LineupPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5" />
-              Lineup Configuration
+              Lineup Settings
             </CardTitle>
             <CardDescription>
-              Configure your team formation and strategy
+              Set your budget and choose your captain
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="formation">Formation</Label>
-                <select
-                  id="formation"
-                  value={formation}
-                  onChange={(e) => setFormation(e.target.value)}
-                  className="w-full p-2 border rounded-md bg-background"
-                >
-                  <option value="4-4-2">4-4-2</option>
-                  <option value="4-3-3">4-3-3</option>
-                  <option value="3-5-2">3-5-2</option>
-                  <option value="4-5-1">4-5-1</option>
-                  <option value="3-4-3">3-4-3</option>
-                </select>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="budget">Budget</Label>
                 <Input
@@ -263,15 +281,37 @@ export default function LineupPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="strategy">Strategy (Optional)</Label>
-                <Textarea
-                  id="strategy"
-                  value={strategy}
-                  onChange={(e) => setStrategy(e.target.value)}
-                  placeholder="Describe your team strategy..."
-                />
-              </div>
+              {selectedPlayers.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Captain Selection</Label>
+                  <div className="text-sm text-text-secondary mb-2">
+                    Captain earns 2x points. Select from your lineup:
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {selectedPlayers.map(playerId => {
+                      const player = players?.find(p => p.id === playerId);
+                      return player ? (
+                        <div
+                          key={player.id}
+                          className={`p-2 rounded border cursor-pointer transition-colors ${
+                            captainId === player.id
+                              ? 'bg-blue-600 border-blue-500 text-white'
+                              : 'bg-card-secondary border-card hover:bg-accent'
+                          }`}
+                          onClick={() => handleSetCaptain(player.id)}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span>{player.name}</span>
+                            {captainId === player.id && (
+                              <Trophy className="h-4 w-4" />
+                            )}
+                          </div>
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
@@ -289,7 +329,7 @@ export default function LineupPage() {
 
               <Button
                 type="submit"
-                disabled={lineupMutation.isPending || selectedPlayers.length !== 11 || isOverBudget}
+                disabled={lineupMutation.isPending || selectedPlayers.length !== 5 || !captainId || isOverBudget}
                 className="w-full"
               >
                 {lineupMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -304,18 +344,29 @@ export default function LineupPage() {
       {selectedPlayers.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Selected Players ({selectedPlayers.length}/11)</CardTitle>
+            <CardTitle>Selected Players ({selectedPlayers.length}/5)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {selectedPlayers.map(playerId => {
                 const player = players?.find(p => p.id === playerId);
+                const isCaptain = captainId === playerId;
                 return player ? (
                   <div
                     key={player.id}
-                    className="p-2 rounded bg-accent text-sm flex justify-between items-center"
+                    className={`p-3 rounded text-sm flex justify-between items-center ${
+                      isCaptain ? 'bg-blue-600 text-white' : 'bg-accent'
+                    }`}
                   >
-                    <span>{player.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span>{player.name}</span>
+                      {isCaptain && (
+                        <div className="flex items-center gap-1">
+                          <Trophy className="h-4 w-4" />
+                          <span className="text-xs">(Captain 2x)</span>
+                        </div>
+                      )}
+                    </div>
                     <span className="font-mono">{player.marketValue || 0}</span>
                   </div>
                 ) : null;
