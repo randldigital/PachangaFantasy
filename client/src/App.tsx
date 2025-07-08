@@ -22,21 +22,58 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
+      
+      {/* Protected Routes */}
+      <Route path="/dashboard">
+        <ProtectedRoute>
+          <Navbar />
+          <Dashboard />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/create-league">
+        <ProtectedRoute>
+          <Navbar />
+          <CreateLeague />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/join-league">
+        <ProtectedRoute>
+          <Navbar />
+          <JoinLeague />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/league/:id">
+        <ProtectedRoute>
+          <Navbar />
+          <LeagueDetail />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/tierlist/:id">
+        <ProtectedRoute>
+          <Navbar />
+          <TierListPage />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/results/:id">
+        <ProtectedRoute>
+          <Navbar />
+          <Results />
+        </ProtectedRoute>
+      </Route>
+      
       <Route path="/">
         <ProtectedRoute>
           <Navbar />
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/dashboard" component={Dashboard} />
-            <Route path="/create-league" component={CreateLeague} />
-            <Route path="/join-league" component={JoinLeague} />
-            <Route path="/league/:id" component={LeagueDetail} />
-            <Route path="/tierlist/:id" component={TierListPage} />
-            <Route path="/results/:id" component={Results} />
-            <Route component={NotFound} />
-          </Switch>
+          <Dashboard />
         </ProtectedRoute>
       </Route>
+      
+      <Route component={NotFound} />
     </Switch>
   );
 }

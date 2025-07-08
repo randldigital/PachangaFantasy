@@ -52,7 +52,8 @@ export default function CreateLeague() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-primary">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="space-y-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-text-primary mb-2">{t('league.create')}</h1>
@@ -104,6 +105,7 @@ export default function CreateLeague() {
             </form>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );
