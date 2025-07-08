@@ -27,6 +27,13 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
+      <Route path="/leagues">
+        <ProtectedRoute>
+          <Navbar />
+          <Overview />
+        </ProtectedRoute>
+      </Route>
+      
       <Route path="/league/:id">
         <ProtectedRoute>
           <Navbar />
