@@ -20,7 +20,6 @@ function PlayerCard({ player, isDragging }: PlayerCardProps) {
           {player.emoji}
         </div>
         <p className="text-sm font-medium text-text-primary group-hover:text-accent-blue transition-colors">{player.name}</p>
-        <p className="text-xs text-text-secondary">{player.position}</p>
       </div>
     </div>
   );
@@ -60,21 +59,19 @@ interface DropZoneProps {
 
 function DropZone({ title, description, position, players, bgClass, borderClass, numberBg }: DropZoneProps) {
   return (
-    <div className={`flex items-center space-x-4 ${bgClass} ${borderClass} rounded-xl p-4 min-h-[80px]`}>
+    <div className={`flex items-center space-x-4 ${bgClass} ${borderClass} rounded-xl p-4 min-h-[80px] transition-all duration-200 hover:border-opacity-50`}>
       <div className={`w-12 h-12 ${numberBg} rounded-full flex items-center justify-center text-white font-bold text-lg`}>
         {position}
       </div>
       <div className="flex-1">
         {players.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            <SortableContext items={players.map(p => p.id)} strategy={verticalListSortingStrategy}>
-              {players.map(player => (
-                <SortablePlayerCard key={player.id} player={player} />
-              ))}
-            </SortableContext>
+            {players.map(player => (
+              <SortablePlayerCard key={player.id} player={player} />
+            ))}
           </div>
         ) : (
-          <div className="border-2 border-dashed border-gray-600 rounded-lg p-4 text-center text-text-secondary">
+          <div className="border-2 border-dashed border-gray-600 rounded-lg p-4 text-center text-text-secondary hover:border-accent-blue/50 transition-colors">
             {description}
           </div>
         )}

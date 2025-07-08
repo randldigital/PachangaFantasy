@@ -118,6 +118,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Direct join league by ID endpoint for participants
+  app.post('/api/leagues/:id/join', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const leagueId = parseInt(req.params.id);
+      const league = await storage.getLeague(leagueId);
+      
+      if (!league) {
+        return res.status(404).json({ message: 'League not found' });
+      }
+
+      if (league.participants && league.participants.includes(req.user!.id)) {
+        return res.status(400).json({ message: 'Already in league' });
+      }
+
+      const currentParticipants = league.participants || [];
+      const updatedLeague = await storage.updateLeague(league.id, {
+        participants: [...currentParticipants, req.user!.id]
+      });
+
+      res.json(updatedLeague);
+    } catch (error) {
+      res.status(400).json({ message: 'Invalid input' });
+    }
+  });
+
   app.get('/api/leagues', authenticateToken, async (req: AuthRequest, res: Response) => {
     const leagues = await storage.getUserLeagues(req.user!.id);
     res.json(leagues);

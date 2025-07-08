@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Users, Copy, Plus, Play, StopCircle } from 'lucide-react';
 
 const playerEmojis = ['⚽', '🏃', '🛡️', '🎯', '🥅', '⚡', '🔥', '💎', '👑', '🌟'];
-const positions = ['forward', 'midfielder', 'defender', 'goalkeeper'];
+
 
 export default function LeagueDetail() {
   const { id } = useParams();
@@ -95,6 +95,27 @@ export default function LeagueDetail() {
     },
   });
 
+  const joinLeagueMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/leagues/${id}/join`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/leagues', id] });
+      toast({
+        title: t('common.success'),
+        description: 'Successfully joined league',
+      });
+    },
+    onError: () => {
+      toast({
+        title: t('common.error'),
+        description: 'Failed to join league',
+        variant: 'destructive',
+      });
+    },
+  });
+
   if (leagueLoading || playersLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -167,6 +188,31 @@ export default function LeagueDetail() {
           </div>
         </div>
 
+        {/* Join League or Start Ranking Actions */}
+        {!league.participants.includes(user?.id || 0) && league.status === 'open' && (
+          <div className="text-center">
+            <Button
+              onClick={() => joinLeagueMutation.mutate()}
+              disabled={joinLeagueMutation.isPending}
+              className="bg-accent-green hover:bg-accent-green/80 text-white font-semibold py-3 px-8 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300"
+            >
+              <Users className="w-5 h-5 mr-2" />
+              {joinLeagueMutation.isPending ? t('common.loading') : 'Join League as Player'}
+            </Button>
+          </div>
+        )}
+
+        {league.participants.includes(user?.id || 0) && league.status === 'open' && (
+          <div className="text-center">
+            <Link href={`/tierlist/${league.id}`}>
+              <Button className="bg-accent-purple hover:bg-accent-purple/80 text-white font-semibold py-3 px-8 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300">
+                <Play className="w-5 h-5 mr-2" />
+                {t('league.startRanking')}
+              </Button>
+            </Link>
+          </div>
+        )}
+
         {/* League Info */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-blue/5 border border-accent-blue/30">
@@ -220,7 +266,7 @@ export default function LeagueDetail() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="name">{t('league.playerName')}</Label>
                       <Input
@@ -229,21 +275,7 @@ export default function LeagueDetail() {
                         placeholder="Player name"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="position">{t('league.playerPosition')}</Label>
-                      <Select onValueChange={(value) => form.setValue('position', value)}>
-                        <SelectTrigger className="bg-transparent border-gray-600">
-                          <SelectValue placeholder="Select position" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {positions.map(position => (
-                            <SelectItem key={position} value={position}>
-                              {t(`positions.${position}`)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+
                     <div>
                       <Label htmlFor="emoji">{t('league.playerEmoji')}</Label>
                       <Select onValueChange={(value) => form.setValue('emoji', value)}>
@@ -290,7 +322,6 @@ export default function LeagueDetail() {
                       {player.emoji}
                     </div>
                     <h3 className="font-semibold text-text-primary text-sm">{player.name}</h3>
-                    <p className="text-xs text-text-secondary">{t(`positions.${player.position}`)}</p>
                     {player.marketValue > 0 && (
                       <p className="text-accent-green font-bold text-sm mt-1">€{player.marketValue}M</p>
                     )}

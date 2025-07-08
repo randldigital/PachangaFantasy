@@ -25,7 +25,6 @@ export const leagues = pgTable("leagues", {
 export const players = pgTable("players", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  position: text("position").notNull(),
   leagueId: integer("league_id").notNull(),
   marketValue: integer("market_value").default(0),
   emoji: text("emoji").notNull().default("⚽"),
@@ -57,7 +56,6 @@ export const insertLeagueSchema = createInsertSchema(leagues).omit({
 
 export const insertPlayerSchema = createInsertSchema(players).pick({
   name: true,
-  position: true,
   emoji: true,
 });
 
