@@ -192,7 +192,9 @@ export default function LeagueDetail() {
         {!league.participants.includes(user?.id || 0) && league.status === 'open' && (
           <div className="text-center">
             <Button
-              onClick={() => joinLeagueMutation.mutate()}
+              onClick={() => {
+                joinLeagueMutation.mutate();
+              }}
               disabled={joinLeagueMutation.isPending}
               className="bg-accent-green hover:bg-accent-green/80 text-white font-semibold py-3 px-8 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300"
             >

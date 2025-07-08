@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDroppable } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -47,6 +47,38 @@ function SortablePlayerCard({ player }: { player: Player }) {
   );
 }
 
+function AvailablePlayersPool({ players }: { players: Player[] }) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: 'available',
+  });
+  const { t } = useTranslation();
+
+  return (
+    <div 
+      ref={setNodeRef}
+      className={`bg-secondary/30 border border-gray-600/50 rounded-2xl p-6 ${isOver ? 'border-accent-blue bg-accent-blue/10' : ''}`}
+    >
+      <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center">
+        <svg className="w-5 h-5 mr-2 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+        </svg>
+        {t('tierlist.availablePlayers')}
+      </h3>
+      {players.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {players.map(player => (
+            <SortablePlayerCard key={player.id} player={player} />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center text-text-secondary py-8">
+          {t('tierlist.allPlayersRanked')}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface DropZoneProps {
   title: string;
   description: string;
@@ -58,8 +90,15 @@ interface DropZoneProps {
 }
 
 function DropZone({ title, description, position, players, bgClass, borderClass, numberBg }: DropZoneProps) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `tier${position === 4 ? 'Rest' : position}`,
+  });
+
   return (
-    <div className={`flex items-center space-x-4 ${bgClass} ${borderClass} rounded-xl p-4 min-h-[80px] transition-all duration-200 hover:border-opacity-50`}>
+    <div 
+      ref={setNodeRef}
+      className={`flex items-center space-x-4 ${bgClass} ${borderClass} rounded-xl p-4 min-h-[80px] transition-all duration-200 hover:border-opacity-50 ${isOver ? 'border-accent-blue bg-accent-blue/10' : ''}`}
+    >
       <div className={`w-12 h-12 ${numberBg} rounded-full flex items-center justify-center text-white font-bold text-lg`}>
         {position}
       </div>
@@ -164,21 +203,7 @@ export default function TierList({ players, onSubmit }: TierListProps) {
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="space-y-6">
         {/* Available Players Pool */}
-        <div className="bg-secondary/30 border border-gray-600/50 rounded-2xl p-6" id="available">
-          <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center">
-            <svg className="w-5 h-5 mr-2 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-            </svg>
-            {t('tierlist.availablePlayers')}
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            <SortableContext items={availablePlayers.map(p => p.id)} strategy={verticalListSortingStrategy}>
-              {availablePlayers.map(player => (
-                <SortablePlayerCard key={player.id} player={player} />
-              ))}
-            </SortableContext>
-          </div>
-        </div>
+        <AvailablePlayersPool players={availablePlayers} />
 
         {/* Ranking Positions */}
         <div className="space-y-4">

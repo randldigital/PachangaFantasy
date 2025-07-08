@@ -175,9 +175,9 @@ export class DatabaseStorage implements IStorage {
     const [newTierList] = await db
       .insert(tierLists)
       .values({
-        league_id: tierList.leagueId,
-        user_id: tierList.userId,
-        player_order: tierList.playerOrder,
+        leagueId: tierList.leagueId,
+        userId: tierList.userId,
+        playerOrder: tierList.playerOrder,
       })
       .returning();
     return newTierList;

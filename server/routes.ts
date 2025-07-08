@@ -132,14 +132,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Already in league' });
       }
 
+      // Add user to league participants
       const currentParticipants = league.participants || [];
       const updatedLeague = await storage.updateLeague(league.id, {
         participants: [...currentParticipants, req.user!.id]
       });
 
-      res.json(updatedLeague);
+      // Also create the user as a player in this league
+      const userPlayer = await storage.createPlayer({
+        name: req.user!.username,
+        emoji: '👤', // Default user emoji
+        leagueId: leagueId
+      });
+
+      res.json({ league: updatedLeague, player: userPlayer });
     } catch (error) {
-      res.status(400).json({ message: 'Invalid input' });
+      console.error('Join league error:', error);
+      res.status(500).json({ message: 'Failed to join league' });
     }
   });
 

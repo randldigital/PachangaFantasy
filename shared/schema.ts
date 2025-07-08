@@ -59,11 +59,8 @@ export const insertPlayerSchema = createInsertSchema(players).pick({
   emoji: true,
 });
 
-export const insertTierListSchema = createInsertSchema(tierLists).omit({
-  id: true,
-  leagueId: true,
-  userId: true,
-  submitted: true,
+export const insertTierListSchema = createInsertSchema(tierLists).pick({
+  playerOrder: true,
 });
 
 export const loginSchema = z.object({
