@@ -99,6 +99,13 @@ export default function TeamAssignmentPreview({ match, user, players = [] }: Tea
               </Button>
             )}
             
+            {/* Debug: Show current user role */}
+            {process.env.NODE_ENV === 'development' && (
+              <Badge variant="outline" className="text-xs border-gray-500 text-gray-400">
+                Role: {user?.role || 'none'}
+              </Badge>
+            )}
+            
             {isMatchSoon() && (
               <Badge variant="outline" className="border-orange-500 text-orange-400">
                 <Clock className="w-3 h-3 mr-1" />
