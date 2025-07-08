@@ -236,6 +236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'League not found' });
       }
 
+      console.log('Tier list request body:', req.body);
       const tierListData = insertTierListSchema.parse(req.body);
       
       // Check if user already submitted
@@ -264,7 +265,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(tierList);
     } catch (error) {
-      res.status(400).json({ message: 'Invalid input' });
+      console.error('Tier list validation error:', error);
+      res.status(400).json({ message: 'Invalid input', error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 

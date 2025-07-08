@@ -27,7 +27,10 @@ export default function TierListPage() {
 
   const submitTierListMutation = useMutation({
     mutationFn: async (playerOrder: number[]) => {
-      const data: InsertTierList = { playerOrder };
+      const data: InsertTierList = { 
+        playerOrder,
+        submitted: true 
+      };
       const response = await apiRequest('POST', `/api/tierlist/${id}`, data);
       return response.json();
     },
