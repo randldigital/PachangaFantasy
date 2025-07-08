@@ -54,10 +54,10 @@ export const matches = pgTable("matches", {
 
 export const matchParticipants = pgTable("match_participants", {
   matchId: integer("match_id").notNull().references(() => matches.id),
-  userId: integer("user_id").notNull().references(() => users.id),
+  playerId: integer("player_id").notNull(),
   status: text("status", { enum: ["accepted", "declined", "pending"] }).notNull().default("pending"),
 }, (table) => ({
-  pk: primaryKey({ columns: [table.matchId, table.userId] }),
+  pk: primaryKey({ columns: [table.matchId, table.playerId] }),
 }));
 
 export const lineups = pgTable("lineups", {
