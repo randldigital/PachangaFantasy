@@ -13,10 +13,12 @@ import type { Player, Match } from "@shared/schema";
 
 interface ParticipantWithUser {
   matchId: number;
-  userId: number;
+  userId?: number;
+  playerId?: number;
   status: string;
-  username: string;
-  userRole: string;
+  username?: string;
+  userRole?: string;
+  playerName?: string;
 }
 
 interface AddPlayersToMatchModalProps {
@@ -39,16 +41,25 @@ export default function AddPlayersToMatchModal({
   const queryClient = useQueryClient();
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
 
-  // Get user IDs of existing participants
-  const participantUserIds = participants.map(p => p.userId);
+  // Get IDs of existing participants (both userId and playerId)
+  const participantUserIds = participants.map(p => p.userId).filter(Boolean);
+  const participantPlayerIds = participants.map(p => p.playerId).filter(Boolean);
   
-  // Filter players to only show those with userId and not already in match
-  const availablePlayers = (players || []).filter(player => 
-    player.userId && !participantUserIds.includes(player.userId)
-  );
-  const alreadyJoinedPlayers = (players || []).filter(player =>
-    player.userId && participantUserIds.includes(player.userId)
-  );
+  // Filter players - exclude those already in match
+  const availablePlayers = (players || []).filter(player => {
+    // Player is already in match if:
+    // 1. They have a userId and that userId is in participants, OR
+    // 2. Their playerId is directly in participants
+    const userIdMatch = player.userId && participantUserIds.includes(player.userId);
+    const playerIdMatch = participantPlayerIds.includes(player.id);
+    return !userIdMatch && !playerIdMatch;
+  });
+  
+  const alreadyJoinedPlayers = (players || []).filter(player => {
+    const userIdMatch = player.userId && participantUserIds.includes(player.userId);
+    const playerIdMatch = participantPlayerIds.includes(player.id);
+    return userIdMatch || playerIdMatch;
+  });
 
   const addPlayersMutation = useMutation({
     mutationFn: async (playerIds: number[]) => {

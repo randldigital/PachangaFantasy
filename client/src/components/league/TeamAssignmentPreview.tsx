@@ -11,10 +11,12 @@ import type { Match, User, Player } from "@shared/schema";
 
 interface ParticipantWithUser {
   matchId: number;
-  userId: number;
+  userId?: number;
+  playerId?: number;
   status: string;
-  username: string;
-  userRole: string;
+  username?: string;
+  userRole?: string;
+  playerName?: string;
 }
 
 interface TeamAssignmentPreviewProps {
@@ -134,23 +136,33 @@ export default function TeamAssignmentPreview({ match, user, players = [] }: Tea
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {teamA.map((participant) => (
-                    <div key={participant.userId} className="flex items-center gap-3 p-2 rounded-lg bg-blue-500/5">
-                      <Avatar className="w-8 h-8">
-                        <AvatarFallback className="bg-blue-600 text-white text-xs">
-                          {getInitials(participant.username)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="text-white text-sm font-medium">{participant.username}</p>
-                        {participant.userRole === 'admin' && (
-                          <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-400">
-                            {t('common.admin')}
-                          </Badge>
-                        )}
+                  {teamA.map((participant, index) => {
+                    const displayName = participant.username || participant.playerName || 'Unknown Player';
+                    return (
+                      <div key={participant.userId || participant.playerId || index} className="flex items-center gap-3 p-2 rounded-lg bg-blue-500/5">
+                        <Avatar className="w-8 h-8">
+                          <AvatarFallback className="bg-blue-600 text-white text-xs">
+                            {getInitials(displayName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="text-white text-sm font-medium">{displayName}</p>
+                          <div className="flex gap-1 mt-1">
+                            {participant.userRole === 'admin' && (
+                              <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-400">
+                                {t('common.admin')}
+                              </Badge>
+                            )}
+                            {!participant.userId && participant.playerId && (
+                              <Badge variant="outline" className="text-xs border-slate-500/50 text-slate-400">
+                                Player
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {teamA.length < 5 && (
                     <div className="text-center py-2 text-slate-500 text-sm border-2 border-dashed border-slate-600 rounded-lg">
                       {t('match.awaitingPlayers', { count: 5 - teamA.length })}
@@ -168,23 +180,33 @@ export default function TeamAssignmentPreview({ match, user, players = [] }: Tea
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {teamB.map((participant) => (
-                    <div key={participant.userId} className="flex items-center gap-3 p-2 rounded-lg bg-red-500/5">
-                      <Avatar className="w-8 h-8">
-                        <AvatarFallback className="bg-red-600 text-white text-xs">
-                          {getInitials(participant.username)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="text-white text-sm font-medium">{participant.username}</p>
-                        {participant.userRole === 'admin' && (
-                          <Badge variant="outline" className="text-xs border-red-500/50 text-red-400">
-                            {t('common.admin')}
-                          </Badge>
-                        )}
+                  {teamB.map((participant, index) => {
+                    const displayName = participant.username || participant.playerName || 'Unknown Player';
+                    return (
+                      <div key={participant.userId || participant.playerId || index} className="flex items-center gap-3 p-2 rounded-lg bg-red-500/5">
+                        <Avatar className="w-8 h-8">
+                          <AvatarFallback className="bg-red-600 text-white text-xs">
+                            {getInitials(displayName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="text-white text-sm font-medium">{displayName}</p>
+                          <div className="flex gap-1 mt-1">
+                            {participant.userRole === 'admin' && (
+                              <Badge variant="outline" className="text-xs border-red-500/50 text-red-400">
+                                {t('common.admin')}
+                              </Badge>
+                            )}
+                            {!participant.userId && participant.playerId && (
+                              <Badge variant="outline" className="text-xs border-slate-500/50 text-slate-400">
+                                Player
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {teamB.length < 5 && (
                     <div className="text-center py-2 text-slate-500 text-sm border-2 border-dashed border-slate-600 rounded-lg">
                       {t('match.awaitingPlayers', { count: 5 - teamB.length })}

@@ -449,20 +449,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/matches/:id/participants', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.id);
+      const participants = await storage.getMatchParticipants(matchId);
       
-      const participants = await db
-        .select({
-          matchId: matchParticipants.matchId,
-          userId: matchParticipants.userId,
-          status: matchParticipants.status,
-          username: users.username,
-          userRole: users.role
+      // Fetch user and player details for each participant
+      const participantsWithDetails = await Promise.all(
+        participants.map(async (participant) => {
+          let user = null;
+          let player = null;
+          
+          if (participant.userId) {
+            user = await storage.getUser(participant.userId);
+          }
+          
+          if (participant.playerId) {
+            player = await storage.getPlayer(participant.playerId);
+          }
+          
+          return {
+            matchId: participant.matchId,
+            userId: participant.userId,
+            playerId: participant.playerId,
+            status: participant.status,
+            username: user?.username,
+            userRole: user?.role,
+            playerName: player?.name
+          };
         })
-        .from(matchParticipants)
-        .innerJoin(users, eq(matchParticipants.userId, users.id))
-        .where(eq(matchParticipants.matchId, matchId));
-      
-      res.json(participants);
+      );
+
+      res.json(participantsWithDetails);
     } catch (error) {
       console.error('Error fetching match participants:', error);
       res.status(500).json({ message: 'Internal server error' });
@@ -500,22 +515,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingParticipants = await storage.getMatchParticipants(matchId);
       const existingUserIds = existingParticipants.map(p => p.userId);
 
-      // Get players and their associated user IDs
+      // Get players from the league
       const playersToAdd = [];
       for (const playerId of playerIds) {
         const player = await storage.getPlayer(playerId);
-        if (player && player.leagueId === match.leagueId && player.userId) {
-          // Only add if not already a participant
-          if (!existingUserIds.includes(player.userId)) {
-            playersToAdd.push(player.userId);
+        if (player && player.leagueId === match.leagueId) {
+          // Check if player already exists in match participants
+          const playerAlreadyInMatch = existingParticipants.some(p => 
+            (p.userId && player.userId && p.userId === player.userId) ||
+            (p.playerId && p.playerId === playerId)
+          );
+          
+          if (!playerAlreadyInMatch) {
+            playersToAdd.push(player);
           }
         }
       }
 
-      // Add players to match
+      // Add players to match - use userId if available, otherwise create participant with playerId
       const newParticipants = [];
-      for (const userId of playersToAdd) {
-        const participant = await storage.joinMatch(matchId, userId);
+      for (const player of playersToAdd) {
+        let participant;
+        if (player.userId) {
+          // Player has a user account
+          participant = await storage.joinMatch(matchId, player.userId);
+        } else {
+          // Player doesn't have user account, add directly by player ID
+          participant = await storage.addPlayerToMatch(matchId, player.id);
+        }
         newParticipants.push(participant);
       }
 

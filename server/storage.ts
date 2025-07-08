@@ -40,6 +40,7 @@ export interface IStorage {
   createMatch(match: InsertMatch & { createdBy: number }): Promise<Match>;
   updateMatch(id: number, updates: Partial<Match>): Promise<Match | undefined>;
   joinMatch(matchId: number, userId: number): Promise<MatchParticipant>;
+  addPlayerToMatch(matchId: number, playerId: number): Promise<MatchParticipant>;
   getMatchParticipants(matchId: number): Promise<MatchParticipant[]>;
   balanceTeams(matchId: number, playerIds: number[]): Promise<{ teamA: number[], teamB: number[] }>;
   
@@ -282,11 +283,38 @@ export class DatabaseStorage implements IStorage {
     return participant;
   }
 
+  async addPlayerToMatch(matchId: number, playerId: number): Promise<MatchParticipant> {
+    // Check if this player is already in the match
+    const existingParticipant = await db
+      .select()
+      .from(matchParticipants)
+      .where(
+        and(
+          eq(matchParticipants.matchId, matchId),
+          eq(matchParticipants.playerId, playerId)
+        )
+      )
+      .limit(1);
+
+    if (existingParticipant.length > 0) {
+      // Player is already a participant, just return the existing record
+      return existingParticipant[0];
+    }
+
+    // Player is not a participant yet, add them
+    const [participant] = await db
+      .insert(matchParticipants)
+      .values({ matchId, playerId, status: 'accepted' })
+      .returning();
+    return participant;
+  }
+
   async getMatchParticipants(matchId: number): Promise<MatchParticipant[]> {
     return await db
       .select({
         matchId: matchParticipants.matchId,
         userId: matchParticipants.userId,
+        playerId: matchParticipants.playerId,
         status: matchParticipants.status
       })
       .from(matchParticipants)
