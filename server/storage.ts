@@ -1,6 +1,6 @@
 import { users, leagues, players, tierLists, matches, matchParticipants, lineups, statReports, scores, type User, type InsertUser, type League, type InsertLeague, type Player, type InsertPlayer, type TierList, type InsertTierList, type Match, type InsertMatch, type MatchParticipant, type Lineup, type InsertLineup, type StatReport, type InsertStatReport, type Score } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, arrayContains, or, sql, isNotNull } from "drizzle-orm";
+import { eq, and, arrayContains, or, sql } from "drizzle-orm";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { nanoid } from 'nanoid';
@@ -285,35 +285,34 @@ export class DatabaseStorage implements IStorage {
 
   async addPlayerToMatch(matchId: number, playerId: number): Promise<MatchParticipant> {
     try {
-      // Check if this player is already in the match
-      const existingParticipant = await db
-        .select()
-        .from(matchParticipants)
-        .where(
-          and(
-            eq(matchParticipants.matchId, matchId),
-            isNotNull(matchParticipants.playerId),
-            eq(matchParticipants.playerId, playerId)
-          )
-        )
-        .limit(1);
+      // Check if this player is already in the match using raw SQL
+      const existingCheck = await db.execute(
+        sql`SELECT * FROM match_participants WHERE match_id = ${matchId} AND player_id = ${playerId} LIMIT 1`
+      );
 
-      if (existingParticipant.length > 0) {
-        // Player is already a participant, just return the existing record
-        return existingParticipant[0];
+      if (existingCheck.rows.length > 0) {
+        // Player is already a participant, return the existing record
+        const row = existingCheck.rows[0];
+        return {
+          matchId: row.match_id as number,
+          userId: row.user_id as number | null,
+          playerId: row.player_id as number | null,
+          status: row.status as string
+        };
       }
 
-      // Player is not a participant yet, add them
-      const [participant] = await db
-        .insert(matchParticipants)
-        .values({ 
-          matchId, 
-          playerId, 
-          userId: null,
-          status: 'accepted' 
-        })
-        .returning();
-      return participant;
+      // Player is not a participant yet, add them using raw SQL
+      const insertResult = await db.execute(
+        sql`INSERT INTO match_participants (match_id, player_id, status) VALUES (${matchId}, ${playerId}, 'accepted') RETURNING *`
+      );
+      
+      const newRow = insertResult.rows[0];
+      return {
+        matchId: newRow.match_id as number,
+        userId: newRow.user_id as number | null,
+        playerId: newRow.player_id as number | null,
+        status: newRow.status as string
+      };
     } catch (error) {
       console.error('Error adding player to match:', error);
       throw new Error('Failed to add player to match');
