@@ -14,7 +14,7 @@ import type { Match, Player, Lineup } from "@shared/schema";
 interface LineupFormData {
   playerIds: number[];
   captainId: number;
-  budget: number;
+  totalCost: number;
 }
 
 export default function LineupPage() {
@@ -23,6 +23,12 @@ export default function LineupPage() {
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
   const [captainId, setCaptainId] = useState<number | null>(null);
   const [budget, setBudget] = useState(100);
+
+  // Calculate total cost of selected players
+  const totalCost = selectedPlayers.reduce((sum, playerId) => {
+    const player = players?.find(p => p.id === playerId);
+    return sum + (player?.marketValue || 0);
+  }, 0);
 
   // Fetch match details
   const { data: match, isLoading: matchLoading, error: matchError } = useQuery<Match>({
@@ -64,10 +70,7 @@ export default function LineupPage() {
   // Create/update lineup mutation
   const lineupMutation = useMutation({
     mutationFn: async (data: LineupFormData) => {
-      return apiRequest(`/api/matches/${matchId}/lineup`, {
-        method: 'POST',
-        body: JSON.stringify(data)
-      });
+      return apiRequest('POST', `/api/matches/${matchId}/lineup`, data);
     },
     onSuccess: () => {
       toast({
@@ -90,7 +93,7 @@ export default function LineupPage() {
     const playerIds = Array.isArray(existingLineup.playerIds) ? existingLineup.playerIds : [];
     setSelectedPlayers(playerIds);
     setCaptainId(existingLineup.captainId || null);
-    setBudget(existingLineup.budget || 100);
+    setBudget(100);
   }
 
   const handlePlayerToggle = (playerId: number) => {
@@ -149,20 +152,11 @@ export default function LineupPage() {
 
     lineupMutation.mutate({
       playerIds: selectedPlayers,
-      captainId,
-      budget
+      captainId: captainId!,
+      totalCost: totalCost
     });
   };
 
-  const calculateTotalCost = () => {
-    if (!players) return 0;
-    return selectedPlayers.reduce((total, playerId) => {
-      const player = players.find(p => p.id === playerId);
-      return total + (player?.marketValue || 0);
-    }, 0);
-  };
-
-  const totalCost = calculateTotalCost();
   const isOverBudget = totalCost > budget;
 
   if (matchLoading || playersLoading || lineupLoading) {
