@@ -388,7 +388,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/matches', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       console.log('Match creation request body:', req.body);
-      const result = insertMatchSchema.safeParse(req.body);
+      
+      // Convert date string to Date object before validation
+      const bodyWithDate = {
+        ...req.body,
+        date: new Date(req.body.date)
+      };
+      
+      const result = insertMatchSchema.safeParse(bodyWithDate);
       if (!result.success) {
         console.log('Validation failed:', result.error.issues);
         return res.status(400).json({ message: 'Invalid input', errors: result.error.issues });

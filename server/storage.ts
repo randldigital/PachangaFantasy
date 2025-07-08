@@ -37,7 +37,7 @@ export interface IStorage {
   // v0.2 - Matches
   getMatch(id: number): Promise<Match | undefined>;
   getMatchesByLeague(leagueId: number): Promise<Match[]>;
-  createMatch(match: InsertMatch): Promise<Match>;
+  createMatch(match: InsertMatch & { createdBy: number }): Promise<Match>;
   updateMatch(id: number, updates: Partial<Match>): Promise<Match | undefined>;
   joinMatch(matchId: number, userId: number): Promise<MatchParticipant>;
   getMatchParticipants(matchId: number): Promise<MatchParticipant[]>;
@@ -242,7 +242,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(matches).where(eq(matches.leagueId, leagueId));
   }
 
-  async createMatch(match: InsertMatch): Promise<Match> {
+  async createMatch(match: InsertMatch & { createdBy: number }): Promise<Match> {
     const [created] = await db.insert(matches).values(match).returning();
     return created;
   }
