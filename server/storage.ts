@@ -259,14 +259,18 @@ export class DatabaseStorage implements IStorage {
   async joinMatch(matchId: number, userId: number): Promise<MatchParticipant> {
     const [participant] = await db
       .insert(matchParticipants)
-      .values({ matchId, userId, accepted: true })
+      .values({ matchId, userId, status: 'accepted' })
       .returning();
     return participant;
   }
 
   async getMatchParticipants(matchId: number): Promise<MatchParticipant[]> {
     return await db
-      .select()
+      .select({
+        matchId: matchParticipants.matchId,
+        userId: matchParticipants.userId,
+        status: matchParticipants.status
+      })
       .from(matchParticipants)
       .where(eq(matchParticipants.matchId, matchId));
   }

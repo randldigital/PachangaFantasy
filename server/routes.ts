@@ -387,8 +387,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new match (admin only)
   app.post('/api/matches', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      console.log('Match creation request body:', req.body);
-      
       // Convert date string to Date object before validation
       const bodyWithDate = {
         ...req.body,
@@ -397,7 +395,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const result = insertMatchSchema.safeParse(bodyWithDate);
       if (!result.success) {
-        console.log('Validation failed:', result.error.issues);
         return res.status(400).json({ message: 'Invalid input', errors: result.error.issues });
       }
 
@@ -406,8 +403,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...result.data,
         createdBy: req.user!.id
       };
-
-      console.log('Creating match with data:', matchData);
       const match = await storage.createMatch(matchData);
       res.json(match);
     } catch (error) {
@@ -456,7 +451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if we have enough participants to balance teams (e.g., 10 players)
       const participants = await storage.getMatchParticipants(matchId);
-      const acceptedParticipants = participants.filter(p => p.accepted);
+      const acceptedParticipants = participants.filter(p => p.status === 'accepted');
       
       if (acceptedParticipants.length >= 10) {
         const playerIds = acceptedParticipants.map(p => p.userId);

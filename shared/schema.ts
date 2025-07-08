@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, json, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -53,12 +53,12 @@ export const matches = pgTable("matches", {
 });
 
 export const matchParticipants = pgTable("match_participants", {
-  id: serial("id").primaryKey(),
   matchId: integer("match_id").notNull().references(() => matches.id),
   userId: integer("user_id").notNull().references(() => users.id),
-  accepted: boolean("accepted").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+  status: text("status", { enum: ["accepted", "declined", "pending"] }).notNull().default("pending"),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.matchId, table.userId] }),
+}));
 
 export const lineups = pgTable("lineups", {
   id: serial("id").primaryKey(),
