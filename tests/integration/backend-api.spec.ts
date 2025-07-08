@@ -1,8 +1,18 @@
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach } from 'vitest';
 import request from 'supertest';
-import { app } from '../../server/index';
+import express from 'express';
+import { registerRoutes } from '../../server/routes';
+
+// Create test app instance
+const createTestApp = async () => {
+  const app = express();
+  app.use(express.json());
+  await registerRoutes(app);
+  return app;
+};
 
 describe('Backend API Integration Tests', () => {
+  let app: express.Application;
   let authToken: string;
   let userId: number;
   let leagueId: number;
@@ -16,6 +26,9 @@ describe('Backend API Integration Tests', () => {
   };
 
   beforeEach(async () => {
+    // Create test app
+    app = await createTestApp();
+    
     // Register a test user
     const registerResponse = await request(app)
       .post('/api/auth/register')

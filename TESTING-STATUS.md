@@ -206,8 +206,13 @@ Every action from the User Action Guide is covered:
 
 ### Backend Integration Tests:
 ```bash
-# Note: Backend tests were implemented but need vitest configuration
-npx vitest run tests/integration/ --reporter=verbose
+# Working simple tests
+npx vitest run tests/simple-backend.test.ts
+npx vitest run tests/integration/simple-api.test.ts
+npx vitest run tests/integration/working-api.test.ts
+
+# Full integration tests (needs database setup fixes)
+npx vitest run tests/integration/backend-api.spec.ts
 ```
 
 ### E2E Tests (requires browser installation):
