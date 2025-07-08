@@ -61,6 +61,7 @@ export default function LeagueDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/players', id] });
+      queryClient.refetchQueries({ queryKey: ['/api/players', id] });
       toast({
         title: t('common.success'),
         description: 'Player added successfully',
