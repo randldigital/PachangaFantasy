@@ -1,7 +1,7 @@
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
-
+import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -59,6 +59,7 @@ function App() {
       <AuthProvider>
         <TooltipProvider>
           <div className="min-h-screen bg-primary text-text-primary">
+            <Toaster />
             <Router />
           </div>
         </TooltipProvider>
