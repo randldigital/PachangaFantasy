@@ -1,6 +1,6 @@
 import { users, leagues, players, tierLists, matches, matchParticipants, lineups, statReports, scores, type User, type InsertUser, type League, type InsertLeague, type Player, type InsertPlayer, type TierList, type InsertTierList, type Match, type InsertMatch, type MatchParticipant, type Lineup, type InsertLineup, type StatReport, type InsertStatReport, type Score } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, arrayContains, or, sql } from "drizzle-orm";
+import { eq, and, arrayContains, or, sql, isNotNull } from "drizzle-orm";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { nanoid } from 'nanoid';
@@ -292,6 +292,7 @@ export class DatabaseStorage implements IStorage {
         .where(
           and(
             eq(matchParticipants.matchId, matchId),
+            isNotNull(matchParticipants.playerId),
             eq(matchParticipants.playerId, playerId)
           )
         )
@@ -305,7 +306,12 @@ export class DatabaseStorage implements IStorage {
       // Player is not a participant yet, add them
       const [participant] = await db
         .insert(matchParticipants)
-        .values({ matchId, playerId, status: 'accepted' })
+        .values({ 
+          matchId, 
+          playerId, 
+          userId: null,
+          status: 'accepted' 
+        })
         .returning();
       return participant;
     } catch (error) {
