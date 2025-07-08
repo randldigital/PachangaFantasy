@@ -27,20 +27,26 @@ export default function LineupPage() {
   const [budget, setBudget] = useState(100);
 
   // Fetch match details
-  const { data: match, isLoading: matchLoading } = useQuery<Match>({
-    queryKey: ['/api/matches', matchId],
+  const { data: match, isLoading: matchLoading, error: matchError } = useQuery<Match>({
+    queryKey: [`/api/matches/${matchId}`],
     enabled: !!matchId
   });
 
+  // Debug logging
+  console.log('LineupPage - matchId:', matchId);
+  console.log('LineupPage - match:', match);
+  console.log('LineupPage - matchLoading:', matchLoading);
+  console.log('LineupPage - matchError:', matchError);
+
   // Fetch available players for the league
   const { data: players, isLoading: playersLoading } = useQuery<Player[]>({
-    queryKey: ['/api/players', match?.leagueId],
+    queryKey: [`/api/players/${match?.leagueId}`],
     enabled: !!match?.leagueId
   });
 
   // Fetch existing lineup
   const { data: existingLineup, isLoading: lineupLoading } = useQuery<Lineup>({
-    queryKey: ['/api/matches', matchId, 'lineup'],
+    queryKey: [`/api/matches/${matchId}/lineup`],
     enabled: !!matchId
   });
 
@@ -57,7 +63,7 @@ export default function LineupPage() {
         title: "Success",
         description: "Lineup saved successfully!"
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/matches', matchId, 'lineup'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/matches/${matchId}/lineup`] });
     },
     onError: (error: any) => {
       toast({
@@ -70,7 +76,8 @@ export default function LineupPage() {
 
   // Load existing lineup data
   if (existingLineup && selectedPlayers.length === 0) {
-    setSelectedPlayers(existingLineup.playerIds || []);
+    const playerIds = Array.isArray(existingLineup.playerIds) ? existingLineup.playerIds : [];
+    setSelectedPlayers(playerIds);
     setFormation(existingLineup.formation || "4-4-2");
     setStrategy(existingLineup.strategy || "");
     setBudget(existingLineup.budget || 100);
