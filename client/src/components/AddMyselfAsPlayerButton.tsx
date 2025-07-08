@@ -37,6 +37,8 @@ export default function AddMyselfAsPlayerButton({ leagueId }: AddMyselfAsPlayerB
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['userPlayerStatus', leagueId] });
       queryClient.invalidateQueries({ queryKey: ['/api/players', leagueId] });
+      // Also invalidate any league-specific queries that might show player counts
+      queryClient.invalidateQueries({ queryKey: ['/api/leagues', leagueId] });
       toast({
         title: '¡Éxito!',
         description: `Te has agregado como jugador: ${data.name}`,

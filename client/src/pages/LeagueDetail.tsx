@@ -35,12 +35,14 @@ export default function LeagueDetail() {
     },
   });
 
-  const { data: players, isLoading: playersLoading } = useQuery<Player[]>({
+  const { data: players = [], isLoading: playersLoading } = useQuery<Player[]>({
     queryKey: ['/api/players', id],
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/players/${id}`);
       return response.json();
     },
+    staleTime: 0, // Ensure fresh data after mutations
+    refetchOnWindowFocus: true
   });
 
   const form = useForm<InsertPlayer>({
