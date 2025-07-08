@@ -1,6 +1,7 @@
 import { Link } from 'wouter';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
+import { getQueryFn } from '@/lib/queryClient';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Key, Users, BarChart3, Trophy } from 'lucide-react';
@@ -11,14 +12,31 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const { user } = useAuth();
 
-  const { data: leagues, isLoading } = useQuery<League[]>({
+  const { data: leagues, isLoading, error } = useQuery<League[]>({
     queryKey: ['/api/leagues'],
+    queryFn: getQueryFn({ on401: "throw" }),
+    retry: 1,
   });
+
+  console.log('Dashboard render:', { user, leagues, isLoading, error });
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-accent-blue"></div>
+      <div className="min-h-screen flex items-center justify-center bg-primary">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-accent-blue mx-auto mb-4"></div>
+          <p className="text-text-secondary">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-primary">
+        <div className="text-center">
+          <p className="text-red-400">Error loading dashboard: {error.message}</p>
+        </div>
       </div>
     );
   }
