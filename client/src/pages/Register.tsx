@@ -33,14 +33,16 @@ export default function Register() {
     setIsLoading(true);
     try {
       await registerUser(data);
-      setLocation('/dashboard');
+      // Small delay to ensure auth state is properly updated
+      setTimeout(() => {
+        setLocation('/dashboard');
+      }, 100);
     } catch (error) {
       toast({
         title: t('common.error'),
         description: 'Registration failed',
         variant: 'destructive',
       });
-    } finally {
       setIsLoading(false);
     }
   };

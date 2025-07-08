@@ -31,14 +31,16 @@ export default function Login() {
     setIsLoading(true);
     try {
       await login(data.email, data.password);
-      setLocation('/dashboard');
+      // Small delay to ensure auth state is properly updated
+      setTimeout(() => {
+        setLocation('/dashboard');
+      }, 100);
     } catch (error) {
       toast({
         title: t('common.error'),
         description: 'Invalid credentials',
         variant: 'destructive',
       });
-    } finally {
       setIsLoading(false);
     }
   };

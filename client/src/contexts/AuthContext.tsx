@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('token', data.token);
       setToken(data.token);
       queryClient.setQueryData(['/api/auth/me'], data);
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
     },
   });
 
@@ -49,15 +50,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('token', data.token);
       setToken(data.token);
       queryClient.setQueryData(['/api/auth/me'], data);
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
     },
   });
 
   const login = async (email: string, password: string) => {
-    await loginMutation.mutateAsync({ email, password });
+    const result = await loginMutation.mutateAsync({ email, password });
+    return result;
   };
 
   const register = async (userData: InsertUser) => {
-    await registerMutation.mutateAsync(userData);
+    const result = await registerMutation.mutateAsync(userData);
+    return result;
   };
 
   const logout = () => {
