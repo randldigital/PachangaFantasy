@@ -107,14 +107,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Already in league' });
       }
 
+      // Add user to league participants
       const currentParticipants = league.participants || [];
       const updatedLeague = await storage.updateLeague(league.id, {
         participants: [...currentParticipants, req.user!.id]
       });
 
-      res.json(updatedLeague);
+      // Create the user as a player in this league
+      if (updatedLeague) {
+        const userPlayer = await storage.createPlayer({
+          name: req.user!.username,
+          emoji: '👤',
+          leagueId: league.id
+        });
+
+        console.log('User joined league and created as player:', { league: updatedLeague.id, player: userPlayer.id, username: req.user!.username });
+        res.json(updatedLeague);
+      } else {
+        throw new Error('Failed to update league');
+      }
     } catch (error) {
-      res.status(400).json({ message: 'Invalid input' });
+      console.error('Join league by invite code error:', error);
+      res.status(500).json({ message: 'Failed to join league' });
     }
   });
 
@@ -139,13 +153,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Also create the user as a player in this league
-      const userPlayer = await storage.createPlayer({
-        name: req.user!.username,
-        emoji: '👤', // Default user emoji
-        leagueId: leagueId
-      });
+      if (updatedLeague) {
+        const userPlayer = await storage.createPlayer({
+          name: req.user!.username,
+          emoji: '👤', // Default user emoji
+          leagueId: leagueId
+        });
 
-      res.json({ league: updatedLeague, player: userPlayer });
+        console.log('User joined league and created as player:', { league: updatedLeague.id, player: userPlayer.id, username: req.user!.username });
+        res.json({ league: updatedLeague, player: userPlayer });
+      } else {
+        throw new Error('Failed to update league');
+      }
     } catch (error) {
       console.error('Join league error:', error);
       res.status(500).json({ message: 'Failed to join league' });
