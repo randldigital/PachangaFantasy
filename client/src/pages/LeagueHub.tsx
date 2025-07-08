@@ -141,7 +141,11 @@ export default function LeagueHub() {
       {/* Team Assignment Preview - Show when there's an active match */}
       {activeMatch && (
         <div className="container mx-auto px-4 pb-4">
-          <TeamAssignmentPreview match={activeMatch} />
+          <TeamAssignmentPreview 
+            match={activeMatch} 
+            user={user}
+            players={players || []}
+          />
         </div>
       )}
 

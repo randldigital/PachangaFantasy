@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Users, Clock } from "lucide-react";
+import { Users, Clock, Settings } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import type { Match } from "@shared/schema";
+import { Button } from "@/components/ui/button";
+import AddPlayersToMatchModal from "./AddPlayersToMatchModal";
+import type { Match, User, Player } from "@shared/schema";
 
 interface ParticipantWithUser {
   matchId: number;
@@ -16,10 +19,13 @@ interface ParticipantWithUser {
 
 interface TeamAssignmentPreviewProps {
   match: Match;
+  user?: User;
+  players?: Player[];
 }
 
-export default function TeamAssignmentPreview({ match }: TeamAssignmentPreviewProps) {
+export default function TeamAssignmentPreview({ match, user, players = [] }: TeamAssignmentPreviewProps) {
   const { t } = useTranslation();
+  const [showAddPlayers, setShowAddPlayers] = useState(false);
 
   const { data: participants = [], isLoading } = useQuery<ParticipantWithUser[]>({
     queryKey: [`/api/matches/${match.id}/participants`],
@@ -78,12 +84,28 @@ export default function TeamAssignmentPreview({ match }: TeamAssignmentPreviewPr
             <Users className="w-5 h-5 text-emerald-400" />
             {t('match.teamAssignment')} ({acceptedParticipants.length}/10)
           </CardTitle>
-          {isMatchSoon() && (
-            <Badge variant="outline" className="border-orange-500 text-orange-400">
-              <Clock className="w-3 h-3 mr-1" />
-              {t('match.startingSoon')}
-            </Badge>
-          )}
+          
+          <div className="flex items-center gap-2">
+            {/* Admin: Add Players Button */}
+            {user?.role === 'admin' && (
+              <Button
+                onClick={() => setShowAddPlayers(true)}
+                size="sm"
+                variant="outline"
+                className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                {t('match.addPlayers')}
+              </Button>
+            )}
+            
+            {isMatchSoon() && (
+              <Badge variant="outline" className="border-orange-500 text-orange-400">
+                <Clock className="w-3 h-3 mr-1" />
+                {t('match.startingSoon')}
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -175,6 +197,15 @@ export default function TeamAssignmentPreview({ match }: TeamAssignmentPreviewPr
           </>
         )}
       </CardContent>
+      
+      {/* Add Players Modal */}
+      <AddPlayersToMatchModal
+        isOpen={showAddPlayers}
+        onClose={() => setShowAddPlayers(false)}
+        match={match}
+        players={players}
+        participants={participants}
+      />
     </Card>
   );
 }

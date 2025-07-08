@@ -213,7 +213,11 @@ export default function MatchContextHeader({
                 {t('match.details')} - {formatDate(match.date)}
               </DialogTitle>
             </DialogHeader>
-            <TeamAssignmentPreview match={match} />
+            <TeamAssignmentPreview 
+              match={match} 
+              user={user}
+              players={players}
+            />
           </DialogContent>
         </Dialog>
 
