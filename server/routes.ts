@@ -449,6 +449,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const matchId = parseInt(req.params.id);
       const userId = req.user!.id;
 
+      // Check if match exists
+      const match = await storage.getMatch(matchId);
+      if (!match) {
+        return res.status(404).json({ message: 'Match not found' });
+      }
+
       const participant = await storage.joinMatch(matchId, userId);
       
       // Check if we have enough participants to balance teams (e.g., 10 players)

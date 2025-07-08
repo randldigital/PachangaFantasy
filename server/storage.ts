@@ -257,6 +257,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async joinMatch(matchId: number, userId: number): Promise<MatchParticipant> {
+    // Check if user is already a participant
+    const existingParticipant = await db
+      .select()
+      .from(matchParticipants)
+      .where(
+        and(
+          eq(matchParticipants.matchId, matchId),
+          eq(matchParticipants.userId, userId)
+        )
+      )
+      .limit(1);
+
+    if (existingParticipant.length > 0) {
+      // User is already a participant, just return the existing record
+      return existingParticipant[0];
+    }
+
+    // User is not a participant yet, add them
     const [participant] = await db
       .insert(matchParticipants)
       .values({ matchId, userId, status: 'accepted' })
