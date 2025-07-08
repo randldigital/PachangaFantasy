@@ -58,10 +58,7 @@ export default function LineupSection({
 
   const saveLineupMutation = useMutation({
     mutationFn: async (lineupData: any) => {
-      return apiRequest(`/api/matches/${match?.id}/lineup`, {
-        method: 'POST',
-        body: JSON.stringify(lineupData),
-      });
+      return apiRequest('POST', `/api/matches/${match?.id}/lineup`, lineupData);
     },
     onSuccess: () => {
       toast({
@@ -133,8 +130,8 @@ export default function LineupSection({
       <Card className="bg-slate-800/50 border-slate-700">
         <CardContent className="p-8 text-center">
           <Users className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-          <h3 className="text-white font-medium mb-2">{t('lineup.noMatch')}</h3>
-          <p className="text-slate-400">{t('lineup.noMatchDescription')}</p>
+          <h3 className="text-white font-medium mb-2">No Active Match</h3>
+          <p className="text-slate-400">Create a match first to set up lineups for this league.</p>
         </CardContent>
       </Card>
     );
@@ -219,60 +216,67 @@ export default function LineupSection({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {players.map((player) => {
-              const isSelected = selectedPlayers.includes(player.id);
-              const isCaptain = captain === player.id;
-              
-              return (
-                <div
-                  key={player.id}
-                  className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
-                    isSelected 
-                      ? 'bg-emerald-500/20 border-emerald-500' 
-                      : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700/70'
-                  }`}
-                  onClick={() => handlePlayerToggle(player.id)}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="text-2xl">{player.emoji || '👤'}</div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-white font-medium">{player.name}</span>
-                        {isCaptain && (
-                          <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm text-slate-400">
-                        <DollarSign className="w-3 h-3" />
-                        <span>{player.marketValue || 0}</span>
+            {players && players.length > 0 ? (
+              players.map((player) => {
+                const isSelected = selectedPlayers.includes(player.id);
+                const isCaptain = captain === player.id;
+                
+                return (
+                  <div
+                    key={player.id}
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
+                      isSelected 
+                        ? 'bg-emerald-500/20 border-emerald-500' 
+                        : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700/70'
+                    }`}
+                    onClick={() => handlePlayerToggle(player.id)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="text-2xl">{player.emoji || '👤'}</div>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-white font-medium">{player.name}</span>
+                          {isCaptain && (
+                            <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2 text-sm text-slate-400">
+                          <DollarSign className="w-3 h-3" />
+                          <span>{player.marketValue || 0}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    {isSelected && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCaptainSelect(player.id);
-                        }}
-                        className="text-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10"
-                      >
-                        <Star className={`w-4 h-4 ${isCaptain ? 'fill-current' : ''}`} />
-                      </Button>
-                    )}
                     
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                      isSelected ? 'bg-emerald-500' : 'bg-slate-600'
-                    }`}>
-                      {isSelected && <Check className="w-4 h-4 text-white" />}
+                    <div className="flex items-center space-x-2">
+                      {isSelected && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCaptainSelect(player.id);
+                          }}
+                          className="text-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10"
+                        >
+                          <Star className={`w-4 h-4 ${isCaptain ? 'fill-current' : ''}`} />
+                        </Button>
+                      )}
+                      
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                        isSelected ? 'bg-emerald-500' : 'bg-slate-600'
+                      }`}>
+                        {isSelected && <Check className="w-4 h-4 text-white" />}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="col-span-full text-center py-8">
+                <Users className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                <p className="text-slate-400">No players available in this league.</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -68,7 +68,7 @@ export default function TierListSection({ leagueId, league, players, user }: Tie
     if (existingTierList) {
       setPlayerOrder(existingTierList.playerOrder || []);
       setHasSubmitted(existingTierList.submitted || false);
-    } else {
+    } else if (players && players.length > 0) {
       // Default order: all players
       setPlayerOrder(players.map(p => p.id));
       setHasSubmitted(false);
@@ -122,8 +122,10 @@ export default function TierListSection({ leagueId, league, players, user }: Tie
   };
 
   const handleReset = () => {
-    setPlayerOrder(players.map(p => p.id));
-    setHasSubmitted(false);
+    if (players && players.length > 0) {
+      setPlayerOrder(players.map(p => p.id));
+      setHasSubmitted(false);
+    }
   };
 
   const getTierColor = (index: number, total: number) => {
@@ -186,7 +188,7 @@ export default function TierListSection({ leagueId, league, players, user }: Tie
     );
   }
 
-  if (players.length === 0) {
+  if (!players || players.length === 0) {
     return (
       <Card className="bg-slate-800/50 border-slate-700">
         <CardContent className="p-8 text-center">

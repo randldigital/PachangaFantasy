@@ -65,7 +65,7 @@ export default function LeagueHub() {
   });
 
   // Find active match
-  const activeMatch = matches.find(match => match.status === 'upcoming' || match.status === 'in_progress');
+  const activeMatch = matches && matches.length > 0 ? matches.find(match => match.status === 'open' || match.status === 'ready') || matches[0] : undefined;
 
   if (leagueLoading) {
     return (

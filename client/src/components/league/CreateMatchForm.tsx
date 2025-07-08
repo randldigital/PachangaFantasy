@@ -25,10 +25,7 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
 
   const createMatchMutation = useMutation({
     mutationFn: async (data: InsertMatch) => {
-      return apiRequest('/api/matches', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return apiRequest('POST', '/api/matches', data);
     },
     onSuccess: () => {
       toast({

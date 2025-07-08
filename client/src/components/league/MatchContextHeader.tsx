@@ -33,9 +33,7 @@ export default function MatchContextHeader({
 
   const joinMatchMutation = useMutation({
     mutationFn: async (matchId: number) => {
-      return apiRequest(`/api/matches/${matchId}/join`, {
-        method: 'POST',
-      });
+      return apiRequest('POST', `/api/matches/${matchId}/join`, {});
     },
     onSuccess: () => {
       toast({
