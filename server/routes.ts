@@ -469,6 +469,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Add players to a match
+  app.post('/api/matches/:id/add-players', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const { playerIds } = req.body;
+      
+      if (!Array.isArray(playerIds) || playerIds.length === 0) {
+        return res.status(400).json({ message: 'playerIds array is required' });
+      }
+
+      // Get match to verify it exists and get league info
+      const match = await storage.getMatch(matchId);
+      if (!match) {
+        return res.status(404).json({ message: 'Match not found' });
+      }
+
+      // Get league to verify admin permission
+      const league = await storage.getLeague(match.leagueId);
+      if (!league) {
+        return res.status(404).json({ message: 'League not found' });
+      }
+
+      // Check if user is admin of this league
+      if (req.user!.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      // Get existing participants to avoid duplicates
+      const existingParticipants = await storage.getMatchParticipants(matchId);
+      const existingUserIds = existingParticipants.map(p => p.userId);
+
+      // Get players and their associated user IDs
+      const playersToAdd = [];
+      for (const playerId of playerIds) {
+        const player = await storage.getPlayer(playerId);
+        if (player && player.leagueId === match.leagueId && player.userId) {
+          // Only add if not already a participant
+          if (!existingUserIds.includes(player.userId)) {
+            playersToAdd.push(player.userId);
+          }
+        }
+      }
+
+      // Add players to match
+      const newParticipants = [];
+      for (const userId of playersToAdd) {
+        const participant = await storage.joinMatch(matchId, userId);
+        newParticipants.push(participant);
+      }
+
+      res.json({ 
+        message: `${newParticipants.length} players added to match`,
+        addedCount: newParticipants.length,
+        participants: newParticipants 
+      });
+    } catch (error) {
+      console.error('Error adding players to match:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   // Join a match
   app.post('/api/matches/:id/join', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {

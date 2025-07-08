@@ -107,6 +107,30 @@
     "beFirstToJoin": "Be the first to join this match!",
     "awaitingPlayers": "Awaiting {{count}} more players",
     "readyToStart": "Ready to Start!",
-    "startingSoon": "Starting Soon"
+    "startingSoon": "Starting Soon",
+    "addPlayers": "Add Players",
+    "addPlayersToMatch": "Add Players to Match",
+    "availablePlayers": "Available Players",
+    "alreadyJoined": "Already Joined",
+    "noPlayersAvailable": "No players available",
+    "allPlayersAlreadyJoined": "All players have already joined this match",
+    "addSelectedPlayers": "Add {{count}} Players",
+    "playersAdded": "Players Added",
+    "playersAddedDescription": "{{count}} players were successfully added to the match",
+    "addPlayersError": "Failed to add players to match"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "joining": "Joining...",
+    "admin": "Admin",
+    "participants": "Participants",
+    "backToOverview": "Back to Overview",
+    "adding": "Adding...",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All"
   }
 }

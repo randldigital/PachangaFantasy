@@ -24,10 +24,15 @@ export default function Navbar() {
           <div className="flex items-center space-x-8">
             <Link href="/" className="flex items-center space-x-2">
               <Trophy className="h-8 w-8 text-accent-blue" />
-              <span className="text-xl font-bold text-text-primary">Pachanga Fantasy</span>
+              <span className="text-xl font-bold text-text-primary">
+                Pachanga Fantasy
+              </span>
             </Link>
-            
-            <div className="hidden md:flex items-center space-x-4">
+
+            <div
+              className="hidden md:flex items-center space-x-4"
+              style={{ display: "none" }}
+            >
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location === item.path;

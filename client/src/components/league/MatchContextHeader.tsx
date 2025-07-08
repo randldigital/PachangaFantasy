@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { Calendar, Clock, Users, Plus, UserPlus, Eye, Loader2 } from "lucide-react";
+import { Calendar, Clock, Users, Plus, UserPlus, Eye, Loader2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -10,13 +10,15 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import CreateMatchForm from "@/components/league/CreateMatchForm";
 import TeamAssignmentPreview from "@/components/league/TeamAssignmentPreview";
-import type { Match, League, User } from "@shared/schema";
+import AddPlayersToMatchModal from "@/components/league/AddPlayersToMatchModal";
+import type { Match, League, User, Player } from "@shared/schema";
 
 interface MatchContextHeaderProps {
   match?: Match;
   league: League;
   user?: User;
   matches: Match[];
+  players: Player[];
   onMatchAction?: () => void;
 }
 
@@ -33,6 +35,7 @@ export default function MatchContextHeader({
   league, 
   user, 
   matches,
+  players,
   onMatchAction 
 }: MatchContextHeaderProps) {
   const { t } = useTranslation();
@@ -40,6 +43,7 @@ export default function MatchContextHeader({
   const queryClient = useQueryClient();
   const [showCreateMatch, setShowCreateMatch] = useState(false);
   const [showMatchDetails, setShowMatchDetails] = useState(false);
+  const [showAddPlayers, setShowAddPlayers] = useState(false);
 
   // Check if user has joined the match
   const { data: participants = [], isLoading: participantsLoading } = useQuery<ParticipantWithUser[]>({
@@ -137,34 +141,64 @@ export default function MatchContextHeader({
                 </div>
                 
                 {userHasJoined ? (
-                  <Button
-                    onClick={() => setShowMatchDetails(true)}
-                    size="sm"
-                    variant="outline"
-                    className="border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white"
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    {t('match.view')}
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleJoinMatch}
-                    disabled={joinMatchMutation.isPending || isMatchFull}
-                    size="sm"
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
-                  >
-                    {joinMatchMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <UserPlus className="w-4 h-4 mr-2" />
+                  <div className="flex items-center gap-2">
+                    {/* Admin: Add Players Button */}
+                    {user?.role === 'admin' && (
+                      <Button
+                        onClick={() => setShowAddPlayers(true)}
+                        size="sm"
+                        variant="outline"
+                        className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        {t('match.addPlayers')}
+                      </Button>
                     )}
-                    {joinMatchMutation.isPending 
-                      ? t('common.joining') 
-                      : isMatchFull 
-                        ? t('match.full') 
-                        : t('match.join')
-                    }
-                  </Button>
+                    
+                    <Button
+                      onClick={() => setShowMatchDetails(true)}
+                      size="sm"
+                      variant="outline"
+                      className="border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      {t('match.view')}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    {/* Admin: Add Players Button (even when not joined) */}
+                    {user?.role === 'admin' && (
+                      <Button
+                        onClick={() => setShowAddPlayers(true)}
+                        size="sm"
+                        variant="outline"
+                        className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        {t('match.addPlayers')}
+                      </Button>
+                    )}
+                    
+                    <Button
+                      onClick={handleJoinMatch}
+                      disabled={joinMatchMutation.isPending || isMatchFull}
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
+                    >
+                      {joinMatchMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <UserPlus className="w-4 h-4 mr-2" />
+                      )}
+                      {joinMatchMutation.isPending 
+                        ? t('common.joining') 
+                        : isMatchFull 
+                          ? t('match.full') 
+                          : t('match.join')
+                      }
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
@@ -182,6 +216,15 @@ export default function MatchContextHeader({
             <TeamAssignmentPreview match={match} />
           </DialogContent>
         </Dialog>
+
+        {/* Add Players Modal */}
+        <AddPlayersToMatchModal
+          isOpen={showAddPlayers}
+          onClose={() => setShowAddPlayers(false)}
+          match={match}
+          players={players}
+          participants={participants}
+        />
       </>
     );
   }

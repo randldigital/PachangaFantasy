@@ -132,6 +132,7 @@ export default function LeagueHub() {
         league={league} 
         user={user}
         matches={matches}
+        players={players || []}
         onMatchAction={() => {
           // Refresh matches data
         }}
