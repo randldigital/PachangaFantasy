@@ -33,7 +33,7 @@ export default function Login() {
       await login(data.email, data.password);
       // Small delay to ensure auth state is properly updated
       setTimeout(() => {
-        setLocation('/dashboard');
+        setLocation('/overview');
       }, 100);
     } catch (error) {
       toast({

@@ -35,7 +35,7 @@ export default function Register() {
       await registerUser(data);
       // Small delay to ensure auth state is properly updated
       setTimeout(() => {
-        setLocation('/dashboard');
+        setLocation('/overview');
       }, 100);
     } catch (error) {
       toast({
