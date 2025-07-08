@@ -19,9 +19,7 @@ export default function JoinLeagueForm({ onSuccess }: JoinLeagueFormProps) {
 
   const joinLeagueMutation = useMutation({
     mutationFn: async (inviteCode: string) => {
-      return apiRequest(`/api/leagues/${inviteCode}/join`, {
-        method: 'POST',
-      });
+      return apiRequest('POST', `/api/leagues/${inviteCode}/join`);
     },
     onSuccess: () => {
       toast({

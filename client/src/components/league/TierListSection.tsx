@@ -81,10 +81,7 @@ export default function TierListSection({ leagueId, league, players, user }: Tie
 
   const submitTierListMutation = useMutation({
     mutationFn: async (data: { playerOrder: number[]; submitted: boolean }) => {
-      return apiRequest(`/api/tierlist/${leagueId}`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return apiRequest('POST', `/api/tierlist/${leagueId}`, data);
     },
     onSuccess: () => {
       toast({
