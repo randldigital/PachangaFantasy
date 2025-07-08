@@ -189,37 +189,44 @@ export default function LeagueDetail() {
           </div>
         </div>
 
-        {/* Join League or Start Ranking Actions */}
-        {!league.participants.includes(user?.id || 0) && league.status === 'open' && (
-          <div className="text-center">
-            <Button
-              onClick={() => {
-                joinLeagueMutation.mutate();
-              }}
-              disabled={joinLeagueMutation.isPending}
-              className="bg-accent-green hover:bg-accent-green/80 text-white font-semibold py-3 px-8 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300"
-            >
-              <Users className="w-5 h-5 mr-2" />
-              {joinLeagueMutation.isPending ? t('common.loading') : 'Join League as Player'}
-            </Button>
-          </div>
-        )}
-
-        {/* Add Myself as Player Button */}
-        {league.participants.includes(user?.id || 0) && (
-          <AddMyselfAsPlayerButton leagueId={league.id} />
-        )}
-
-        {league.participants.includes(user?.id || 0) && league.status === 'open' && (
-          <div className="text-center">
-            <Link href={`/tierlist/${league.id}`}>
-              <Button className="bg-accent-purple hover:bg-accent-purple/80 text-white font-semibold py-3 px-8 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300">
-                <Play className="w-5 h-5 mr-2" />
-                {t('league.startRanking')}
+        {/* Action Section */}
+        <div className="space-y-6">
+          {/* Join League Action */}
+          {!league.participants.includes(user?.id || 0) && league.status === 'open' && (
+            <div className="text-center">
+              <Button
+                onClick={() => {
+                  joinLeagueMutation.mutate();
+                }}
+                disabled={joinLeagueMutation.isPending}
+                className="bg-accent-green hover:bg-accent-green/80 text-white font-semibold py-3 px-8 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300"
+              >
+                <Users className="w-5 h-5 mr-2" />
+                {joinLeagueMutation.isPending ? t('common.loading') : 'Unirse a la Liga'}
               </Button>
-            </Link>
-          </div>
-        )}
+            </div>
+          )}
+
+          {/* Participant Actions */}
+          {league.participants.includes(user?.id || 0) && (
+            <div className="space-y-4">
+              {/* Add Myself as Player Section */}
+              <AddMyselfAsPlayerButton leagueId={league.id} />
+
+              {/* Start Ranking Action */}
+              {league.status === 'open' && (
+                <div className="text-center">
+                  <Link href={`/tierlist/${league.id}`}>
+                    <Button className="bg-accent-purple hover:bg-accent-purple/80 text-white font-semibold py-3 px-8 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300">
+                      <Play className="w-5 h-5 mr-2" />
+                      {t('league.startRanking')}
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* League Info */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

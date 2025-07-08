@@ -63,6 +63,7 @@ export const insertPlayerSchema = createInsertSchema(players).pick({
 
 export const insertTierListSchema = createInsertSchema(tierLists).pick({
   playerOrder: true,
+  submitted: true,
 });
 
 export const loginSchema = z.object({
