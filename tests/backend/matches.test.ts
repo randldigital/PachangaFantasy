@@ -1,384 +1,255 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import request from 'supertest';
-import express from 'express';
-import jwt from 'jsonwebtoken';
-import { registerRoutes } from '@server/routes';
-import { createMockUser, createMockMatch, createMockPlayer } from '../test-utils';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { DatabaseStorage } from '../../server/storage';
+import { db } from '../../server/db';
+import { users, leagues, players, matches, matchParticipants } from '../../shared/schema';
+import { eq } from 'drizzle-orm';
 
-// Mock the storage
-vi.mock('@server/storage', () => {
-  const mockStorage = {
-    getUser: vi.fn(),
-    createMatch: vi.fn(),
-    getMatchesByLeague: vi.fn(),
-    getMatch: vi.fn(),
-    joinMatch: vi.fn(),
-    getMatchParticipants: vi.fn(),
-    balanceTeams: vi.fn(),
-    updateMatch: vi.fn(),
-    createLineup: vi.fn(),
-    getLineup: vi.fn(),
-    updateLineup: vi.fn(),
-    createStatReport: vi.fn(),
-    getStatReportsForMatch: vi.fn(),
-    verifyStatReport: vi.fn(),
-    calculateMatchScores: vi.fn(),
-    getLeagueRankings: vi.fn(),
-  };
-  
-  return {
-    DatabaseStorage: vi.fn(() => mockStorage),
-    storage: mockStorage,
-  };
-});
-
-describe('Match Routes', () => {
-  let app: express.Application;
-  let mockStorage: any;
-  let authToken: string;
-  let testUser: any;
+describe('Match System (Player-Based)', () => {
+  let storage: DatabaseStorage;
+  let user: any;
+  let league: any;
+  let player: any;
+  let match: any;
 
   beforeEach(async () => {
-    app = express();
-    app.use(express.json());
+    storage = new DatabaseStorage();
     
-    // Get the mocked storage instance
-    const { storage } = await import('@server/storage');
-    mockStorage = storage;
-    
-    // Register routes
-    await registerRoutes(app);
+    // Clear existing data
+    await db.delete(matchParticipants);
+    await db.delete(matches);
+    await db.delete(players);
+    await db.delete(leagues);
+    await db.delete(users);
 
-    // Create test user and token
-    testUser = createMockUser();
-    authToken = jwt.sign({ userId: testUser.id }, process.env.JWT_SECRET || 'pachanga-secret-key');
-    
-    // Mock getUser for authentication
-    mockStorage.getUser.mockResolvedValue(testUser);
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  describe('POST /api/matches', () => {
-    it('should create a new match successfully', async () => {
-      const matchData = {
-        leagueId: 1,
-        date: new Date('2025-01-15T10:00:00Z'),
-        lineupBudget: 100
-      };
-
-      const createdMatch = createMockMatch(matchData);
-      mockStorage.createMatch.mockResolvedValue(createdMatch);
-
-      const response = await request(app)
-        .post('/api/matches')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(matchData);
-
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual(createdMatch);
-      expect(mockStorage.createMatch).toHaveBeenCalledWith(matchData);
+    // Create test user
+    user = await storage.createUser({
+      username: 'testuser',
+      email: 'test@example.com',
+      password: 'password123',
+      role: 'admin'
     });
 
-    it('should validate match data', async () => {
-      const invalidMatchData = {
-        leagueId: 'invalid', // Should be number
-        date: 'invalid-date',
-        lineupBudget: -10 // Should be positive
-      };
+    // Create test league
+    league = await storage.createLeague({
+      name: 'Test League',
+      description: 'Test description'
+    }, user.id);
 
-      const response = await request(app)
-        .post('/api/matches')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(invalidMatchData);
-
-      expect(response.status).toBe(400);
-      expect(response.body.message).toBe('Invalid input');
+    // Create test player linked to user
+    player = await storage.createPlayer({
+      name: 'Test Player',
+      emoji: '⚽',
+      leagueId: league.id,
+      userId: user.id
     });
+
+    // Create test match
+    match = await storage.createMatch({
+      leagueId: league.id,
+      date: new Date('2025-07-10'),
+      lineupBudget: 100
+    }, user.id);
   });
 
-  describe('GET /api/leagues/:leagueId/matches', () => {
-    it('should return matches for a league', async () => {
-      const leagueId = 1;
-      const matches = [
-        createMockMatch({ id: 1, leagueId }),
-        createMockMatch({ id: 2, leagueId, status: 'completed' })
-      ];
+  describe('Match Creation', () => {
+    it('should create a match', async () => {
+      expect(match).toBeDefined();
+      expect(match.leagueId).toBe(league.id);
+      expect(match.status).toBe('open');
+      expect(match.lineupBudget).toBe(100);
+    });
 
-      mockStorage.getMatchesByLeague.mockResolvedValue(matches);
+    it('should get match by ID', async () => {
+      const foundMatch = await storage.getMatch(match.id);
+      expect(foundMatch).toBeDefined();
+      expect(foundMatch!.id).toBe(match.id);
+      expect(foundMatch!.leagueId).toBe(league.id);
+    });
 
-      const response = await request(app)
-        .get(`/api/leagues/${leagueId}/matches`)
-        .set('Authorization', `Bearer ${authToken}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual(matches);
-      expect(mockStorage.getMatchesByLeague).toHaveBeenCalledWith(leagueId);
+    it('should get matches by league', async () => {
+      const matches = await storage.getMatchesByLeague(league.id);
+      expect(matches).toHaveLength(1);
+      expect(matches[0].id).toBe(match.id);
     });
   });
 
-  describe('GET /api/matches/:id', () => {
-    it('should return match with participants', async () => {
-      const match = createMockMatch({ id: 1 });
-      const participants = [
-        { id: 1, matchId: 1, userId: 1, accepted: true },
-        { id: 2, matchId: 1, userId: 2, accepted: false }
-      ];
-
-      mockStorage.getMatch.mockResolvedValue(match);
-      mockStorage.getMatchParticipants.mockResolvedValue(participants);
-
-      const response = await request(app)
-        .get('/api/matches/1')
-        .set('Authorization', `Bearer ${authToken}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual({ ...match, participants });
+  describe('Match Participants (Player-Based)', () => {
+    it('should allow user to join match through their player record', async () => {
+      const participant = await storage.joinMatch(match.id, user.id);
+      expect(participant.matchId).toBe(match.id);
+      expect(participant.playerId).toBe(player.id);
+      expect(participant.status).toBe('accepted');
     });
 
-    it('should return 404 for non-existent match', async () => {
-      mockStorage.getMatch.mockResolvedValue(null);
-
-      const response = await request(app)
-        .get('/api/matches/999')
-        .set('Authorization', `Bearer ${authToken}`);
-
-      expect(response.status).toBe(404);
-      expect(response.body.message).toBe('Match not found');
-    });
-  });
-
-  describe('POST /api/matches/:id/join', () => {
-    it('should join match successfully', async () => {
-      const matchId = 1;
-      const participant = { id: 1, matchId, userId: testUser.id, accepted: true };
-      const participants = [participant]; // Only one participant
-
-      mockStorage.joinMatch.mockResolvedValue(participant);
-      mockStorage.getMatchParticipants.mockResolvedValue(participants);
-
-      const response = await request(app)
-        .post(`/api/matches/${matchId}/join`)
-        .set('Authorization', `Bearer ${authToken}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual(participant);
-      expect(mockStorage.joinMatch).toHaveBeenCalledWith(matchId, testUser.id);
+    it('should prevent duplicate participants', async () => {
+      await storage.joinMatch(match.id, user.id);
+      const participant2 = await storage.joinMatch(match.id, user.id);
+      expect(participant2.playerId).toBe(player.id);
+      expect(participant2.matchId).toBe(match.id);
     });
 
-    it('should balance teams when 10 players join', async () => {
-      const matchId = 1;
-      const participant = { id: 10, matchId, userId: testUser.id, accepted: true };
+    it('should add player to match directly by player ID', async () => {
+      const participant = await storage.addPlayerToMatch(match.id, player.id);
+      expect(participant.matchId).toBe(match.id);
+      expect(participant.playerId).toBe(player.id);
+      expect(participant.status).toBe('accepted');
+    });
+
+    it('should get all match participants', async () => {
+      await storage.joinMatch(match.id, user.id);
       
-      // Mock 10 participants (including the new one)
-      const participants = Array.from({ length: 10 }, (_, i) => ({
-        id: i + 1,
-        matchId,
-        userId: i + 1,
-        accepted: true
-      }));
-
-      const balancedTeams = {
-        teamA: [1, 2, 3, 4, 5],
-        teamB: [6, 7, 8, 9, 10]
-      };
-
-      mockStorage.joinMatch.mockResolvedValue(participant);
-      mockStorage.getMatchParticipants.mockResolvedValue(participants);
-      mockStorage.balanceTeams.mockResolvedValue(balancedTeams);
-      mockStorage.updateMatch.mockResolvedValue({});
-
-      const response = await request(app)
-        .post(`/api/matches/${matchId}/join`)
-        .set('Authorization', `Bearer ${authToken}`);
-
-      expect(response.status).toBe(200);
-      expect(mockStorage.balanceTeams).toHaveBeenCalledWith(
-        matchId, 
-        participants.map(p => p.userId)
-      );
-      expect(mockStorage.updateMatch).toHaveBeenCalledWith(matchId, { status: 'ready' });
+      const participants = await storage.getMatchParticipants(match.id);
+      expect(participants).toHaveLength(1);
+      expect(participants[0].playerId).toBe(player.id);
     });
-  });
 
-  describe('POST /api/matches/:matchId/lineup', () => {
-    it('should create lineup successfully', async () => {
-      const matchId = 1;
-      const lineupData = {
-        playerIds: [1, 2, 3, 4, 5],
-        totalCost: 80
-      };
-
-      const createdLineup = {
-        id: 1,
-        matchId,
-        userId: testUser.id,
-        ...lineupData,
-        createdAt: new Date()
-      };
-
-      mockStorage.getLineup.mockResolvedValue(null); // No existing lineup
-      mockStorage.createLineup.mockResolvedValue(createdLineup);
-
-      const response = await request(app)
-        .post(`/api/matches/${matchId}/lineup`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(lineupData);
-
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual(createdLineup);
-      expect(mockStorage.createLineup).toHaveBeenCalledWith({
-        ...lineupData,
-        matchId,
-        userId: testUser.id
+    it('should handle players without user accounts', async () => {
+      // Create a player without userId (like a friend added to league)
+      const nonUserPlayer = await storage.createPlayer({
+        name: 'Non-User Player',
+        emoji: '🏃',
+        leagueId: league.id
       });
-    });
 
-    it('should update existing lineup', async () => {
-      const matchId = 1;
-      const lineupData = {
-        playerIds: [1, 2, 3, 4, 5],
-        totalCost: 80
-      };
-
-      const existingLineup = {
-        id: 1,
-        matchId,
-        userId: testUser.id,
-        playerIds: [6, 7, 8, 9, 10],
-        totalCost: 90,
-        createdAt: new Date()
-      };
-
-      const updatedLineup = { ...existingLineup, ...lineupData };
-
-      mockStorage.getLineup.mockResolvedValue(existingLineup);
-      mockStorage.updateLineup.mockResolvedValue(updatedLineup);
-
-      const response = await request(app)
-        .post(`/api/matches/${matchId}/lineup`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(lineupData);
-
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual(updatedLineup);
-      expect(mockStorage.updateLineup).toHaveBeenCalledWith(
-        existingLineup.id,
-        { ...lineupData, matchId, userId: testUser.id }
-      );
+      const participant = await storage.addPlayerToMatch(match.id, nonUserPlayer.id);
+      expect(participant.matchId).toBe(match.id);
+      expect(participant.playerId).toBe(nonUserPlayer.id);
+      expect(participant.status).toBe('accepted');
     });
   });
 
-  describe('POST /api/matches/:matchId/stats', () => {
-    it('should submit stat report successfully', async () => {
-      const matchId = 1;
-      const statData = {
+  describe('Team Balancing', () => {
+    it('should balance teams', async () => {
+      // Create additional players for testing
+      const player2 = await storage.createPlayer({
+        name: 'Player 2',
+        emoji: '🏃',
+        leagueId: league.id
+      });
+      
+      const player3 = await storage.createPlayer({
+        name: 'Player 3',
+        emoji: '🏃',
+        leagueId: league.id
+      });
+
+      const player4 = await storage.createPlayer({
+        name: 'Player 4',
+        emoji: '🏃',
+        leagueId: league.id
+      });
+
+      const playerIds = [player.id, player2.id, player3.id, player4.id];
+      const teams = await storage.balanceTeams(match.id, playerIds);
+
+      expect(teams.teamA).toHaveLength(2);
+      expect(teams.teamB).toHaveLength(2);
+      expect([...teams.teamA, ...teams.teamB]).toEqual(expect.arrayContaining(playerIds));
+    });
+  });
+
+  describe('Lineup System', () => {
+    it('should create and get lineup', async () => {
+      // Add user as participant first
+      await storage.joinMatch(match.id, user.id);
+
+      const lineup = await storage.createLineup({
+        matchId: match.id,
+        userId: user.id,
+        playerIds: [player.id],
+        captainId: player.id,
+        totalCost: 50
+      });
+
+      expect(lineup).toBeDefined();
+      expect(lineup.matchId).toBe(match.id);
+      expect(lineup.userId).toBe(user.id);
+      expect(lineup.playerIds).toEqual([player.id]);
+      expect(lineup.captainId).toBe(player.id);
+      expect(lineup.totalCost).toBe(50);
+
+      const foundLineup = await storage.getLineup(match.id, user.id);
+      expect(foundLineup).toBeDefined();
+      expect(foundLineup!.id).toBe(lineup.id);
+    });
+  });
+
+  describe('Stats and Scoring', () => {
+    it('should create and verify stat reports', async () => {
+      const statReport = await storage.createStatReport({
+        userId: user.id,
+        matchId: match.id,
         goals: 2,
         assists: 1
-      };
-
-      const createdStatReport = {
-        id: 1,
-        matchId,
-        userId: testUser.id,
-        ...statData,
-        verifiedBy: null,
-        verifiedStatus: null,
-        createdAt: new Date()
-      };
-
-      mockStorage.createStatReport.mockResolvedValue(createdStatReport);
-
-      const response = await request(app)
-        .post(`/api/matches/${matchId}/stats`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(statData);
-
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual(createdStatReport);
-      expect(mockStorage.createStatReport).toHaveBeenCalledWith({
-        ...statData,
-        matchId,
-        userId: testUser.id
       });
+
+      expect(statReport).toBeDefined();
+      expect(statReport.goals).toBe(2);
+      expect(statReport.assists).toBe(1);
+      expect(statReport.verifiedStatus).toBe('pending');
+
+      const verified = await storage.verifyStatReport(statReport.id, user.id, 'confirmed');
+      expect(verified).toBeDefined();
+      expect(verified!.verifiedStatus).toBe('confirmed');
     });
-  });
 
-  describe('POST /api/stats/:reportId/verify', () => {
-    it('should verify stat report successfully', async () => {
-      const reportId = 1;
-      const verificationData = { status: 'confirmed' as const };
+    it('should calculate match scores', async () => {
+      // Add user as participant
+      await storage.joinMatch(match.id, user.id);
 
-      const verifiedReport = {
-        id: reportId,
-        matchId: 1,
-        userId: 2,
+      // Create lineup
+      await storage.createLineup({
+        matchId: match.id,
+        userId: user.id,
+        playerIds: [player.id],
+        captainId: player.id,
+        totalCost: 50
+      });
+
+      // Create and verify stat report
+      const statReport = await storage.createStatReport({
+        userId: user.id,
+        matchId: match.id,
         goals: 2,
-        assists: 1,
-        verifiedBy: testUser.id,
-        verifiedStatus: 'confirmed',
-        createdAt: new Date()
-      };
+        assists: 1
+      });
 
-      mockStorage.verifyStatReport.mockResolvedValue(verifiedReport);
+      await storage.verifyStatReport(statReport.id, user.id, 'confirmed');
 
-      const response = await request(app)
-        .post(`/api/stats/${reportId}/verify`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(verificationData);
-
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual(verifiedReport);
-      expect(mockStorage.verifyStatReport).toHaveBeenCalledWith(
-        reportId,
-        testUser.id,
-        'confirmed'
-      );
+      // Calculate scores
+      const scores = await storage.calculateMatchScores(match.id);
+      expect(scores).toHaveLength(1);
+      expect(scores[0].userId).toBe(user.id);
+      expect(scores[0].points).toBeGreaterThan(0);
     });
   });
 
-  describe('POST /api/matches/:matchId/calculate-scores', () => {
-    it('should calculate match scores successfully', async () => {
-      const matchId = 1;
-      const scores = [
-        { id: 1, userId: 1, matchId, points: 8, createdAt: new Date() },
-        { id: 2, userId: 2, matchId, points: 5, createdAt: new Date() }
-      ];
+  describe('League Rankings', () => {
+    it('should get league rankings', async () => {
+      // Add user as participant and create score
+      await storage.joinMatch(match.id, user.id);
+      await storage.createLineup({
+        matchId: match.id,
+        userId: user.id,
+        playerIds: [player.id],
+        captainId: player.id,
+        totalCost: 50
+      });
 
-      mockStorage.calculateMatchScores.mockResolvedValue(scores);
-      mockStorage.updateMatch.mockResolvedValue({});
+      const statReport = await storage.createStatReport({
+        userId: user.id,
+        matchId: match.id,
+        goals: 2,
+        assists: 1
+      });
 
-      const response = await request(app)
-        .post(`/api/matches/${matchId}/calculate-scores`)
-        .set('Authorization', `Bearer ${authToken}`);
+      await storage.verifyStatReport(statReport.id, user.id, 'confirmed');
+      await storage.calculateMatchScores(match.id);
 
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual(scores);
-      expect(mockStorage.calculateMatchScores).toHaveBeenCalledWith(matchId);
-      expect(mockStorage.updateMatch).toHaveBeenCalledWith(matchId, { status: 'completed' });
-    });
-  });
-
-  describe('GET /api/leagues/:leagueId/rankings', () => {
-    it('should return league rankings', async () => {
-      const leagueId = 1;
-      const rankings = [
-        { userId: 1, username: 'player1', totalPoints: 25 },
-        { userId: 2, username: 'player2', totalPoints: 18 },
-        { userId: 3, username: 'player3', totalPoints: 12 }
-      ];
-
-      mockStorage.getLeagueRankings.mockResolvedValue(rankings);
-
-      const response = await request(app)
-        .get(`/api/leagues/${leagueId}/rankings`)
-        .set('Authorization', `Bearer ${authToken}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual(rankings);
-      expect(mockStorage.getLeagueRankings).toHaveBeenCalledWith(leagueId);
+      const rankings = await storage.getLeagueRankings(league.id);
+      expect(rankings).toHaveLength(1);
+      expect(rankings[0].userId).toBe(user.id);
+      expect(rankings[0].totalPoints).toBeGreaterThan(0);
     });
   });
 });

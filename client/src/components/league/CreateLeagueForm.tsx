@@ -24,10 +24,7 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
 
   const createLeagueMutation = useMutation({
     mutationFn: async (data: InsertLeague) => {
-      return apiRequest('/api/leagues', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return await apiRequest('POST', '/api/leagues', data);
     },
     onSuccess: () => {
       toast({
