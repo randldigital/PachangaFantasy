@@ -13,12 +13,12 @@ import type { Player, Match } from "@shared/schema";
 
 interface ParticipantWithUser {
   matchId: number;
-  userId?: number;
-  playerId?: number;
+  playerId: number;
   status: string;
+  playerName: string;
+  userId?: number;
   username?: string;
   userRole?: string;
-  playerName?: string;
 }
 
 interface AddPlayersToMatchModalProps {
@@ -41,25 +41,17 @@ export default function AddPlayersToMatchModal({
   const queryClient = useQueryClient();
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
 
-  // Get IDs of existing participants (both userId and playerId)
-  const participantUserIds = participants.map(p => p.userId).filter(Boolean);
-  const participantPlayerIds = participants.map(p => p.playerId).filter(Boolean);
+  // Get player IDs of existing participants
+  const participantPlayerIds = participants.map(p => p.playerId);
   
   // Filter players - exclude those already in match
-  const availablePlayers = (players || []).filter(player => {
-    // Player is already in match if:
-    // 1. They have a userId and that userId is in participants, OR
-    // 2. Their playerId is directly in participants
-    const userIdMatch = player.userId && participantUserIds.includes(player.userId);
-    const playerIdMatch = participantPlayerIds.includes(player.id);
-    return !userIdMatch && !playerIdMatch;
-  });
+  const availablePlayers = (players || []).filter(player => 
+    !participantPlayerIds.includes(player.id)
+  );
   
-  const alreadyJoinedPlayers = (players || []).filter(player => {
-    const userIdMatch = player.userId && participantUserIds.includes(player.userId);
-    const playerIdMatch = participantPlayerIds.includes(player.id);
-    return userIdMatch || playerIdMatch;
-  });
+  const alreadyJoinedPlayers = (players || []).filter(player =>
+    participantPlayerIds.includes(player.id)
+  );
 
   const addPlayersMutation = useMutation({
     mutationFn: async (playerIds: number[]) => {

@@ -11,12 +11,12 @@ import type { Match, User, Player } from "@shared/schema";
 
 interface ParticipantWithUser {
   matchId: number;
-  userId?: number;
-  playerId?: number;
+  playerId: number;
   status: string;
+  playerName: string;
+  userId?: number;
   username?: string;
   userRole?: string;
-  playerName?: string;
 }
 
 interface TeamAssignmentPreviewProps {
@@ -139,7 +139,7 @@ export default function TeamAssignmentPreview({ match, user, players = [] }: Tea
                   {teamA.map((participant, index) => {
                     const displayName = participant.username || participant.playerName || 'Unknown Player';
                     return (
-                      <div key={participant.userId || participant.playerId || index} className="flex items-center gap-3 p-2 rounded-lg bg-blue-500/5">
+                      <div key={participant.playerId || index} className="flex items-center gap-3 p-2 rounded-lg bg-blue-500/5">
                         <Avatar className="w-8 h-8">
                           <AvatarFallback className="bg-blue-600 text-white text-xs">
                             {getInitials(displayName)}
@@ -153,7 +153,7 @@ export default function TeamAssignmentPreview({ match, user, players = [] }: Tea
                                 {t('common.admin')}
                               </Badge>
                             )}
-                            {!participant.userId && participant.playerId && (
+                            {!participant.userId && (
                               <Badge variant="outline" className="text-xs border-slate-500/50 text-slate-400">
                                 Player
                               </Badge>
@@ -183,7 +183,7 @@ export default function TeamAssignmentPreview({ match, user, players = [] }: Tea
                   {teamB.map((participant, index) => {
                     const displayName = participant.username || participant.playerName || 'Unknown Player';
                     return (
-                      <div key={participant.userId || participant.playerId || index} className="flex items-center gap-3 p-2 rounded-lg bg-red-500/5">
+                      <div key={participant.playerId || index} className="flex items-center gap-3 p-2 rounded-lg bg-red-500/5">
                         <Avatar className="w-8 h-8">
                           <AvatarFallback className="bg-red-600 text-white text-xs">
                             {getInitials(displayName)}
@@ -197,7 +197,7 @@ export default function TeamAssignmentPreview({ match, user, players = [] }: Tea
                                 {t('common.admin')}
                               </Badge>
                             )}
-                            {!participant.userId && participant.playerId && (
+                            {!participant.userId && (
                               <Badge variant="outline" className="text-xs border-slate-500/50 text-slate-400">
                                 Player
                               </Badge>

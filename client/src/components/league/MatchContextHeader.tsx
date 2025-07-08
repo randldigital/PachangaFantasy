@@ -24,12 +24,12 @@ interface MatchContextHeaderProps {
 
 interface ParticipantWithUser {
   matchId: number;
-  userId?: number;
-  playerId?: number;
+  playerId: number;
   status: string;
+  playerName: string;
+  userId?: number;
   username?: string;
   userRole?: string;
-  playerName?: string;
 }
 
 export default function MatchContextHeader({ 

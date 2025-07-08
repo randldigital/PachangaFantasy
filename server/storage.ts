@@ -258,61 +258,79 @@ export class DatabaseStorage implements IStorage {
   }
 
   async joinMatch(matchId: number, userId: number): Promise<MatchParticipant> {
-    // Check if user is already a participant
+    // First find the user's player ID in the match's league
+    const match = await this.getMatch(matchId);
+    if (!match) {
+      throw new Error('Match not found');
+    }
+    
+    const userPlayer = await db
+      .select()
+      .from(players)
+      .where(
+        and(
+          eq(players.userId, userId),
+          eq(players.leagueId, match.leagueId)
+        )
+      )
+      .limit(1);
+
+    if (userPlayer.length === 0) {
+      throw new Error('User is not a player in this league');
+    }
+
+    const playerId = userPlayer[0].id;
+    
+    // Check if player is already a participant
     const existingParticipant = await db
       .select()
       .from(matchParticipants)
       .where(
         and(
           eq(matchParticipants.matchId, matchId),
-          eq(matchParticipants.userId, userId)
+          eq(matchParticipants.playerId, playerId)
         )
       )
       .limit(1);
 
     if (existingParticipant.length > 0) {
-      // User is already a participant, just return the existing record
+      // Player is already a participant, just return the existing record
       return existingParticipant[0];
     }
 
-    // User is not a participant yet, add them
+    // Player is not a participant yet, add them
     const [participant] = await db
       .insert(matchParticipants)
-      .values({ matchId, userId, status: 'accepted' })
+      .values({ matchId, playerId, status: 'accepted' })
       .returning();
     return participant;
   }
 
   async addPlayerToMatch(matchId: number, playerId: number): Promise<MatchParticipant> {
     try {
-      // Check if this player is already in the match using raw SQL
-      const existingCheck = await db.execute(
-        sql`SELECT * FROM match_participants WHERE match_id = ${matchId} AND player_id = ${playerId} LIMIT 1`
-      );
+      // Check if this player is already in the match
+      const existingParticipant = await db
+        .select()
+        .from(matchParticipants)
+        .where(
+          and(
+            eq(matchParticipants.matchId, matchId),
+            eq(matchParticipants.playerId, playerId)
+          )
+        )
+        .limit(1);
 
-      if (existingCheck.rows.length > 0) {
+      if (existingParticipant.length > 0) {
         // Player is already a participant, return the existing record
-        const row = existingCheck.rows[0];
-        return {
-          matchId: row.match_id as number,
-          userId: row.user_id as number | null,
-          playerId: row.player_id as number | null,
-          status: row.status as string
-        };
+        return existingParticipant[0];
       }
 
-      // Player is not a participant yet, add them using raw SQL
-      const insertResult = await db.execute(
-        sql`INSERT INTO match_participants (match_id, player_id, status) VALUES (${matchId}, ${playerId}, 'accepted') RETURNING *`
-      );
-      
-      const newRow = insertResult.rows[0];
-      return {
-        matchId: newRow.match_id as number,
-        userId: newRow.user_id as number | null,
-        playerId: newRow.player_id as number | null,
-        status: newRow.status as string
-      };
+      // Player is not a participant yet, add them
+      const [participant] = await db
+        .insert(matchParticipants)
+        .values({ matchId, playerId, status: 'accepted' })
+        .returning();
+      return participant;
     } catch (error) {
       console.error('Error adding player to match:', error);
       throw new Error('Failed to add player to match');

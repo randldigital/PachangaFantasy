@@ -445,34 +445,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get match participants with user details
+  // Get match participants with player details
   app.get('/api/matches/:id/participants', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.id);
       const participants = await storage.getMatchParticipants(matchId);
       
-      // Fetch user and player details for each participant
+      // Fetch player details for each participant
       const participantsWithDetails = await Promise.all(
         participants.map(async (participant) => {
+          const player = await storage.getPlayer(participant.playerId);
           let user = null;
-          let player = null;
           
-          if (participant.userId) {
-            user = await storage.getUser(participant.userId);
-          }
-          
-          if (participant.playerId) {
-            player = await storage.getPlayer(participant.playerId);
+          // If player has a userId, fetch user details
+          if (player?.userId) {
+            user = await storage.getUser(player.userId);
           }
           
           return {
             matchId: participant.matchId,
-            userId: participant.userId,
             playerId: participant.playerId,
             status: participant.status,
+            playerName: player?.name || 'Unknown Player',
+            userId: player?.userId,
             username: user?.username,
-            userRole: user?.role,
-            playerName: player?.name
+            userRole: user?.role
           };
         })
       );
@@ -513,36 +510,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get existing participants to avoid duplicates
       const existingParticipants = await storage.getMatchParticipants(matchId);
-      const existingUserIds = existingParticipants.map(p => p.userId);
+      const existingPlayerIds = existingParticipants.map(p => p.playerId);
 
-      // Get players from the league
+      // Get players from the league and filter out those already in match
       const playersToAdd = [];
       for (const playerId of playerIds) {
         const player = await storage.getPlayer(playerId);
-        if (player && player.leagueId === match.leagueId) {
-          // Check if player already exists in match participants
-          const playerAlreadyInMatch = existingParticipants.some(p => 
-            (p.userId && player.userId && p.userId === player.userId) ||
-            (p.playerId && p.playerId === playerId)
-          );
-          
-          if (!playerAlreadyInMatch) {
-            playersToAdd.push(player);
-          }
+        if (player && player.leagueId === match.leagueId && !existingPlayerIds.includes(playerId)) {
+          playersToAdd.push(player);
         }
       }
 
-      // Add players to match - use userId if available, otherwise create participant with playerId
+      // Add players to match using their player IDs
       const newParticipants = [];
       for (const player of playersToAdd) {
-        let participant;
-        if (player.userId) {
-          // Player has a user account
-          participant = await storage.joinMatch(matchId, player.userId);
-        } else {
-          // Player doesn't have user account, add directly by player ID
-          participant = await storage.addPlayerToMatch(matchId, player.id);
-        }
+        const participant = await storage.addPlayerToMatch(matchId, player.id);
         newParticipants.push(participant);
       }
 
