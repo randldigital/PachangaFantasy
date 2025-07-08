@@ -1,5 +1,5 @@
 import { render, RenderOptions } from '@testing-library/react';
-import { ReactElement } from 'react';
+import React, { ReactElement, ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { TooltipProvider } from '@/components/ui/tooltip';
