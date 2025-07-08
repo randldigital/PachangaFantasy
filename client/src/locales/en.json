@@ -1,0 +1,97 @@
+{
+  "app": {
+    "title": "Pachanga Fantasy",
+    "subtitle": "Create your league and compete with friends"
+  },
+  "nav": {
+    "myLeagues": "My Leagues",
+    "createLeague": "Create League",
+    "logout": "Logout"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email",
+    "username": "Username",
+    "password": "Password",
+    "noAccount": "Don't have an account? Register",
+    "hasAccount": "Already have an account? Login",
+    "loginButton": "Login",
+    "registerButton": "Register"
+  },
+  "dashboard": {
+    "title": "My Dashboard",
+    "subtitle": "Manage your leagues and participations",
+    "createNew": "Create New League",
+    "createNewDesc": "Invite friends and start competing",
+    "joinWithCode": "Join with Code",
+    "joinWithCodeDesc": "Enter the invitation code",
+    "myLeagues": "My Leagues",
+    "participants": "Participants",
+    "status": "Status",
+    "code": "Code",
+    "position": "My Position",
+    "manage": "Manage League",
+    "viewResults": "View Results"
+  },
+  "league": {
+    "create": "Create League",
+    "join": "Join League",
+    "name": "League Name",
+    "inviteCode": "Invite Code",
+    "createButton": "Create League",
+    "joinButton": "Join",
+    "addPlayers": "Add Players",
+    "playerName": "Player Name",
+    "playerPosition": "Position",
+    "playerEmoji": "Emoji",
+    "addPlayer": "Add Player",
+    "startVoting": "Start Voting",
+    "closeVoting": "Close Voting"
+  },
+  "tierlist": {
+    "title": "Create Tier List",
+    "subtitle": "Drag players to order them from best to worst",
+    "instructions": "Instructions",
+    "instructionsText": "Order the players by dragging them. The player in position #1 will be considered the best, and so on.",
+    "availablePlayers": "Available Players",
+    "myRanking": "My Ranking",
+    "dragHere": "Drag the best player here",
+    "secondBest": "Second best player",
+    "thirdBest": "Third best player",
+    "restPlayers": "Rest of players (drag to order)",
+    "submit": "Submit My Tier List"
+  },
+  "results": {
+    "title": "Final Results",
+    "subtitle": "Market values calculated based on votes",
+    "participants": "Participants",
+    "playersEvaluated": "Players Evaluated",
+    "totalValue": "Total Value",
+    "finalRanking": "Final Player Ranking",
+    "mvp": "MVP",
+    "averagePos": "Average",
+    "restOfPlayers": "Rest of Players",
+    "export": "Export Results",
+    "share": "Share League",
+    "newLeague": "New League"
+  },
+  "status": {
+    "open": "Open",
+    "voting": "Active Voting",
+    "closed": "Completed"
+  },
+  "positions": {
+    "forward": "Forward",
+    "midfielder": "Midfielder",
+    "defender": "Defender",
+    "goalkeeper": "Goalkeeper"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save"
+  }
+}

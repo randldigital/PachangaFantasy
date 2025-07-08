@@ -1,0 +1,97 @@
+{
+  "app": {
+    "title": "Pachanga Fantasy",
+    "subtitle": "Crea tu liga y compite con amigos"
+  },
+  "nav": {
+    "myLeagues": "Mis Ligas",
+    "createLeague": "Crear Liga",
+    "logout": "Cerrar Sesión"
+  },
+  "auth": {
+    "login": "Iniciar Sesión",
+    "register": "Registrarse",
+    "email": "Correo electrónico",
+    "username": "Nombre de usuario",
+    "password": "Contraseña",
+    "noAccount": "¿No tienes cuenta? Regístrate",
+    "hasAccount": "¿Ya tienes cuenta? Inicia sesión",
+    "loginButton": "Iniciar Sesión",
+    "registerButton": "Registrarse"
+  },
+  "dashboard": {
+    "title": "Mi Dashboard",
+    "subtitle": "Gestiona tus ligas y participaciones",
+    "createNew": "Crear Nueva Liga",
+    "createNewDesc": "Invita amigos y comienza a competir",
+    "joinWithCode": "Unirse con Código",
+    "joinWithCodeDesc": "Ingresa el código de invitación",
+    "myLeagues": "Mis Ligas",
+    "participants": "Participantes",
+    "status": "Estado",
+    "code": "Código",
+    "position": "Mi Posición",
+    "manage": "Gestionar Liga",
+    "viewResults": "Ver Resultados"
+  },
+  "league": {
+    "create": "Crear Liga",
+    "join": "Unirse a Liga",
+    "name": "Nombre de la Liga",
+    "inviteCode": "Código de Invitación",
+    "createButton": "Crear Liga",
+    "joinButton": "Unirse",
+    "addPlayers": "Agregar Jugadores",
+    "playerName": "Nombre del Jugador",
+    "playerPosition": "Posición",
+    "playerEmoji": "Emoji",
+    "addPlayer": "Agregar Jugador",
+    "startVoting": "Iniciar Votación",
+    "closeVoting": "Cerrar Votación"
+  },
+  "tierlist": {
+    "title": "Crear Tier List",
+    "subtitle": "Arrastra los jugadores para ordenarlos de mejor a peor",
+    "instructions": "Instrucciones",
+    "instructionsText": "Ordena los jugadores arrastrándolos. El jugador en la posición #1 será considerado el mejor, y así sucesivamente.",
+    "availablePlayers": "Jugadores Disponibles",
+    "myRanking": "Mi Ranking",
+    "dragHere": "Arrastra aquí al mejor jugador",
+    "secondBest": "Segundo mejor jugador",
+    "thirdBest": "Tercer mejor jugador",
+    "restPlayers": "Resto de jugadores (arrastra para ordenar)",
+    "submit": "Enviar Mi Tier List"
+  },
+  "results": {
+    "title": "Resultados Finales",
+    "subtitle": "Valores de mercado calculados basados en las votaciones",
+    "participants": "Participantes",
+    "playersEvaluated": "Jugadores Evaluados",
+    "totalValue": "Valor Total",
+    "finalRanking": "Ranking Final de Jugadores",
+    "mvp": "MVP",
+    "averagePos": "Promedio",
+    "restOfPlayers": "Resto de Jugadores",
+    "export": "Exportar Resultados",
+    "share": "Compartir Liga",
+    "newLeague": "Nueva Liga"
+  },
+  "status": {
+    "open": "Abierta",
+    "voting": "Votación Activa",
+    "closed": "Completada"
+  },
+  "positions": {
+    "forward": "Delantero",
+    "midfielder": "Centrocampista",
+    "defender": "Defensa",
+    "goalkeeper": "Portero"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "save": "Guardar"
+  }
+}
