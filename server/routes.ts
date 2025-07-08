@@ -127,7 +127,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { id } = req.params;
     const league = await storage.getLeague(parseInt(id));
     
-    if (!league || !league.participants || !league.participants.includes(req.user!.id)) {
+    if (!league) {
+      return res.status(404).json({ message: 'League not found' });
+    }
+
+    // Check if user has access to this league (is creator or participant)
+    const hasAccess = league.createdBy === req.user!.id || 
+                     (league.participants && league.participants.includes(req.user!.id));
+    
+    if (!hasAccess) {
       return res.status(404).json({ message: 'League not found' });
     }
 

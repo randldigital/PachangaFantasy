@@ -1,6 +1,6 @@
 import { users, leagues, players, tierLists, type User, type InsertUser, type League, type InsertLeague, type Player, type InsertPlayer, type TierList, type InsertTierList } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, arrayContains } from "drizzle-orm";
+import { eq, and, arrayContains, or, sql } from "drizzle-orm";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { nanoid } from 'nanoid';
@@ -111,7 +111,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserLeagues(userId: number): Promise<League[]> {
-    return await db.select().from(leagues).where(arrayContains(leagues.participants, [userId]));
+    // Get leagues where user is creator or in participants array
+    const userLeagues = await db.select().from(leagues).where(
+      or(
+        eq(leagues.createdBy, userId),
+        sql`${leagues.participants} @> ${JSON.stringify([userId])}`
+      )
+    );
+    
+    return userLeagues;
   }
 
   async getPlayer(id: number): Promise<Player | undefined> {
