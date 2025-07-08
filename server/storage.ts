@@ -65,13 +65,24 @@ export class DatabaseStorage implements IStorage {
 
   async authenticateUser(email: string, password: string): Promise<{ user: User; token: string } | null> {
     const user = await this.getUserByEmail(email);
-    if (!user) return null;
+    if (!user) {
+
+      return null;
+    }
     
     const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) return null;
+    if (!isValidPassword) {
+
+      return null;
+    }
     
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'development-secret-key', { expiresIn: '7d' });
+    const token = jwt.sign(
+      { userId: user.id, email: user.email }, 
+      process.env.JWT_SECRET || 'pachanga-secret-key', 
+      { expiresIn: '7d' }
+    );
     
+
     return { user, token };
   }
 
@@ -167,7 +178,6 @@ export class DatabaseStorage implements IStorage {
         leagueId: tierList.leagueId,
         userId: tierList.userId,
         playerOrder: tierList.playerOrder,
-        submitted: false,
       })
       .returning();
     return newTierList;

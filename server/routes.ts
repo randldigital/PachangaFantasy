@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import { storage } from "./storage";
 import { insertUserSchema, insertLeagueSchema, insertPlayerSchema, insertTierListSchema, loginSchema, joinLeagueSchema, type User } from "@shared/schema";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET || "pachanga-secret-key";
 
 interface AuthRequest extends Request {
   user?: User;
@@ -20,7 +20,7 @@ const authenticateToken = async (req: AuthRequest, res: Response, next: Function
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; email?: string };
     const user = await storage.getUser(decoded.userId);
     if (!user) {
       return res.status(401).json({ message: 'Invalid token' });
