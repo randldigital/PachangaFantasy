@@ -58,8 +58,12 @@ export default function TierListSection({ leagueId, league, players, user }: Tie
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      if (!response.ok) throw new Error('Failed to fetch tier lists');
-      return response.json();
+      if (!response.ok) {
+        if (response.status === 404) return [];
+        throw new Error('Failed to fetch tier lists');
+      }
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
     }
   });
 
@@ -149,12 +153,12 @@ export default function TierListSection({ leagueId, league, players, user }: Tie
   };
 
   const calculateMarketValues = () => {
-    if (allTierLists.length === 0) return {};
+    if (!allTierLists || allTierLists.length === 0) return {};
     
     const playerPositions: { [playerId: number]: number[] } = {};
     
     // Collect all positions for each player
-    allTierLists.forEach(tierList => {
+    (allTierLists || []).forEach(tierList => {
       tierList.playerOrder?.forEach((playerId, index) => {
         if (!playerPositions[playerId]) {
           playerPositions[playerId] = [];
