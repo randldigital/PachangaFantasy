@@ -167,6 +167,14 @@ Pachanga Fantasy is a fullstack web application for creating and managing fantas
   - League access and user management fully functional with database backend
   - Fixed frontend LeagueDetail queries with explicit queryFn functions
   - Resolved password hash compatibility issues for existing user accounts
+- July 08, 2025: Implemented comprehensive user-as-player functionality
+  - Added userId and createdBy fields to players table for linking users to player records
+  - Created AddMyselfAsPlayerButton component with modern gradient styling and proper UX
+  - Implemented API endpoints for adding users as players and checking existing status
+  - Added duplicate prevention logic and comprehensive error handling
+  - Fixed real-time data refresh with proper query invalidation and refetching
+  - Enhanced league detail page layout with organized action sections
+  - Users can now add themselves as players to be included in tier list rankings
 
 ## User Preferences
 
