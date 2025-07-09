@@ -546,9 +546,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'League not found' });
       }
 
-      // Check if user is admin of this league
-      if (req.user!.role !== 'admin') {
-        return res.status(403).json({ message: 'Admin access required' });
+      // Check if user is league creator
+      if (league.createdBy !== req.user!.id) {
+        return res.status(403).json({ message: 'Only league creator can add players to matches' });
       }
 
       // Get existing participants to avoid duplicates
