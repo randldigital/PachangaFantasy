@@ -30,13 +30,7 @@ export default function EndMatchButton({ match, leagueId, isLeagueCreator }: End
 
   const endMatchMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest(`/api/matches/${match.id}/end`, {
-        method: "POST",
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to end match");
-      }
+      const response = await apiRequest('POST', `/api/matches/${match.id}/end`);
       return response.json();
     },
     onSuccess: (data) => {

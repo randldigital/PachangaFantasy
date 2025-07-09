@@ -8,6 +8,8 @@ import { Calendar, Trophy, Users, TrendingUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import type { League, Match, Player } from '@shared/schema';
+import AddPlayerForm from '@/components/league/AddPlayerForm';
+import DeleteLeagueButton from '@/components/league/DeleteLeagueButton';
 
 export default function LeagueDashboard() {
   const { id } = useParams();
@@ -272,6 +274,17 @@ export default function LeagueDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* League Owner Actions */}
+        {league?.createdBy === user?.id && (
+          <div className="mt-8 space-y-6">
+            <AddPlayerForm leagueId={parseInt(id!)} isLeagueCreator={true} />
+            
+            <div className="text-center pt-8 border-t border-red-500/20">
+              <DeleteLeagueButton league={league} isLeagueCreator={true} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

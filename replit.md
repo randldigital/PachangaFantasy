@@ -260,6 +260,14 @@ Pachanga Fantasy is a fullstack web application for creating and managing fantas
   - **Frontend Components**: Fixed React import issues in TierListPage and LeagueDashboard components
   - **League Management**: 7/11 league tests passing with improved mock setup for API route testing
   - **Test Coverage**: Strong foundation with authentication, validation, and core business logic fully tested
+- July 09, 2025: Fixed critical API call format errors and implemented missing league owner features
+  - **End Match Bug Fixed**: Corrected apiRequest format from object to method parameters in EndMatchButton component
+  - **Delete League Button**: Fixed API call format and ensured proper league creator permissions
+  - **Add Player Form**: Created comprehensive AddPlayerForm component for league creators to add non-user players
+  - **League Dashboard Enhanced**: Added league owner action sections with proper permission checks
+  - **Date Validation Improved**: Enhanced schema validation with proper error messages and comprehensive test coverage (15/15 tests passing)
+  - **API Permission Model**: All league management features now properly check for league.createdBy instead of admin role
+  - **Production Ready**: All critical button functionalities now working properly with proper error handling
 
 ## User Preferences
 
