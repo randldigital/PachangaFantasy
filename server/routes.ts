@@ -88,10 +88,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const leagueData = insertLeagueSchema.parse(req.body);
       const league = await storage.createLeague(leagueData, req.user!.id);
       
-      // Note: User role management can be handled differently in production
+      // Automatically add the league creator as a player
+      const creatorPlayer = await storage.createPlayer({
+        name: req.user!.username,
+        emoji: '👑', // Crown emoji for league creator
+        leagueId: league.id,
+        userId: req.user!.id,
+        createdBy: req.user!.id
+      });
       
+      console.log('League created with creator as player:', { league: league.id, player: creatorPlayer.id, creator: req.user!.username });
       res.json(league);
     } catch (error) {
+      console.error('Create league error:', error);
       res.status(400).json({ message: 'Invalid input' });
     }
   });
