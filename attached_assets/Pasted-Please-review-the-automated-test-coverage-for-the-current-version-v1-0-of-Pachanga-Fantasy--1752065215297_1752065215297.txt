@@ -1,0 +1,91 @@
+Please review the automated test coverage for the current version (v1.0) of Pachanga Fantasy.
+
+🧠 Goal:
+Ensure that all basic user flows are properly tested with unit, integration, and E2E tests. Update or create missing tests where needed, then run them. If any test fails, fix the corresponding implementation without changing unrelated code.
+
+---
+
+🎯 Key Flows to Test Automatically:
+
+1. ✅ User registration and login
+
+   * Test successful and failed logins
+   * Token saved and used correctly
+
+2. ✅ Create or join league
+
+   * Create league (admin)
+   * Join league using invite code
+
+3. ✅ Add self as player
+
+   * Test player creation linked to logged-in user
+   * Prevent duplicates
+
+4. ✅ View player list and market values
+
+   * Check player listing per league
+   * Confirm tier list average is visible (if calculated)
+
+5. ✅ Match creation and joining
+
+   * Create match as admin
+   * Join match as player
+   * Prevent joining after max participants
+
+6. ✅ Lineup creation
+
+   * Select 5 players with captain
+   * Captain bonus displayed
+
+7. ✅ Stat reporting
+
+   * Report goals and assists
+   * Admin can input total match score
+   * Warning shown if sum of player goals != match score
+
+8. ✅ Score calculation
+
+   * Points computed correctly (G=3, A=2, captain=2x)
+   * Lineup points stored and visible
+
+9. ✅ Leaderboards
+
+   * Show users sorted by points
+   * Show players sorted by stats
+   * Highlight current user
+
+10. ✅ Lineup visual field display
+
+* Ensure players are rendered on SVG football field
+* Captain clearly marked
+
+---
+
+🧪 What to do:
+
+* Review existing tests in `/tests/frontend/`, `/tests/backend/`, `/tests/e2e/`
+* Update any outdated assertions (e.g., verification status logic)
+* Add missing tests using Vitest, Supertest, Testing Library, Playwright
+* Ensure the full test suite passes
+* If any test fails, fix the app logic or components accordingly
+
+---
+
+💾 Tech stack:
+
+* Vitest (unit)
+* Supertest (API)
+* Testing Library + Playwright (frontend, E2E)
+* PostgreSQL + Drizzle ORM backend
+* React 18, TanStack Query, Tailwind, shadcn/ui frontend
+
+---
+
+☑ Constraints:
+
+* Do not implement new features
+* Fix only bugs or regressions related to these flows
+* Preserve test organization and naming conventions
+
+Please proceed.
