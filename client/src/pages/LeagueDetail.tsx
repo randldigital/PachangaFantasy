@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Users, Copy, Plus, Play, StopCircle } from 'lucide-react';
 import AddMyselfAsPlayerButton from '@/components/AddMyselfAsPlayerButton';
+import DeleteLeagueButton from '@/components/league/DeleteLeagueButton';
 
 const playerEmojis = ['⚽', '🏃', '🛡️', '🎯', '🥅', '⚡', '🔥', '💎', '👑', '🌟'];
 
@@ -302,6 +303,7 @@ export default function LeagueDetail() {
                         {...form.register('name')}
                         className="bg-transparent border-gray-600 focus:border-accent-blue"
                         placeholder="Player name"
+                        maxLength={25}
                       />
                     </div>
 
@@ -398,6 +400,13 @@ export default function LeagueDetail() {
             )}
           </div>
         ) : null}
+
+        {/* Delete League Section for Admin */}
+        {isAdmin && (
+          <div className="text-center mt-8 pt-8 border-t border-red-500/20">
+            <DeleteLeagueButton league={league} isLeagueCreator={true} />
+          </div>
+        )}
       </div>
     </div>
   );

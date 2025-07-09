@@ -11,6 +11,8 @@ import { apiRequest } from "@/lib/queryClient";
 import CreateMatchForm from "@/components/league/CreateMatchForm";
 import TeamAssignmentPreview from "@/components/league/TeamAssignmentPreview";
 import AddPlayersToMatchModal from "@/components/league/AddPlayersToMatchModal";
+import DeleteMatchButton from "@/components/league/DeleteMatchButton";
+import EndMatchButton from "@/components/league/EndMatchButton";
 import type { Match, League, User, Player } from "@shared/schema";
 
 interface MatchContextHeaderProps {
@@ -144,17 +146,29 @@ export default function MatchContextHeader({
                 
                 {userHasJoined ? (
                   <div className="flex items-center gap-2">
-                    {/* League Creator: Add Players Button */}
+                    {/* League Creator: Management Buttons */}
                     {user?.id === league.createdBy && (
-                      <Button
-                        onClick={() => setShowAddPlayers(true)}
-                        size="sm"
-                        variant="outline"
-                        className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
-                      >
-                        <Settings className="w-4 h-4 mr-2" />
-                        {t('match.addPlayers')}
-                      </Button>
+                      <>
+                        <Button
+                          onClick={() => setShowAddPlayers(true)}
+                          size="sm"
+                          variant="outline"
+                          className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
+                        >
+                          <Settings className="w-4 h-4 mr-2" />
+                          {t('match.addPlayers')}
+                        </Button>
+                        <EndMatchButton 
+                          match={match} 
+                          leagueId={league.id} 
+                          isLeagueCreator={true} 
+                        />
+                        <DeleteMatchButton 
+                          match={match} 
+                          leagueId={league.id} 
+                          isLeagueCreator={true} 
+                        />
+                      </>
                     )}
                     
                     <Button
@@ -169,17 +183,29 @@ export default function MatchContextHeader({
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    {/* League Creator: Add Players Button (even when not joined) */}
+                    {/* League Creator: Management Buttons (even when not joined) */}
                     {user?.id === league.createdBy && (
-                      <Button
-                        onClick={() => setShowAddPlayers(true)}
-                        size="sm"
-                        variant="outline"
-                        className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
-                      >
-                        <Settings className="w-4 h-4 mr-2" />
-                        {t('match.addPlayers')}
-                      </Button>
+                      <>
+                        <Button
+                          onClick={() => setShowAddPlayers(true)}
+                          size="sm"
+                          variant="outline"
+                          className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
+                        >
+                          <Settings className="w-4 h-4 mr-2" />
+                          {t('match.addPlayers')}
+                        </Button>
+                        <EndMatchButton 
+                          match={match} 
+                          leagueId={league.id} 
+                          isLeagueCreator={true} 
+                        />
+                        <DeleteMatchButton 
+                          match={match} 
+                          leagueId={league.id} 
+                          isLeagueCreator={true} 
+                        />
+                      </>
                     )}
                     
                     <Button

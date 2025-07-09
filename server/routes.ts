@@ -246,6 +246,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(league);
   });
 
+  // Delete league (league creator only)
+  app.delete('/api/leagues/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const leagueId = parseInt(req.params.id);
+      const league = await storage.getLeague(leagueId);
+      
+      if (!league) {
+        return res.status(404).json({ message: 'League not found' });
+      }
+
+      // Only league creator can delete
+      if (league.createdBy !== req.user!.id) {
+        return res.status(403).json({ message: 'Only league creator can delete the league' });
+      }
+
+      await storage.deleteLeague(leagueId);
+      console.log('League deleted:', { league: leagueId, creator: req.user!.username });
+      res.json({ message: 'League deleted successfully' });
+    } catch (error) {
+      console.error('Delete league error:', error);
+      res.status(500).json({ message: 'Failed to delete league' });
+    }
+  });
+
   // Player routes - League creators can add players to their leagues
   app.post('/api/players/:leagueId', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
@@ -547,6 +571,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete match (league creator only)
+  app.delete('/api/matches/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const match = await storage.getMatch(matchId);
+      
+      if (!match) {
+        return res.status(404).json({ message: 'Match not found' });
+      }
+
+      // Check if user is league creator
+      const league = await storage.getLeague(match.leagueId);
+      if (!league) {
+        return res.status(404).json({ message: 'League not found' });
+      }
+
+      if (league.createdBy !== req.user!.id) {
+        return res.status(403).json({ message: 'Only league creator can delete matches' });
+      }
+
+      await storage.deleteMatch(matchId);
+      console.log('Match deleted:', { match: matchId, league: league.id, creator: req.user!.username });
+      res.json({ message: 'Match deleted successfully' });
+    } catch (error) {
+      console.error('Delete match error:', error);
+      res.status(500).json({ message: 'Failed to delete match' });
+    }
+  });
+
+  // End match (league creator only)
+  app.post('/api/matches/:id/end', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const match = await storage.getMatch(matchId);
+      
+      if (!match) {
+        return res.status(404).json({ message: 'Match not found' });
+      }
+
+      // Check if user is league creator
+      const league = await storage.getLeague(match.leagueId);
+      if (!league) {
+        return res.status(404).json({ message: 'League not found' });
+      }
+
+      if (league.createdBy !== req.user!.id) {
+        return res.status(403).json({ message: 'Only league creator can end matches' });
+      }
+
+      // Update match status to completed
+      const updatedMatch = await storage.updateMatch(matchId, { status: 'completed' });
+      console.log('Match ended:', { match: matchId, league: league.id, creator: req.user!.username });
+      res.json({ message: 'Match ended successfully. Participants can now submit stats.', match: updatedMatch });
+    } catch (error) {
+      console.error('End match error:', error);
+      res.status(500).json({ message: 'Failed to end match' });
+    }
+  });
+
   // Get match participants with player details
   app.get('/api/matches/:id/participants', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
@@ -706,12 +789,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // v0.2 - Lineup Management Routes
 
-  // Create/update lineup
+  // Create/update lineup (any league member can create a lineup)
   app.post('/api/matches/:matchId/lineup', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.matchId);
       const userId = req.user!.id;
       
+      // Check if match exists and user has access to the league
+      const match = await storage.getMatch(matchId);
+      if (!match) {
+        return res.status(404).json({ message: 'Match not found' });
+      }
+
+      const league = await storage.getLeague(match.leagueId);
+      if (!league) {
+        return res.status(404).json({ message: 'League not found' });
+      }
+
+      // Check if user is in the league (creator or participant)
+      const hasAccess = league.createdBy === userId || 
+                       (league.participants && league.participants.includes(userId));
+      
+      if (!hasAccess) {
+        return res.status(403).json({ message: 'You must be a member of this league to create a lineup' });
+      }
+
+      // Only allow lineup creation for open matches
+      if (match.status !== 'open') {
+        return res.status(400).json({ message: 'Can only create lineups for open matches' });
+      }
+
       const result = insertLineupSchema.safeParse({
         ...req.body,
         matchId,

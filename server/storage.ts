@@ -19,6 +19,7 @@ export interface IStorage {
   getLeagueByInviteCode(inviteCode: string): Promise<League | undefined>;
   createLeague(league: InsertLeague, createdBy: number): Promise<League>;
   updateLeague(id: number, updates: Partial<League>): Promise<League | undefined>;
+  deleteLeague(id: number): Promise<void>;
   getUserLeagues(userId: number): Promise<League[]>;
   
   // Players
@@ -39,6 +40,7 @@ export interface IStorage {
   getMatchesByLeague(leagueId: number): Promise<Match[]>;
   createMatch(match: InsertMatch & { createdBy: number }): Promise<Match>;
   updateMatch(id: number, updates: Partial<Match>): Promise<Match | undefined>;
+  deleteMatch(id: number): Promise<void>;
   joinMatch(matchId: number, userId: number): Promise<MatchParticipant>;
   addPlayerToMatch(matchId: number, playerId: number): Promise<MatchParticipant>;
   getMatchParticipants(matchId: number): Promise<MatchParticipant[]>;
@@ -142,6 +144,25 @@ export class DatabaseStorage implements IStorage {
       .where(eq(leagues.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  async deleteLeague(id: number): Promise<void> {
+    // Get all matches in this league first
+    const leagueMatches = await this.getMatchesByLeague(id);
+    
+    // Delete all matches and their related data
+    for (const match of leagueMatches) {
+      await this.deleteMatch(match.id);
+    }
+    
+    // Delete tier lists for this league
+    await db.delete(tierLists).where(eq(tierLists.leagueId, id));
+    
+    // Delete players in this league
+    await db.delete(players).where(eq(players.leagueId, id));
+    
+    // Finally delete the league
+    await db.delete(leagues).where(eq(leagues.id, id));
   }
 
   async getUserLeagues(userId: number): Promise<League[]> {
@@ -255,6 +276,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(matches.id, id))
       .returning();
     return match || undefined;
+  }
+
+  async deleteMatch(id: number): Promise<void> {
+    // Delete in order to respect foreign key constraints
+    await db.delete(scores).where(eq(scores.matchId, id));
+    await db.delete(statReports).where(eq(statReports.matchId, id));
+    await db.delete(lineups).where(eq(lineups.matchId, id));
+    await db.delete(matchParticipants).where(eq(matchParticipants.matchId, id));
+    await db.delete(matches).where(eq(matches.id, id));
   }
 
   async joinMatch(matchId: number, userId: number): Promise<MatchParticipant> {

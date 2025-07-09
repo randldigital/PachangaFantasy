@@ -24,7 +24,15 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
 
   const createLeagueMutation = useMutation({
     mutationFn: async (data: InsertLeague) => {
-      return await apiRequest('POST', '/api/leagues', data);
+      const response = await apiRequest('/api/leagues', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create league');
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -45,7 +53,34 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
+    
+    // Client-side validation
+    if (!formData.name.trim()) {
+      toast({
+        title: t('common.error'),
+        description: 'League name is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (formData.name.length > 25) {
+      toast({
+        title: t('common.error'),
+        description: 'League name must be 25 characters or less',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (formData.description.length > 200) {
+      toast({
+        title: t('common.error'),
+        description: 'Description must be 200 characters or less',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     createLeagueMutation.mutate(formData);
   };
@@ -67,8 +102,14 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
           onChange={(e) => handleChange('name', e.target.value)}
           placeholder={t('league.namePlaceholder')}
           className="bg-slate-900 border-slate-600 text-white placeholder-slate-400"
+          maxLength={25}
           required
         />
+        {formData.name.length > 20 && (
+          <p className="text-sm text-orange-400">
+            {25 - formData.name.length} characters remaining
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -81,8 +122,14 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
           onChange={(e) => handleChange('description', e.target.value)}
           placeholder={t('league.descriptionPlaceholder')}
           className="bg-slate-900 border-slate-600 text-white placeholder-slate-400"
+          maxLength={200}
           rows={3}
         />
+        {formData.description.length > 180 && (
+          <p className="text-sm text-orange-400">
+            {200 - formData.description.length} characters remaining
+          </p>
+        )}
       </div>
 
       <Button

@@ -92,6 +92,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
   role: true,
+}).extend({
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 export const insertLeagueSchema = createInsertSchema(leagues).omit({
@@ -101,11 +103,16 @@ export const insertLeagueSchema = createInsertSchema(leagues).omit({
   status: true,
   participants: true,
   createdAt: true,
+}).extend({
+  name: z.string().min(1, "Name is required").max(25, "Name must be 25 characters or less"),
+  description: z.string().max(200, "Description must be 200 characters or less").optional(),
 });
 
 export const insertPlayerSchema = createInsertSchema(players).pick({
   name: true,
   emoji: true,
+}).extend({
+  name: z.string().min(1, "Name is required").max(25, "Name must be 25 characters or less"),
 });
 
 export const insertTierListSchema = createInsertSchema(tierLists).pick({
@@ -115,7 +122,7 @@ export const insertTierListSchema = createInsertSchema(tierLists).pick({
 
 export const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(1),
+  password: z.string().min(1, "Password is required"),
 });
 
 export const joinLeagueSchema = z.object({
@@ -129,6 +136,9 @@ export const insertMatchSchema = createInsertSchema(matches).omit({
   matchTeams: true,
   createdBy: true,
   createdAt: true,
+}).extend({
+  date: z.string().transform((str) => new Date(str)),
+  lineupBudget: z.number().min(50, "Budget must be at least 50").max(500, "Budget cannot exceed 500"),
 });
 
 export const insertLineupSchema = createInsertSchema(lineups).omit({
