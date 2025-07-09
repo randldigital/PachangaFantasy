@@ -137,7 +137,10 @@ export const insertMatchSchema = createInsertSchema(matches).omit({
   createdBy: true,
   createdAt: true,
 }).extend({
-  date: z.string().transform((str) => new Date(str)),
+  date: z.string().min(1, "Date is required").refine((str) => {
+    const date = new Date(str);
+    return !isNaN(date.getTime());
+  }, "Invalid date format").transform((str) => new Date(str)),
   lineupBudget: z.number().min(50, "Budget must be at least 50").max(500, "Budget cannot exceed 500"),
 });
 

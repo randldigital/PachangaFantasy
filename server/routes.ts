@@ -486,13 +486,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new match (league creator only)
   app.post('/api/matches', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      // Convert date string to Date object before validation
-      const bodyWithDate = {
-        ...req.body,
-        date: new Date(req.body.date)
-      };
-      
-      const result = insertMatchSchema.safeParse(bodyWithDate);
+      // Let the schema handle date string transformation
+      const result = insertMatchSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ message: 'Invalid input', errors: result.error.issues });
       }
