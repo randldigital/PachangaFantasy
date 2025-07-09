@@ -169,14 +169,28 @@ export default function LeagueDashboard() {
                     <div className="flex gap-2">
                       <Button 
                         className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-                        onClick={() => window.location.href = `/matches/${upcomingMatch.id}`}
+                        onClick={() => {
+                          // Check if match still exists before navigating
+                          if (upcomingMatch && matches.some(m => m.id === upcomingMatch.id)) {
+                            window.location.href = `/matches/${upcomingMatch.id}`;
+                          } else {
+                            window.location.reload();
+                          }
+                        }}
                       >
                         View Match
                       </Button>
                       <Button 
                         variant="outline"
                         className="flex-1 border-gray-600 hover:bg-gray-700"
-                        onClick={() => window.location.href = `/matches/${upcomingMatch.id}/lineup`}
+                        onClick={() => {
+                          // Check if match still exists before navigating
+                          if (upcomingMatch && matches.some(m => m.id === upcomingMatch.id)) {
+                            window.location.href = `/matches/${upcomingMatch.id}/lineup`;
+                          } else {
+                            window.location.reload();
+                          }
+                        }}
                       >
                         Set Lineup
                       </Button>

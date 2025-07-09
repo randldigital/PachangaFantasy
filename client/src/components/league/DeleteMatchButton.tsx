@@ -38,10 +38,18 @@ export default function DeleteMatchButton({ match, leagueId, isLeagueCreator }: 
         title: "Match deleted",
         description: "The match has been successfully deleted.",
       });
-      // Invalidate queries to refresh the match list
+      // Invalidate and refetch queries to refresh the match list immediately
       queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId, "matches"] });
       queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId] });
+      // Force immediate refetch
+      queryClient.refetchQueries({ queryKey: ["/api/leagues", leagueId, "matches"] });
       setOpen(false);
+      
+      // If we're currently viewing the match that was deleted, redirect to league dashboard
+      if (window.location.pathname.includes(`/matches/${match.id}`)) {
+        window.location.href = `/leagues/${leagueId}`;
+      }
     },
     onError: (error: Error) => {
       toast({

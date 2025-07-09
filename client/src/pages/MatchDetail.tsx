@@ -23,11 +23,16 @@ export default function MatchDetail() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: match, isLoading: matchLoading } = useQuery<MatchWithParticipants>({
+  const { data: match, isLoading: matchLoading, error: matchError } = useQuery<MatchWithParticipants>({
     queryKey: ['/api/matches', id],
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/matches/${id}`);
       return response.json();
+    },
+    retry: (failureCount, error) => {
+      // Don't retry if it's a 404 (match not found)
+      if (error?.message?.includes('404')) return false;
+      return failureCount < 3;
     },
   });
 
@@ -115,11 +120,16 @@ export default function MatchDetail() {
     );
   }
 
-  if (!match) {
+  if (!match || matchError) {
     return (
       <div className="min-h-screen bg-[#121212] text-[#e0e0e0] p-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-2xl font-bold mb-4">Match not found</h1>
+          <h1 className="text-2xl font-bold mb-4">
+            {matchError?.message?.includes('404') ? 'Match not found or has been deleted' : 'Match not found'}
+          </h1>
+          <p className="text-gray-400 mb-4">
+            The match you're looking for may have been deleted or doesn't exist.
+          </p>
           <Button onClick={() => window.history.back()}>Go Back</Button>
         </div>
       </div>
