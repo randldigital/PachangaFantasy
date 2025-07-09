@@ -1,0 +1,58 @@
+The match completion flow in Pachanga Fantasy currently updates the backend status correctly, but the UI for other users and related functionality does not react to the new match state.
+
+Please address the following issues to fully synchronize the frontend with the completed match state:
+
+---
+
+🧠 Goals:
+
+1. ✅ Global UI Sync on Match Completion
+- When the league owner ends the match:
+  - Ensure that match status is updated globally
+  - Use TanStack Query invalidation to refetch match and league data for all users
+  - All views where match data is rendered (MatchDetail, LeagueDetail) must reflect status = "completed" immediately
+
+2. ✅ Activate Post-Match Components
+- Once a match is marked as completed:
+  - Show the “Submit My Stats” button to all participants, including the league owner
+  - Ensure that the submission component is visible and enabled only when match.status === 'completed'
+  - This component must be rendered in MatchDetail or relevant view
+
+3. ✅ Conditional UI Rendering
+- Hide the “End Match” button once the match is completed
+- Show a badge or status icon that says “Match Completed”
+- If user has not submitted stats → show stat submission form
+- If stats already submitted → show confirmation or disabled state
+
+4. ✅ League Owner Visibility
+- League creator should:
+  - See a list of all participants
+  - View stat submission status per player (submitted / pending)
+  - Be able to submit their own stats if they are a player
+
+5. ✅ Error Prevention and Fallbacks
+- Prevent re-submission of stats by the same user
+- Show feedback/toast upon successful stat submission
+- If a participant is not seeing the stats submission button, ensure:
+  - They are marked as a participant of that match
+  - The match status is correctly cached or reloaded
+
+---
+
+📂 Files to Check and Update:
+
+- `MatchDetail.tsx`: must conditionally render stats UI based on match status
+- `SubmitMyStats.tsx`: ensure visibility logic works for all participants
+- `EndMatchButton.tsx`: must invalidate relevant queries after completion
+- `LeagueDetail.tsx`: ensure match status updates in match list
+- Shared contexts or hooks: ensure match state is refreshed on match end
+
+---
+
+✅ Goal:
+Ensure that once a match is marked as completed:
+→ The UI updates everywhere  
+→ All participants see and can use the stats submission flow  
+→ League owner has full post-match visibility
+
+Please fix this incomplete behavior and recheck the full post-match experience.

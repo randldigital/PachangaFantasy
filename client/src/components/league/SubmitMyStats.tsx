@@ -58,14 +58,23 @@ export default function SubmitMyStats({ match, userId, isParticipant }: SubmitMy
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "✅ Stats submitted successfully!",
         description: `Goals: ${goals || '0'}, Assists: ${assists || '0'}`,
         duration: 5000,
       });
-      // Invalidate stats query to refresh data
-      queryClient.invalidateQueries({ queryKey: ['/api/matches', match.id, 'stats'] });
+      
+      // Comprehensive query invalidation for immediate UI updates
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/matches', match.id, 'stats'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/matches', match.id] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/leagues', match.leagueId, 'matches'] }),
+      ]);
+      
+      // Force refetch for immediate updates
+      await queryClient.refetchQueries({ queryKey: ['/api/matches', match.id, 'stats'] });
+      
       setOpen(false);
       setGoals("");
       setAssists("");
@@ -83,6 +92,14 @@ export default function SubmitMyStats({ match, userId, isParticipant }: SubmitMy
   if (!isParticipant || match.status !== 'completed') {
     return null;
   }
+
+  // Debug logging to ensure component is rendered properly
+  console.log('SubmitMyStats render:', { 
+    matchStatus: match.status, 
+    isParticipant, 
+    hasSubmitted, 
+    userId 
+  });
 
   // Show submitted status if already submitted
   if (hasSubmitted) {

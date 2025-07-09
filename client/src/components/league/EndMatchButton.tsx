@@ -49,21 +49,29 @@ export default function EndMatchButton({ match, leagueId, isLeagueCreator }: End
       
       return { endData, validateData: await validateResponse.json() };
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast({
         title: "🏆 Match Completed Successfully!",
         description: `Final score: ${finalScore} goals recorded. Players can now submit their individual stats.`,
         duration: 6000,
       });
-      // Comprehensive query invalidation for immediate UI updates
-      queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId, "matches"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id, "stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id, "participants"] });
       
-      // Force refetch for immediate updates
-      queryClient.refetchQueries({ queryKey: ["/api/matches", match.id] });
-      queryClient.refetchQueries({ queryKey: ["/api/leagues", leagueId, "matches"] });
+      // Comprehensive query invalidation for immediate UI updates across all views
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId, "matches"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id, "stats"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id, "participants"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId] }),
+      ]);
+      
+      // Force refetch for immediate updates across all components
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["/api/matches", match.id] }),
+        queryClient.refetchQueries({ queryKey: ["/api/leagues", leagueId, "matches"] }),
+        queryClient.refetchQueries({ queryKey: ["/api/leagues", leagueId] }),
+      ]);
+      
       setOpen(false);
       setFinalScore("");
     },

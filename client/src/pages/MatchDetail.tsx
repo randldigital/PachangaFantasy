@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Calendar, Users, Target, Trophy, Clock } from 'lucide-react';
+import EndMatchButton from '@/components/league/EndMatchButton';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -245,16 +246,91 @@ export default function MatchDetail() {
                   </Button>
                 )}
                 
-                {/* Stats submission for participants when match is completed */}
-                <SubmitMyStats 
+                {/* Enhanced stats submission for participants when match is completed */}
+                {match.status === 'completed' && (
+                  <SubmitMyStats 
+                    match={match}
+                    userId={user!.id}
+                    isParticipant={isParticipant}
+                  />
+                )}
+              </>
+            )}
+            
+            {/* League creator controls */}
+            {league?.createdBy === user?.id && (
+              <>
+                {/* End match button for league creator (shown when match is not completed) */}
+                <EndMatchButton 
                   match={match}
-                  userId={user?.id || 0}
-                  isParticipant={isParticipant}
+                  leagueId={match.leagueId}
+                  isLeagueCreator={true}
                 />
+                
+                {/* Stats submission for league creator when match is completed */}
+                {match.status === 'completed' && isParticipant && (
+                  <SubmitMyStats 
+                    match={match}
+                    userId={user?.id || 0}
+                    isParticipant={isParticipant}
+                  />
+                )}
               </>
             )}
           </div>
         </div>
+
+        {/* League Creator Participant Overview */}
+        {league?.createdBy === user?.id && match.status === 'completed' && (
+          <Card className="mb-6 bg-[#1e1e1e] border-gray-700">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-400" />
+                Participant Stats Submission Status
+              </CardTitle>
+              <CardDescription>
+                Monitor which participants have submitted their match statistics
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {acceptedParticipants.map((participant) => {
+                  const player = players.find(p => p.userId === participant.userId);
+                  const playerName = player?.name || `User ${participant.userId}`;
+                  const hasSubmitted = statReports.some(report => report.userId === participant.userId);
+                  
+                  return (
+                    <div 
+                      key={participant.userId}
+                      className={`flex items-center justify-between p-3 rounded-lg border ${
+                        hasSubmitted 
+                          ? 'bg-green-600/10 border-green-500/30' 
+                          : 'bg-yellow-600/10 border-yellow-500/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">{player?.emoji || '👤'}</span>
+                        <div>
+                          <p className="font-semibold">{playerName}</p>
+                          <p className="text-sm text-gray-400">
+                            {hasSubmitted ? 'Stats submitted' : 'Pending submission'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        hasSubmitted 
+                          ? 'bg-green-600 text-white' 
+                          : 'bg-yellow-600 text-white'
+                      }`}>
+                        {hasSubmitted ? '✅ Done' : '⏳ Waiting'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Match Completion Status Banner */}
         {match.status === 'completed' && (
