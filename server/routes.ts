@@ -551,6 +551,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Match not found' });
       }
 
+      // Check if user is a player in this league
+      const userAsPlayer = await storage.checkUserAsPlayer(userId, match.leagueId);
+      if (!userAsPlayer) {
+        return res.status(400).json({ 
+          message: 'You must be added as a player in this league first',
+          needsPlayerRecord: true
+        });
+      }
+
       const participant = await storage.joinMatch(matchId, userId);
       
       // Check if we have enough participants to balance teams (e.g., 10 players)
@@ -558,7 +567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const acceptedParticipants = participants.filter(p => p.status === 'accepted');
       
       if (acceptedParticipants.length >= 10) {
-        const playerIds = acceptedParticipants.map(p => p.userId);
+        const playerIds = acceptedParticipants.map(p => p.playerId);
         const teams = await storage.balanceTeams(matchId, playerIds);
         await storage.updateMatch(matchId, { status: 'ready' });
       }
@@ -566,6 +575,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(participant);
     } catch (error) {
       console.error('Error joining match:', error);
+      if (error instanceof Error) {
+        if (error.message.includes('not a player')) {
+          return res.status(400).json({ 
+            message: 'You must be added as a player in this league first',
+            needsPlayerRecord: true
+          });
+        }
+        return res.status(400).json({ message: error.message });
+      }
       res.status(500).json({ message: 'Internal server error' });
     }
   });

@@ -53,7 +53,8 @@ export default function MatchDetail() {
 
   const joinMatchMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('POST', `/api/matches/${id}/join`);
+      const response = await apiRequest('POST', `/api/matches/${id}/join`, {});
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/matches', id] });
@@ -62,12 +63,30 @@ export default function MatchDetail() {
         description: 'You have joined the match',
       });
     },
-    onError: () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to join match',
-        variant: 'destructive',
-      });
+    onError: async (error: any) => {
+      console.error('Join match error:', error);
+      try {
+        const errorData = await error.json();
+        if (errorData.needsPlayerRecord) {
+          toast({
+            title: 'Player Record Required',
+            description: 'You need to add yourself as a player in this league first. Go to the league page and click "Add Me as Player".',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Error',
+            description: errorData.message || 'Failed to join match',
+            variant: 'destructive',
+          });
+        }
+      } catch {
+        toast({
+          title: 'Error',
+          description: 'Failed to join match',
+          variant: 'destructive',
+        });
+      }
     },
   });
 
