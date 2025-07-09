@@ -10,6 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import AdminGoalValidation from '@/components/league/AdminGoalValidation';
+import SubmitMyStats from '@/components/league/SubmitMyStats';
+import AdminStatsOverview from '@/components/league/AdminStatsOverview';
 import type { Match, MatchParticipant, Player, StatReport } from '@shared/schema';
 
 interface MatchWithParticipants extends Match {
@@ -205,7 +207,7 @@ export default function MatchDetail() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-4 mb-6">
+          <div className="flex flex-wrap gap-4 mb-6">
             {!isParticipant && match.status === 'open' && (
               <Button 
                 onClick={() => joinMatchMutation.mutate()}
@@ -218,22 +220,21 @@ export default function MatchDetail() {
             
             {isParticipant && (
               <>
-                <Button 
-                  onClick={() => window.location.href = `/matches/${id}/lineup`}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                >
-                  Manage Lineup
-                </Button>
-                
-                {match.status === 'completed' && (
+                {match.status !== 'completed' && (
                   <Button 
-                    onClick={() => window.location.href = `/matches/${id}/stats`}
-                    variant="outline"
-                    className="border-gray-600 hover:bg-gray-700"
+                    onClick={() => window.location.href = `/matches/${id}/lineup`}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   >
-                    View Stats
+                    Manage Lineup
                   </Button>
                 )}
+                
+                {/* Stats submission for participants when match is completed */}
+                <SubmitMyStats 
+                  match={match}
+                  userId={user?.id || 0}
+                  isParticipant={isParticipant}
+                />
               </>
             )}
           </div>
@@ -250,6 +251,14 @@ export default function MatchDetail() {
             />
           </div>
         )}
+
+        {/* Admin Stats Overview */}
+        <div className="mb-6">
+          <AdminStatsOverview 
+            match={match}
+            isLeagueCreator={league?.createdBy === user?.id}
+          />
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Team A */}

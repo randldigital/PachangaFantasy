@@ -48,6 +48,7 @@ export const matches = pgTable("matches", {
   lineupBudget: integer("lineup_budget").default(100),
   status: text("status").$type<'open' | 'ready' | 'completed'>().default('open'),
   matchTeams: json("match_teams").$type<{ teamA: number[], teamB: number[] }>(),
+  finalScore: integer("final_score"),
   createdBy: integer("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });

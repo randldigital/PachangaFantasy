@@ -55,6 +55,7 @@ export interface IStorage {
   createStatReport(statReport: InsertStatReport): Promise<StatReport>;
   getStatReportsForMatch(matchId: number): Promise<StatReport[]>;
   verifyStatReport(reportId: number, verifiedBy: number, status: 'confirmed' | 'disputed'): Promise<StatReport | undefined>;
+  validateMatchGoals(matchId: number, finalScore: number): Promise<{ isValid: boolean; reportedTotal: number; difference: number }>;
   calculateMatchScores(matchId: number): Promise<Score[]>;
   getLeagueRankings(leagueId: number): Promise<{ userId: number, username: string, totalPoints: number }[]>;
 }
