@@ -1,0 +1,81 @@
+We are defining a strategic roadmap for the Pachanga Fantasy project and want you to validate its technical feasibility before implementing anything.
+
+Please do not modify or refactor any part of the code yet. Just analyze and respond.
+
+Here is the high-level version plan:
+
+🟢 v1.0 – Full Game Flow (Core MVP for testing)
+Goals:
+
+User can register/login and create or join a private league
+
+User can add themselves as a player
+
+Admin can create a single active match
+
+Players can join that match
+
+Each user can create a lineup (5 players, 1 captain) with budget validation
+
+After the match, players input their own stats (goals, assists)
+
+The admin verifies total goals for consistency
+
+The system auto-generates points per lineup
+
+Leaderboards for players and users are updated
+
+All game logic is self-contained, simple, and testable
+
+
+
+🔵 v1.2 – UX & Visual Enhancements
+Goals:
+
+Visual lineup rendered on a football field
+
+Captain badge and player avatars
+
+Responsive and polished mobile experience
+
+Real-time feedback on budget, goals, validations
+
+Toast messages and smooth transitions
+
+🟣 v1.5 – Social Layer
+Goals:
+
+Post-match voting for MVPs and disappointments
+
+Leaderboard impact based on votes
+
+Admin-controlled “End Season” button (no auto-dates)
+
+Simple “Season Wrapped” screen with best players, managers
+
+No public leagues, everything stays private
+
+🟡 v2.0 – Final Product (Consolidated, Maintained)
+Goals:
+
+Full cycle of repeated matches and seasons
+
+Stable, modular backend architecture
+
+Progressive Web App support or light native app readiness
+
+Visual summary export (screenshot or PDF optional)
+
+Polished UX, tested workflows, minimal bugs
+
+🧠 Your task:
+
+Analyze the current state of the codebase and identify any gaps for each version (v1.0, v1.2, v1.5, v2.0)
+
+Tell us what’s missing, needs improvement, or needs restructuring for each version
+
+Confirm if each phase is feasible with our current stack (React 18, Express, PostgreSQL with Drizzle, shadcn/ui, Tailwind, TanStack Query, etc.)
+
+List potential challenges or conflicts to be aware of
+
+Respond in plain English. Do not write or change any code yet.
