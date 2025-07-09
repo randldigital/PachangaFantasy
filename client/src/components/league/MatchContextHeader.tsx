@@ -144,8 +144,8 @@ export default function MatchContextHeader({
                 
                 {userHasJoined ? (
                   <div className="flex items-center gap-2">
-                    {/* Admin: Add Players Button */}
-                    {user?.role === 'admin' && (
+                    {/* League Creator: Add Players Button */}
+                    {user?.id === league.createdBy && (
                       <Button
                         onClick={() => setShowAddPlayers(true)}
                         size="sm"
@@ -169,8 +169,8 @@ export default function MatchContextHeader({
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    {/* Admin: Add Players Button (even when not joined) */}
-                    {user?.role === 'admin' && (
+                    {/* League Creator: Add Players Button (even when not joined) */}
+                    {user?.id === league.createdBy && (
                       <Button
                         onClick={() => setShowAddPlayers(true)}
                         size="sm"
@@ -219,6 +219,7 @@ export default function MatchContextHeader({
               match={match} 
               user={user}
               players={players}
+              league={league}
             />
           </DialogContent>
         </Dialog>

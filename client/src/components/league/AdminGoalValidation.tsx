@@ -15,6 +15,7 @@ interface AdminGoalValidationProps {
   match: Match;
   statReports: StatReport[];
   user: any;
+  league: any;
 }
 
 interface ValidationResult {
@@ -23,14 +24,14 @@ interface ValidationResult {
   difference: number;
 }
 
-export default function AdminGoalValidation({ match, statReports, user }: AdminGoalValidationProps) {
+export default function AdminGoalValidation({ match, statReports, user, league }: AdminGoalValidationProps) {
   const [finalScore, setFinalScore] = useState<number>(0);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Only show to admin
-  if (!user || user.role !== 'admin') {
+  // Only show to league creator
+  if (!user || !league || user.id !== league.createdBy) {
     return null;
   }
 

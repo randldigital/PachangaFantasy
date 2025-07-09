@@ -222,6 +222,14 @@ Pachanga Fantasy is a fullstack web application for creating and managing fantas
   - Modified server routes to support simplified admin validation instead of peer verification
   - Fixed lineup saving bug by ensuring totalCost is properly calculated and included in mutations
   - Core v1.0 game flow now complete: league creation → tier lists → matches → lineups → admin validation → scoring
+- July 09, 2025: Fixed permission model from admin-only to league creator-based control
+  - Updated all API routes: player creation, match creation, and goal validation now require league creator permissions instead of admin role
+  - Modified UI components (MatchContextHeader, AdminGoalValidation, TeamAssignmentPreview) to check for league.createdBy instead of user.role === 'admin'
+  - Enhanced automatic league creator functionality: league creators are now automatically added as players with crown emoji (👑)
+  - Fixed missing player records for existing league creators (added gazpachito to league 7)
+  - Updated permission labels from "Admin" to "Creator" in team assignment displays
+  - Ensured league creators have full control over their leagues: adding players, creating matches, validating goals
+  - Proper league ownership model now implemented throughout the application
 
 ## User Preferences
 

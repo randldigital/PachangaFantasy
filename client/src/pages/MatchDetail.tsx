@@ -41,6 +41,16 @@ export default function MatchDetail() {
     enabled: !!match?.leagueId,
   });
 
+  const { data: league } = useQuery({
+    queryKey: ['/api/leagues', match?.leagueId],
+    queryFn: async () => {
+      if (!match?.leagueId) return null;
+      const response = await apiRequest('GET', `/api/leagues/${match.leagueId}`);
+      return response.json();
+    },
+    enabled: !!match?.leagueId,
+  });
+
   const { data: statReports = [] } = useQuery<StatReport[]>({
     queryKey: ['/api/matches', id, 'stats'],
     queryFn: async () => {
@@ -226,6 +236,7 @@ export default function MatchDetail() {
               match={match} 
               statReports={statReports} 
               user={user} 
+              league={league}
             />
           </div>
         )}

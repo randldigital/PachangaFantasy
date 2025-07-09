@@ -208,21 +208,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(league);
   });
 
-  // Player routes
+  // Player routes - League creators can add players to their leagues
   app.post('/api/players/:leagueId', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const { leagueId } = req.params;
       const league = await storage.getLeague(parseInt(leagueId));
       
-      if (!league || league.createdBy !== req.user!.id) {
-        return res.status(403).json({ message: 'Not authorized' });
+      if (!league) {
+        return res.status(404).json({ message: 'League not found' });
+      }
+
+      // Only league creator/owner can add players (not admin role requirement)
+      if (league.createdBy !== req.user!.id) {
+        return res.status(403).json({ message: 'Only league creator can add players' });
       }
 
       const playerData = insertPlayerSchema.parse(req.body);
-      const player = await storage.createPlayer({ ...playerData, leagueId: parseInt(leagueId) });
+      const player = await storage.createPlayer({ 
+        ...playerData, 
+        leagueId: parseInt(leagueId),
+        createdBy: req.user!.id
+      });
       
+      console.log('League creator added player:', { league: leagueId, player: player.id, creator: req.user!.username });
       res.json(player);
     } catch (error) {
+      console.error('Add player error:', error);
       res.status(400).json({ message: 'Invalid input' });
     }
   });
@@ -410,7 +421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // v0.2 - Match Management Routes
   
-  // Create a new match (admin only)
+  // Create a new match (league creator only)
   app.post('/api/matches', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       // Convert date string to Date object before validation
@@ -424,12 +435,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Invalid input', errors: result.error.issues });
       }
 
-      // Add the authenticated user as the creator
+      // Check if user is the league creator
+      const league = await storage.getLeague(result.data.leagueId);
+      if (!league) {
+        return res.status(404).json({ message: 'League not found' });
+      }
+
+      if (league.createdBy !== req.user!.id) {
+        return res.status(403).json({ message: 'Only league creator can create matches' });
+      }
+
       const matchData = {
         ...result.data,
         createdBy: req.user!.id
       };
       const match = await storage.createMatch(matchData);
+      console.log('League creator created match:', { league: league.id, match: match.id, creator: req.user!.username });
       res.json(match);
     } catch (error) {
       console.error('Error creating match:', error);
@@ -696,10 +717,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin goal validation
-  app.post('/api/matches/:matchId/validate-goals', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  // League creator goal validation
+  app.post('/api/matches/:matchId/validate-goals', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.matchId);
+      
+      // Check if user is league creator
+      const match = await storage.getMatch(matchId);
+      if (!match) {
+        return res.status(404).json({ message: 'Match not found' });
+      }
+
+      const league = await storage.getLeague(match.leagueId);
+      if (!league) {
+        return res.status(404).json({ message: 'League not found' });
+      }
+
+      if (league.createdBy !== req.user!.id) {
+        return res.status(403).json({ message: 'Only league creator can validate goals' });
+      }
       
       const result = adminGoalValidationSchema.safeParse({
         ...req.body,
@@ -711,6 +747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const validation = await storage.validateMatchGoals(matchId, result.data.finalScore);
+      console.log('League creator validated goals:', { league: league.id, match: matchId, creator: req.user!.username });
       res.json(validation);
     } catch (error) {
       console.error('Error validating match goals:', error);

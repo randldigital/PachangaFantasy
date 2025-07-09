@@ -23,9 +23,10 @@ interface TeamAssignmentPreviewProps {
   match: Match;
   user?: User;
   players?: Player[];
+  league?: any;
 }
 
-export default function TeamAssignmentPreview({ match, user, players = [] }: TeamAssignmentPreviewProps) {
+export default function TeamAssignmentPreview({ match, user, players = [], league }: TeamAssignmentPreviewProps) {
   const { t } = useTranslation();
   const [showAddPlayers, setShowAddPlayers] = useState(false);
 
@@ -88,8 +89,8 @@ export default function TeamAssignmentPreview({ match, user, players = [] }: Tea
           </CardTitle>
           
           <div className="flex items-center gap-2">
-            {/* Admin: Add Players Button */}
-            {user?.role === 'admin' && (
+            {/* League Creator: Add Players Button */}
+            {user && league && user.id === league.createdBy && (
               <Button
                 onClick={() => setShowAddPlayers(true)}
                 size="sm"
@@ -148,9 +149,9 @@ export default function TeamAssignmentPreview({ match, user, players = [] }: Tea
                         <div className="flex-1">
                           <p className="text-white text-sm font-medium">{displayName}</p>
                           <div className="flex gap-1 mt-1">
-                            {participant.userRole === 'admin' && (
+                            {participant.userId && league && participant.userId === league.createdBy && (
                               <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-400">
-                                {t('common.admin')}
+                                Creator
                               </Badge>
                             )}
                             {!participant.userId && (
@@ -192,9 +193,9 @@ export default function TeamAssignmentPreview({ match, user, players = [] }: Tea
                         <div className="flex-1">
                           <p className="text-white text-sm font-medium">{displayName}</p>
                           <div className="flex gap-1 mt-1">
-                            {participant.userRole === 'admin' && (
+                            {participant.userId && league && participant.userId === league.createdBy && (
                               <Badge variant="outline" className="text-xs border-red-500/50 text-red-400">
-                                {t('common.admin')}
+                                Creator
                               </Badge>
                             )}
                             {!participant.userId && (

@@ -145,6 +145,7 @@ export default function LeagueHub() {
             match={activeMatch} 
             user={user}
             players={players || []}
+            league={league}
           />
         </div>
       )}
