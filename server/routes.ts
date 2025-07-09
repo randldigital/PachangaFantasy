@@ -86,7 +86,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/leagues', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const leagueData = insertLeagueSchema.parse(req.body);
+      
+      console.log(`Creating league for user ${req.user!.username} (ID: ${req.user!.id})`);
       const league = await storage.createLeague(leagueData, req.user!.id);
+      console.log(`League created: ${league.id}, now creating player record...`);
       
       // Automatically add the league creator as a player
       const creatorPlayer = await storage.createPlayer({
@@ -97,11 +100,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: req.user!.id
       });
       
-      console.log('League created with creator as player:', { league: league.id, player: creatorPlayer.id, creator: req.user!.username });
+      console.log('League created with creator as player:', { 
+        league: league.id, 
+        player: creatorPlayer.id, 
+        creator: req.user!.username,
+        playerUserId: creatorPlayer.userId 
+      });
+      
       res.json(league);
     } catch (error) {
       console.error('Create league error:', error);
-      res.status(400).json({ message: 'Invalid input' });
+      if (error instanceof Error) {
+        console.error('Error details:', error.message, error.stack);
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(400).json({ message: 'Invalid input' });
+      }
     }
   });
 
@@ -435,6 +449,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Invalid input', errors: result.error.issues });
       }
 
+      console.log(`Creating match for user ${req.user!.username} (ID: ${req.user!.id}) in league ${result.data.leagueId}`);
+
       // Check if user is the league creator
       const league = await storage.getLeague(result.data.leagueId);
       if (!league) {
@@ -443,6 +459,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (league.createdBy !== req.user!.id) {
         return res.status(403).json({ message: 'Only league creator can create matches' });
+      }
+
+      // Ensure creator has player record in this league (repair if missing)
+      const creatorAsPlayer = await storage.checkUserAsPlayer(req.user!.id, result.data.leagueId);
+      if (!creatorAsPlayer) {
+        console.log(`Creator missing player record, creating one for league ${result.data.leagueId}`);
+        await storage.createPlayer({
+          name: req.user!.username,
+          emoji: '👑',
+          leagueId: result.data.leagueId,
+          userId: req.user!.id,
+          createdBy: req.user!.id
+        });
+        console.log(`Created missing player record for league creator`);
       }
 
       const matchData = {
@@ -454,7 +484,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(match);
     } catch (error) {
       console.error('Error creating match:', error);
-      res.status(500).json({ message: 'Internal server error' });
+      if (error instanceof Error) {
+        console.error('Error details:', error.message, error.stack);
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'Internal server error' });
+      }
     }
   });
 
