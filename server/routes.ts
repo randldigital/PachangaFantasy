@@ -588,14 +588,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const matchId = parseInt(req.params.id);
       const userId = req.user!.id;
 
+      console.log(`Join match attempt: matchId=${matchId}, userId=${userId}`);
+
       // Check if match exists
       const match = await storage.getMatch(matchId);
       if (!match) {
+        console.log(`Match not found: ${matchId}`);
         return res.status(404).json({ message: 'Match not found' });
       }
 
+      console.log(`Match found: leagueId=${match.leagueId}, status=${match.status}`);
+
       // Check if user is a player in this league
       const userAsPlayer = await storage.checkUserAsPlayer(userId, match.leagueId);
+      console.log(`User as player check:`, userAsPlayer ? `player ID ${userAsPlayer.id}` : 'not found');
+      
       if (!userAsPlayer) {
         return res.status(400).json({ 
           message: 'You must be added as a player in this league first',
@@ -603,22 +610,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      console.log(`Calling storage.joinMatch with matchId=${matchId}, userId=${userId}`);
       const participant = await storage.joinMatch(matchId, userId);
+      console.log(`Join match successful: participant playerId=${participant.playerId}, status=${participant.status}`);
       
       // Check if we have enough participants to balance teams (e.g., 10 players)
+      console.log(`Getting participants for team balancing check...`);
       const participants = await storage.getMatchParticipants(matchId);
       const acceptedParticipants = participants.filter(p => p.status === 'accepted');
+      console.log(`Participant count: ${acceptedParticipants.length} accepted participants`);
       
       if (acceptedParticipants.length >= 10) {
+        console.log(`Balancing teams with ${acceptedParticipants.length} players...`);
         const playerIds = acceptedParticipants.map(p => p.playerId);
         const teams = await storage.balanceTeams(matchId, playerIds);
         await storage.updateMatch(matchId, { status: 'ready' });
+        console.log(`Teams balanced and match status updated to 'ready'`);
       }
 
       res.json(participant);
     } catch (error) {
       console.error('Error joining match:', error);
       if (error instanceof Error) {
+        console.error('Error details:', error.message, error.stack);
         if (error.message.includes('not a player')) {
           return res.status(400).json({ 
             message: 'You must be added as a player in this league first',
