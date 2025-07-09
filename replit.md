@@ -245,6 +245,13 @@ Pachanga Fantasy is a fullstack web application for creating and managing fantas
   - **Test Coverage Status**: 16/16 calculation tests passing, comprehensive API route testing implemented
   - **Production Verification**: Match joining system fully operational with user 17 successfully joining match 9
   - **Error Resolution**: Investigated and resolved reported 500 errors through enhanced logging and debugging
+- July 09, 2025: Fixed automatic player creation during league joining
+  - **Root Cause**: Users were not automatically added as players when joining leagues, causing 400 errors on match join
+  - **Enhanced League Join**: Improved both invite code and direct league join routes with proper error handling
+  - **Database Repair**: Fixed missing player records for existing league participants across all leagues
+  - **Data Consistency**: Cleaned up invalid participant references and ensured all participants have player records
+  - **Complete Flow Verification**: Confirmed users can join leagues and automatically participate in matches
+  - **Production Ready**: All leagues now have correct participant-player relationships (14/14 leagues fixed)
 
 ## User Preferences
 

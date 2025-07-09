@@ -132,29 +132,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Already in league' });
       }
 
+      // Check if user already has a player record in this league
+      const existingPlayer = await storage.checkUserAsPlayer(req.user!.id, league.id);
+      
       // Add user to league participants
       const currentParticipants = league.participants || [];
       const updatedLeague = await storage.updateLeague(league.id, {
         participants: [...currentParticipants, req.user!.id]
       });
 
-      // Create the user as a player in this league
-      if (updatedLeague) {
+      // Create the user as a player in this league if they don't have one
+      if (updatedLeague && !existingPlayer) {
         const userPlayer = await storage.createPlayer({
           name: req.user!.username,
           emoji: '👤',
           leagueId: league.id,
-          userId: req.user!.id // Add userId to link player to user
+          userId: req.user!.id,
+          createdBy: req.user!.id
         });
 
         console.log('User joined league and created as player:', { league: updatedLeague.id, player: userPlayer.id, username: req.user!.username });
-        res.json(updatedLeague);
+        res.json({ league: updatedLeague, player: userPlayer });
+      } else if (updatedLeague && existingPlayer) {
+        console.log('User joined league with existing player record:', { league: updatedLeague.id, player: existingPlayer.id, username: req.user!.username });
+        res.json({ league: updatedLeague, player: existingPlayer });
       } else {
         throw new Error('Failed to update league');
       }
     } catch (error) {
       console.error('Join league by invite code error:', error);
-      res.status(500).json({ message: 'Failed to join league' });
+      if (error instanceof Error) {
+        console.error('Error details:', error.message, error.stack);
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'Failed to join league' });
+      }
     }
   });
 
@@ -172,29 +184,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Already in league' });
       }
 
+      // Check if user already has a player record in this league
+      const existingPlayer = await storage.checkUserAsPlayer(req.user!.id, leagueId);
+      
       // Add user to league participants
       const currentParticipants = league.participants || [];
       const updatedLeague = await storage.updateLeague(league.id, {
         participants: [...currentParticipants, req.user!.id]
       });
 
-      // Also create the user as a player in this league
-      if (updatedLeague) {
+      // Create the user as a player in this league if they don't have one
+      if (updatedLeague && !existingPlayer) {
         const userPlayer = await storage.createPlayer({
           name: req.user!.username,
-          emoji: '👤', // Default user emoji
+          emoji: '👤',
           leagueId: leagueId,
-          userId: req.user!.id // Add userId to link player to user
+          userId: req.user!.id,
+          createdBy: req.user!.id
         });
 
         console.log('User joined league and created as player:', { league: updatedLeague.id, player: userPlayer.id, username: req.user!.username });
         res.json({ league: updatedLeague, player: userPlayer });
+      } else if (updatedLeague && existingPlayer) {
+        console.log('User joined league with existing player record:', { league: updatedLeague.id, player: existingPlayer.id, username: req.user!.username });
+        res.json({ league: updatedLeague, player: existingPlayer });
       } else {
         throw new Error('Failed to update league');
       }
     } catch (error) {
       console.error('Join league error:', error);
-      res.status(500).json({ message: 'Failed to join league' });
+      if (error instanceof Error) {
+        console.error('Error details:', error.message, error.stack);
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: 'Failed to join league' });
+      }
     }
   });
 
