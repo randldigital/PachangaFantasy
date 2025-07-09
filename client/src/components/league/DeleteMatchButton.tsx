@@ -30,13 +30,7 @@ export default function DeleteMatchButton({ match, leagueId, isLeagueCreator }: 
 
   const deleteMatchMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest(`/api/matches/${match.id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to delete match");
-      }
+      const response = await apiRequest('DELETE', `/api/matches/${match.id}`);
       return response.json();
     },
     onSuccess: () => {
