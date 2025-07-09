@@ -1,0 +1,65 @@
+We are ready to finalize version 1.0 of the Pachanga Fantasy app.
+
+Before you implement anything, please read the scope of this version and respond in plain English with:
+
+1. Your understanding of the implementation requirements
+2. Technical feasibility based on the current stack and codebase
+3. What specifically needs to be built or adjusted
+4. Any dependencies or components that should be coordinated
+5. Do not write or modify any code yet
+
+---
+
+🟢 Version 1.0 – Final Scope
+
+✅ Already implemented and stable:
+- User registration and login with JWT
+- Private league creation and invite code system
+- Users can add themselves as players
+- Admin can create one active match per league
+- Players can join the match
+- Each user can create a lineup with 5 players and 1 captain
+- Budget validation for lineups
+- Stat reporting (goals, assists) by users after the match
+- Admin manually verifies total goals (no cross-verification)
+- Points calculated automatically (3pts goal, 2pts assist, 2x captain)
+- Player and user leaderboards updated with points
+
+---
+
+🔧 Features to complete for v1.0:
+
+1. **Admin goal validation interface**  
+   - UI to input or confirm the final match score  
+   - System should compare sum of reported goals with this total  
+   - If mismatch, notify admin or show warning
+
+2. **Leaderboard UI polish**  
+   - Improve visual formatting of player and user rankings  
+   - Keep table format, just enhance clarity and readability
+
+3. **Remove unused verification fields**  
+   - Remove or ignore `verified_by` and `verified_status` from stat reports logic
+
+4. **New visual enhancement: lineup on football field**  
+   - Instead of simple list, display lineup using a stylized football field layout
+   - Positioning can be loose (e.g., evenly spaced) — no need for roles or tactics
+   - Must include captain highlight and total cost
+   - Layout must work well on mobile and desktop
+
+---
+
+💾 Current stack:
+- React 18 + TypeScript
+- Express.js + Drizzle ORM + PostgreSQL (Neon)
+- Tailwind CSS + shadcn/ui
+- TanStack Query for data fetching
+- Vite as build tool
+
+Please analyze this scope and return a clear textual confirmation of:
+- Your interpretation of each task
+- Technical feasibility
+- What changes or files are involved
+- Any known risks or dependencies
+
+Do not proceed with implementation until confirmation is reviewed.
