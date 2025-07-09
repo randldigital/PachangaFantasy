@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import { registerRoutes } from '@server/routes';
@@ -78,6 +78,7 @@ describe('League Management Routes', () => {
       };
 
       mockStorage.createLeague.mockResolvedValue(createdLeague);
+      mockStorage.createPlayer.mockResolvedValue({ id: 1, name: testUser.username, leagueId: createdLeague.id, userId: testUser.id });
 
       const response = await request(app)
         .post('/api/leagues')
@@ -296,6 +297,7 @@ describe('League Management Routes', () => {
       mockStorage.getLeague.mockResolvedValue(league);
       mockStorage.checkUserAsPlayer.mockResolvedValue(undefined); // Not already a player
       mockStorage.createPlayer.mockResolvedValue(createdPlayer);
+      mockStorage.getPlayersByLeague.mockResolvedValue([]);
 
       const response = await request(app)
         .post('/api/leagues/1/add-me-as-player')
@@ -323,6 +325,7 @@ describe('League Management Routes', () => {
 
       mockStorage.getLeague.mockResolvedValue(league);
       mockStorage.checkUserAsPlayer.mockResolvedValue(existingPlayer); // Already a player
+      mockStorage.getPlayersByLeague.mockResolvedValue([]);
 
       const response = await request(app)
         .post('/api/leagues/1/add-me-as-player')
