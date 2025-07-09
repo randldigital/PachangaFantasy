@@ -123,6 +123,7 @@ export default function LineupSection({
     saveLineupMutation.mutate({
       playerIds: selectedPlayers,
       captainId: captain,
+      totalCost: calculateCost(),
     });
   };
 
