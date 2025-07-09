@@ -294,7 +294,6 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
 
     if (existingParticipant.length > 0) {
-      // Player is already a participant, just return the existing record
       return existingParticipant[0];
     }
 
@@ -303,6 +302,7 @@ export class DatabaseStorage implements IStorage {
       .insert(matchParticipants)
       .values({ matchId, playerId, status: 'accepted' })
       .returning();
+    
     return participant;
   }
 
