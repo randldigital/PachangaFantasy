@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Users, Copy, Plus, Play, StopCircle } from 'lucide-react';
 import AddMyselfAsPlayerButton from '@/components/AddMyselfAsPlayerButton';
 import DeleteLeagueButton from '@/components/league/DeleteLeagueButton';
+import AddPlayerForm from '@/components/league/AddPlayerForm';
 
 const playerEmojis = ['⚽', '🏃', '🛡️', '🎯', '🥅', '⚡', '🔥', '💎', '👑', '🌟'];
 
@@ -284,65 +285,19 @@ export default function LeagueDetail() {
                 className="bg-accent-blue/10 border border-accent-blue/30 text-accent-blue hover:bg-accent-blue/20"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                {t('league.addPlayer')}
+                Add Player
               </Button>
             )}
           </div>
+          
+          {/* Enhanced Add Player Form */}
+          <AddPlayerForm
+            leagueId={id || ''}
+            isOpen={showAddPlayer}
+            onClose={() => setShowAddPlayer(false)}
+          />
 
-          {showAddPlayer && (
-            <Card className="mb-6 bg-secondary/50 border border-gray-700/50">
-              <CardHeader>
-                <CardTitle className="text-text-primary">{t('league.addPlayer')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="name">{t('league.playerName')}</Label>
-                      <Input
-                        {...form.register('name')}
-                        className="bg-transparent border-gray-600 focus:border-accent-blue"
-                        placeholder="Player name"
-                        maxLength={25}
-                      />
-                    </div>
 
-                    <div>
-                      <Label htmlFor="emoji">{t('league.playerEmoji')}</Label>
-                      <Select onValueChange={(value) => form.setValue('emoji', value)}>
-                        <SelectTrigger className="bg-transparent border-gray-600">
-                          <SelectValue placeholder="Select emoji" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {playerEmojis.map(emoji => (
-                            <SelectItem key={emoji} value={emoji}>
-                              {emoji}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button
-                      type="submit"
-                      disabled={addPlayerMutation.isPending}
-                      className="bg-accent-blue/10 border border-accent-blue/30 text-accent-blue hover:bg-accent-blue/20"
-                    >
-                      {addPlayerMutation.isPending ? t('common.loading') : t('league.addPlayer')}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setShowAddPlayer(false)}
-                    >
-                      {t('common.cancel')}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          )}
 
           {players && players.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">

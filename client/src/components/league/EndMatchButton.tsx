@@ -55,11 +55,15 @@ export default function EndMatchButton({ match, leagueId, isLeagueCreator }: End
         description: `Final score: ${finalScore} goals recorded. Players can now submit their individual stats.`,
         duration: 6000,
       });
-      // Invalidate queries to refresh the match data
+      // Comprehensive query invalidation for immediate UI updates
       queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId, "matches"] });
       queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id, "stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id, "participants"] });
+      
+      // Force refetch for immediate updates
+      queryClient.refetchQueries({ queryKey: ["/api/matches", match.id] });
+      queryClient.refetchQueries({ queryKey: ["/api/leagues", leagueId, "matches"] });
       setOpen(false);
       setFinalScore("");
     },

@@ -112,8 +112,11 @@ export const insertLeagueSchema = createInsertSchema(leagues).omit({
 export const insertPlayerSchema = createInsertSchema(players).pick({
   name: true,
   emoji: true,
+  position: true,
 }).extend({
-  name: z.string().min(1, "Name is required").max(25, "Name must be 25 characters or less"),
+  name: z.string().min(1, "Name is required").max(30, "Name must be 30 characters or less"),
+  position: z.string().default("forward"),
+  isExternal: z.boolean().default(false).optional(),
 });
 
 export const insertTierListSchema = createInsertSchema(tierLists).pick({

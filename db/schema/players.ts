@@ -11,6 +11,7 @@ export const players = pgTable("players", {
   leagueId: integer("league_id").notNull().references(() => leagues.id),
   marketValue: integer("market_value").default(0),
   createdBy: integer("created_by").notNull().references(() => users.id),
+  userId: integer("user_id").references(() => users.id), // Optional FK for user-linked players
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -192,6 +192,7 @@ export class DatabaseStorage implements IStorage {
       .insert(players)
       .values({
         name: player.name,
+        position: player.position || 'forward',
         emoji: player.emoji,
         leagueId: player.leagueId,
         createdBy: player.createdBy,

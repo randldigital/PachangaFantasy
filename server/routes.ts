@@ -286,10 +286,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const playerData = insertPlayerSchema.parse(req.body);
+      
+      // Check for duplicate player names in the same league
+      const existingPlayers = await storage.getPlayersByLeague(parseInt(leagueId));
+      const duplicatePlayer = existingPlayers.find(p => 
+        p.name.toLowerCase() === playerData.name.toLowerCase()
+      );
+      
+      if (duplicatePlayer) {
+        return res.status(400).json({ message: 'Player with this name already exists in the league' });
+      }
+      
       const player = await storage.createPlayer({ 
         ...playerData, 
         leagueId: parseInt(leagueId),
-        createdBy: req.user!.id
+        createdBy: req.user!.id,
+        userId: playerData.isExternal ? null : req.user!.id, // External players don't have user accounts
       });
       
       console.log('League creator added player:', { league: leagueId, player: player.id, creator: req.user!.username });

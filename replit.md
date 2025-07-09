@@ -275,6 +275,14 @@ Pachanga Fantasy is a fullstack web application for creating and managing fantas
   - **Improved Error Handling**: Better connection timeout management and error recovery
   - **Application Stability**: Server now runs reliably with proper database connection management
   - **Production Ready**: All systems operational with robust database connectivity
+- July 09, 2025: Implemented v1.1 enhancements for player management and post-match experience
+  - **External Player Support**: League creators can now add non-user players to league rosters via enhanced AddPlayerForm component
+  - **Enhanced Player Management**: Added 30-character name limit, duplicate prevention, and external player tracking with userId field
+  - **Improved Post-Match Flow**: Enhanced EndMatchButton with comprehensive query invalidation and forced refetch for immediate UI updates
+  - **Better Visual Feedback**: Post-match completion now shows immediate status updates, enhanced toast notifications, and clear participant guidance
+  - **Enhanced Stats Submission**: SubmitMyStats component shows prominent submission button with proper status tracking and confirmation displays
+  - **League Creator Powers**: Full player management control including adding external players, creating matches, and validating goals
+  - **Production Ready**: Both external player management and post-match completion workflows fully operational
 
 ## User Preferences
 
