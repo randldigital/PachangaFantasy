@@ -34,45 +34,16 @@ export default function DeleteMatchButton({ match, leagueId, isLeagueCreator, on
       const response = await apiRequest('DELETE', `/api/matches/${match.id}`);
       return response.json();
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       toast({
         title: "Match deleted",
         description: "The match has been successfully deleted.",
       });
       
-      // Manually remove the match from the cache immediately
-      queryClient.setQueryData(["/api/leagues", leagueId, "matches"], (oldData: any) => {
-        if (!oldData) return [];
-        return oldData.filter((m: any) => m.id !== match.id);
-      });
-      
-      // Remove the specific match from cache
-      queryClient.removeQueries({ queryKey: ["/api/matches", match.id] });
-      
-      // Invalidate all related queries with exact option
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId, "matches"], exact: true }),
-        queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId], exact: true }),
-        queryClient.invalidateQueries({ queryKey: ["/api/matches"], exact: false }),
-      ]);
-      
-      // Force immediate refetch to ensure UI updates
-      await Promise.all([
-        queryClient.refetchQueries({ queryKey: ["/api/leagues", leagueId, "matches"] }),
-        queryClient.refetchQueries({ queryKey: ["/api/leagues", leagueId] })
-      ]);
-      
       setOpen(false);
       
-      // Call the callback to notify parent component
-      onMatchDeleted?.();
-      
-      // If we're currently viewing the match that was deleted, redirect to league dashboard
-      if (window.location.pathname.includes(`/matches/${match.id}`)) {
-        setTimeout(() => {
-          window.location.href = `/leagues/${leagueId}`;
-        }, 100);
-      }
+      // Force immediate page refresh to ensure UI updates
+      window.location.reload();
     },
     onError: (error: Error) => {
       toast({
