@@ -21,9 +21,10 @@ interface DeleteMatchButtonProps {
   match: Match;
   leagueId: number;
   isLeagueCreator: boolean;
+  onMatchDeleted?: () => void;
 }
 
-export default function DeleteMatchButton({ match, leagueId, isLeagueCreator }: DeleteMatchButtonProps) {
+export default function DeleteMatchButton({ match, leagueId, isLeagueCreator, onMatchDeleted }: DeleteMatchButtonProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -33,7 +34,7 @@ export default function DeleteMatchButton({ match, leagueId, isLeagueCreator }: 
       const response = await apiRequest('DELETE', `/api/matches/${match.id}`);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Match deleted",
         description: "The match has been successfully deleted.",
@@ -45,17 +46,26 @@ export default function DeleteMatchButton({ match, leagueId, isLeagueCreator }: 
         return oldData.filter((m: any) => m.id !== match.id);
       });
       
-      // Invalidate and refetch queries to refresh the match list immediately
-      queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId, "matches"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
+      // Remove the specific match from cache
+      queryClient.removeQueries({ queryKey: ["/api/matches", match.id] });
       
-      // Force immediate refetch with stale time reset
-      queryClient.refetchQueries({ queryKey: ["/api/leagues", leagueId, "matches"] });
-      queryClient.refetchQueries({ queryKey: ["/api/leagues", leagueId] });
+      // Invalidate all related queries with exact option
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId, "matches"], exact: true }),
+        queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId], exact: true }),
+        queryClient.invalidateQueries({ queryKey: ["/api/matches"], exact: false }),
+      ]);
+      
+      // Force immediate refetch to ensure UI updates
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["/api/leagues", leagueId, "matches"] }),
+        queryClient.refetchQueries({ queryKey: ["/api/leagues", leagueId] })
+      ]);
       
       setOpen(false);
+      
+      // Call the callback to notify parent component
+      onMatchDeleted?.();
       
       // If we're currently viewing the match that was deleted, redirect to league dashboard
       if (window.location.pathname.includes(`/matches/${match.id}`)) {

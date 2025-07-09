@@ -167,6 +167,7 @@ export default function MatchContextHeader({
                           match={match} 
                           leagueId={league.id} 
                           isLeagueCreator={true} 
+                          onMatchDeleted={onMatchAction}
                         />
                       </>
                     )}
@@ -204,6 +205,7 @@ export default function MatchContextHeader({
                           match={match} 
                           leagueId={league.id} 
                           isLeagueCreator={true} 
+                          onMatchDeleted={onMatchAction}
                         />
                       </>
                     )}

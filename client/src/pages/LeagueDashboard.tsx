@@ -35,6 +35,8 @@ export default function LeagueDashboard() {
       });
       return response.json();
     },
+    staleTime: 0, // Always refetch when needed
+    gcTime: 0, // Don't cache stale data
   });
 
   const { data: players = [], isLoading: playersLoading } = useQuery<Player[]>({
