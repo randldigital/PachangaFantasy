@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ export default function LeagueDashboard() {
   const { id } = useParams();
   const { t } = useTranslation();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const { data: league, isLoading: leagueLoading } = useQuery<League>({
     queryKey: ['/api/leagues', id],
@@ -73,6 +74,13 @@ export default function LeagueDashboard() {
 
   const upcomingMatch = matches?.find(m => m.status === 'open' || m.status === 'ready');
   const completedMatches = matches?.filter(m => m.status === 'completed') || [];
+  
+  // Handle match action callback to refresh data
+  const handleMatchAction = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/leagues', id, 'matches'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/leagues', id] });
+    queryClient.refetchQueries({ queryKey: ['/api/leagues', id, 'matches'] });
+  };
 
   return (
     <div className="min-h-screen bg-[#121212] text-[#e0e0e0] p-6">
