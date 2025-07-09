@@ -120,7 +120,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const userPlayer = await storage.createPlayer({
           name: req.user!.username,
           emoji: '👤',
-          leagueId: league.id
+          leagueId: league.id,
+          userId: req.user!.id // Add userId to link player to user
         });
 
         console.log('User joined league and created as player:', { league: updatedLeague.id, player: userPlayer.id, username: req.user!.username });
@@ -159,7 +160,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const userPlayer = await storage.createPlayer({
           name: req.user!.username,
           emoji: '👤', // Default user emoji
-          leagueId: leagueId
+          leagueId: leagueId,
+          userId: req.user!.id // Add userId to link player to user
         });
 
         console.log('User joined league and created as player:', { league: updatedLeague.id, player: userPlayer.id, username: req.user!.username });
@@ -336,7 +338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add user as player in league
+  // Add user as player in league (or repair existing player record)
   app.post('/api/leagues/:leagueId/add-me-as-player', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const leagueId = parseInt(req.params.leagueId);
@@ -355,6 +357,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingPlayer = await storage.checkUserAsPlayer(req.user!.id, leagueId);
       if (existingPlayer) {
         return res.status(400).json({ message: 'You are already a player in this league', player: existingPlayer });
+      }
+
+      // Check if there's a player with the same name but missing userId (legacy data)
+      const players = await storage.getPlayersByLeague(leagueId);
+      const playerWithSameName = players.find(p => p.name === req.user!.username && !p.userId);
+      
+      if (playerWithSameName) {
+        // Update existing player record to link to user
+        const updatedPlayer = await storage.updatePlayer(playerWithSameName.id, { userId: req.user!.id });
+        console.log('Repaired existing player record:', { league: leagueId, player: playerWithSameName.id, username: req.user!.username });
+        return res.json(updatedPlayer);
       }
 
       // Create user as player
