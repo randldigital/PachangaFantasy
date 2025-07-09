@@ -1,0 +1,69 @@
+You now have approval to implement the v1.0 release of Pachanga Fantasy as previously discussed.
+
+Your tasks are the following:
+
+---
+
+🛠️ Required Features to Implement:
+
+1. ✅ Admin Goal Validation Interface
+- Create a UI component that allows the admin to input the final score of the match
+- Implement comparison logic that checks whether the sum of goals reported by players matches the final score
+- Show a warning if there's a mismatch
+- Ensure this feature is only available to the league admin
+
+2. ✅ Leaderboard UI Polish
+- Improve the visual layout of the player and manager leaderboards
+- Maintain the table structure
+- Add mobile-friendly styles, spacing, highlighting for current user, captain badge, etc.
+
+3. ✅ Remove Unused Verification Logic
+- Remove `verified_by` and `verified_status` references from:
+  - Database queries
+  - API logic
+  - UI components
+- Ensure stat reporting is simplified: user reports stats, admin verifies the total
+
+4. ✅ Visual Football Field for Lineup
+- Replace the current list view of the lineup with an SVG-based football field layout
+- Display the 5 selected players with their names, and highlight the captain
+- Show total cost of the lineup
+- Ensure responsive layout on desktop and mobile
+
+---
+
+🧪 Testing Instructions:
+
+- Refactor or remove existing tests related to verification status
+- Add new tests for:
+  - Admin validation logic (backend and UI)
+  - Leaderboard rendering on mobile and desktop
+  - Football field rendering and captain highlight
+- Run all tests (unit, integration, frontend) after changes
+- Confirm 100% pass rate and no regressions
+
+---
+
+🧱 Update All Relevant Files:
+
+- Frontend: Components, Pages, Contexts if needed
+- Backend: Routes, Storage layer, Schema adjustments (only logic, no new tables)
+- Shared: Type definitions where required
+- Tests: Vitest + Playwright + Testing Library
+- Ensure TanStack Query invalidation is used appropriately
+
+---
+
+🧠 Constraints:
+
+- Use existing stack: React 18 + TypeScript, Express, PostgreSQL + Drizzle, Tailwind CSS, shadcn/ui, TanStack Query
+- DO NOT introduce new libraries unless strictly necessary
+- Preserve current code style, folder structure, and performance
+- Do not block other features while working on visual updates
+
+---
+
+✅ Goal:
+Complete and ship a fully playable and testable v1.0, with improved admin flow, visual polish, and a delightful mobile experience.
+
+You may now begin implementation.

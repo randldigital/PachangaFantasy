@@ -395,18 +395,11 @@ export class DatabaseStorage implements IStorage {
     return lineup || undefined;
   }
 
-  // v0.2 - Stats & Scoring Implementation
+  // v1.0 - Simplified Stats Implementation
   async createStatReport(statReport: InsertStatReport): Promise<StatReport> {
-    // Auto-assign verifier (different participant)
-    const participants = await this.getMatchParticipants(statReport.matchId);
-    const verifier = participants.find(p => p.userId !== statReport.userId);
-    
     const [created] = await db
       .insert(statReports)
-      .values({
-        ...statReport,
-        verifiedBy: verifier?.userId || null,
-      })
+      .values(statReport)
       .returning();
     return created;
   }
@@ -418,13 +411,17 @@ export class DatabaseStorage implements IStorage {
       .where(eq(statReports.matchId, matchId));
   }
 
-  async verifyStatReport(reportId: number, verifiedBy: number, status: 'confirmed' | 'disputed'): Promise<StatReport | undefined> {
-    const [report] = await db
-      .update(statReports)
-      .set({ verifiedStatus: status })
-      .where(and(eq(statReports.id, reportId), eq(statReports.verifiedBy, verifiedBy)))
-      .returning();
-    return report || undefined;
+  // v1.0 - Admin goal validation
+  async validateMatchGoals(matchId: number, finalScore: number): Promise<{ isValid: boolean; reportedTotal: number; difference: number }> {
+    const statReports = await this.getStatReportsForMatch(matchId);
+    const reportedTotal = statReports.reduce((sum, report) => sum + (report.goals || 0), 0);
+    const difference = reportedTotal - finalScore;
+    
+    return {
+      isValid: difference === 0,
+      reportedTotal,
+      difference
+    };
   }
 
   async calculateMatchScores(matchId: number): Promise<Score[]> {

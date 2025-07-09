@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import { storage } from "./storage";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
-import { users, matchParticipants, insertUserSchema, insertLeagueSchema, insertPlayerSchema, insertTierListSchema, loginSchema, joinLeagueSchema, insertMatchSchema, insertLineupSchema, insertStatReportSchema, verifyStatSchema, type User, type Match, type Lineup, type StatReport } from "@shared/schema";
+import { users, matchParticipants, insertUserSchema, insertLeagueSchema, insertPlayerSchema, insertTierListSchema, loginSchema, joinLeagueSchema, insertMatchSchema, insertLineupSchema, insertStatReportSchema, adminGoalValidationSchema, type User, type Match, type Lineup, type StatReport, type AdminGoalValidationInput } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || "pachanga-secret-key";
 
@@ -656,26 +656,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Verify a stat report
-  app.post('/api/stats/:reportId/verify', authenticateToken, async (req: AuthRequest, res: Response) => {
+  // Admin goal validation
+  app.post('/api/matches/:matchId/validate-goals', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
     try {
-      const reportId = parseInt(req.params.reportId);
-      const verifiedBy = req.user!.id;
-
-      const result = verifyStatSchema.safeParse(req.body);
+      const matchId = parseInt(req.params.matchId);
+      
+      const result = adminGoalValidationSchema.safeParse({
+        ...req.body,
+        matchId
+      });
+      
       if (!result.success) {
         return res.status(400).json({ message: 'Invalid input', errors: result.error.issues });
       }
 
-      const statReport = await storage.verifyStatReport(reportId, verifiedBy, result.data.status);
-      
-      if (!statReport) {
-        return res.status(404).json({ message: 'Stat report not found or unauthorized' });
-      }
-
-      res.json(statReport);
+      const validation = await storage.validateMatchGoals(matchId, result.data.finalScore);
+      res.json(validation);
     } catch (error) {
-      console.error('Error verifying stat report:', error);
+      console.error('Error validating match goals:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   });

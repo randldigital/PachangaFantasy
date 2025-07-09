@@ -76,8 +76,6 @@ export const statReports = pgTable("stat_reports", {
   matchId: integer("match_id").notNull().references(() => matches.id),
   goals: integer("goals").default(0),
   assists: integer("assists").default(0),
-  verifiedBy: integer("verified_by").references(() => users.id),
-  verifiedStatus: text("verified_status").$type<'pending' | 'confirmed' | 'disputed'>().default('pending'),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -140,14 +138,13 @@ export const insertLineupSchema = createInsertSchema(lineups).omit({
 
 export const insertStatReportSchema = createInsertSchema(statReports).omit({
   id: true,
-  verifiedBy: true,
-  verifiedStatus: true,
   createdAt: true,
 });
 
-export const verifyStatSchema = z.object({
-  reportId: z.number(),
-  status: z.enum(['confirmed', 'disputed']),
+// Admin goal validation schema
+export const adminGoalValidationSchema = z.object({
+  matchId: z.number(),
+  finalScore: z.number().min(0),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -170,4 +167,4 @@ export type InsertLineup = z.infer<typeof insertLineupSchema>;
 export type StatReport = typeof statReports.$inferSelect;
 export type InsertStatReport = z.infer<typeof insertStatReportSchema>;
 export type Score = typeof scores.$inferSelect;
-export type VerifyStatInput = z.infer<typeof verifyStatSchema>;
+export type AdminGoalValidationInput = z.infer<typeof adminGoalValidationSchema>;

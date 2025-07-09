@@ -9,7 +9,8 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import type { Match, MatchParticipant, Player } from '@shared/schema';
+import AdminGoalValidation from '@/components/league/AdminGoalValidation';
+import type { Match, MatchParticipant, Player, StatReport } from '@shared/schema';
 
 interface MatchWithParticipants extends Match {
   participants: MatchParticipant[];
@@ -38,6 +39,16 @@ export default function MatchDetail() {
       return response.json();
     },
     enabled: !!match?.leagueId,
+  });
+
+  const { data: statReports = [] } = useQuery<StatReport[]>({
+    queryKey: ['/api/matches', id, 'stats'],
+    queryFn: async () => {
+      if (!id) return [];
+      const response = await apiRequest('GET', `/api/matches/${id}/stats`);
+      return response.json();
+    },
+    enabled: !!id,
   });
 
   const joinMatchMutation = useMutation({
@@ -188,6 +199,17 @@ export default function MatchDetail() {
             )}
           </div>
         </div>
+
+        {/* Admin Goal Validation */}
+        {statReports.length > 0 && (
+          <div className="mb-6">
+            <AdminGoalValidation 
+              match={match} 
+              statReports={statReports} 
+              user={user} 
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Team A */}

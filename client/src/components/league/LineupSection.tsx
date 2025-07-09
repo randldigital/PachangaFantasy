@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import FootballFieldLineup from "./FootballFieldLineup";
 import type { Match, League, Player, User, Lineup } from "@shared/schema";
 
 interface LineupSectionProps {
@@ -154,6 +155,22 @@ export default function LineupSection({
 
   return (
     <div className="space-y-6">
+      {/* Football Field Visualization */}
+      {(selectedPlayers.length > 0 || existingLineup) && (
+        <FootballFieldLineup 
+          lineup={existingLineup || { 
+            id: 0, 
+            matchId: match?.id || 0, 
+            userId: user?.id || 0, 
+            playerIds: selectedPlayers, 
+            captainId: captain || 0, 
+            totalCost: calculateCost(),
+            createdAt: new Date()
+          }} 
+          players={players} 
+        />
+      )}
+
       {/* Budget and Selection Summary */}
       <Card className="bg-slate-800/50 border-slate-700">
         <CardHeader>
