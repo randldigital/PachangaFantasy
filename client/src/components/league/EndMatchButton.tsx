@@ -16,7 +16,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { CircleStop, Target } from "lucide-react";
+import { CircleStop, Target, Trophy } from "lucide-react";
 import type { Match } from "@shared/schema";
 
 interface EndMatchButtonProps {
@@ -51,13 +51,15 @@ export default function EndMatchButton({ match, leagueId, isLeagueCreator }: End
     },
     onSuccess: (data) => {
       toast({
-        title: "Match ended successfully",
-        description: `Final score recorded: ${finalScore} goals. Participants can now submit their stats.`,
+        title: "🏆 Match Completed Successfully!",
+        description: `Final score: ${finalScore} goals recorded. Players can now submit their individual stats.`,
+        duration: 6000,
       });
       // Invalidate queries to refresh the match data
       queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId, "matches"] });
       queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id, "stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id, "participants"] });
       setOpen(false);
       setFinalScore("");
     },
@@ -70,9 +72,19 @@ export default function EndMatchButton({ match, leagueId, isLeagueCreator }: End
     },
   });
 
-  // Only show for league creators and when match is not already completed
-  if (!isLeagueCreator || match.status === 'completed') {
+  // Show different UI based on match status
+  if (!isLeagueCreator) {
     return null;
+  }
+
+  // If match is completed, show completion badge instead of button
+  if (match.status === 'completed') {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1 bg-green-600/20 border border-green-500/50 rounded-md">
+        <Trophy className="h-4 w-4 text-green-400" />
+        <span className="text-sm text-green-400 font-medium">Match Completed</span>
+      </div>
+    );
   }
 
   return (

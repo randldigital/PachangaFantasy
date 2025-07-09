@@ -115,7 +115,11 @@ export default function MatchContextHeader({
   if (match) {
     return (
       <>
-        <Card className="mx-4 my-4 bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 border-emerald-500/30">
+        <Card className={`mx-4 my-4 ${
+          match.status === 'completed' 
+            ? 'bg-gradient-to-r from-green-500/20 to-emerald-600/20 border-green-500/50' 
+            : 'bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 border-emerald-500/30'
+        }`}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
@@ -127,8 +131,17 @@ export default function MatchContextHeader({
                   <Clock className="w-4 h-4" />
                   <span className="font-medium">{formatTime(match.date)}</span>
                 </div>
-                <Badge variant="secondary" className="bg-emerald-600 text-white">
-                  {t(`match.status.${match.status}`)}
+                <Badge 
+                  variant="secondary" 
+                  className={`${
+                    match.status === 'completed' ? 'bg-green-600 animate-pulse' :
+                    match.status === 'ready' ? 'bg-blue-600' :
+                    'bg-emerald-600'
+                  } text-white font-medium`}
+                >
+                  {match.status === 'completed' ? '✅ COMPLETED' : 
+                   match.status === 'ready' ? '🎯 READY' : 
+                   '⏳ OPEN'}
                 </Badge>
               </div>
               

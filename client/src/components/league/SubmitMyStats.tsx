@@ -11,11 +11,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Target, Users, CheckCircle } from "lucide-react";
+import { Target, CheckCircle } from "lucide-react";
 import type { Match, StatReport } from "@shared/schema";
 
 interface SubmitMyStatsProps {
@@ -61,8 +60,9 @@ export default function SubmitMyStats({ match, userId, isParticipant }: SubmitMy
     },
     onSuccess: () => {
       toast({
-        title: "Stats submitted successfully!",
+        title: "✅ Stats submitted successfully!",
         description: `Goals: ${goals || '0'}, Assists: ${assists || '0'}`,
+        duration: 5000,
       });
       // Invalidate stats query to refresh data
       queryClient.invalidateQueries({ queryKey: ['/api/matches', match.id, 'stats'] });
@@ -87,57 +87,44 @@ export default function SubmitMyStats({ match, userId, isParticipant }: SubmitMy
   // Show submitted status if already submitted
   if (hasSubmitted) {
     return (
-      <Card className="bg-[#1e1e1e] border-gray-700">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-green-400">
-            <CheckCircle className="h-5 w-5" />
-            Stats Submitted
-          </CardTitle>
-          <CardDescription>
-            You have successfully submitted your match statistics
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Goals:</span>
-            <span className="font-medium">{userStats.goals || 0}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Assists:</span>
-            <span className="font-medium">{userStats.assists || 0}</span>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center gap-3 px-4 py-3 bg-green-600/20 border border-green-500/50 rounded-lg">
+        <CheckCircle className="h-5 w-5 text-green-400" />
+        <div>
+          <p className="text-green-400 font-medium">Stats Submitted ✅</p>
+          <p className="text-sm text-green-300">
+            Goals: {userStats.goals || 0} | Assists: {userStats.assists || 0}
+          </p>
+        </div>
+      </div>
     );
   }
 
+  // Show submit stats button with enhanced visibility
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button 
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+          size="lg" 
+          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-3 shadow-lg"
         >
-          <FileText className="h-4 w-4 mr-2" />
+          <Target className="h-5 w-5 mr-2" />
           Submit My Stats
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-slate-800 border-slate-700">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-blue-500" />
-            Submit Your Match Stats
+          <DialogTitle className="flex items-center gap-2 text-white">
+            <Target className="h-5 w-5 text-blue-400" />
+            Submit Your Match Statistics
           </DialogTitle>
-          <DialogDescription>
-            Enter your personal statistics for this match. Be honest - this affects everyone's scores!
+          <DialogDescription className="text-slate-300">
+            Enter your goals and assists from this match. These will be used for scoring calculations.
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="goals" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Goals Scored
-            </Label>
+            <Label htmlFor="goals" className="text-slate-200">Goals Scored</Label>
             <Input
               id="goals"
               type="number"
@@ -145,15 +132,12 @@ export default function SubmitMyStats({ match, userId, isParticipant }: SubmitMy
               placeholder="0"
               value={goals}
               onChange={(e) => setGoals(e.target.value)}
-              className="w-full"
+              className="bg-slate-700 border-slate-600 text-white"
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="assists" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Assists
-            </Label>
+            <Label htmlFor="assists" className="text-slate-200">Assists Made</Label>
             <Input
               id="assists"
               type="number"
@@ -161,26 +145,23 @@ export default function SubmitMyStats({ match, userId, isParticipant }: SubmitMy
               placeholder="0"
               value={assists}
               onChange={(e) => setAssists(e.target.value)}
-              className="w-full"
+              className="bg-slate-700 border-slate-600 text-white"
             />
-          </div>
-          
-          <div className="bg-[#2a2a2a] p-3 rounded-lg">
-            <p className="text-xs text-gray-400">
-              💡 Remember: Goals = 3 points, Assists = 2 points. 
-              Captain gets 2x points!
-            </p>
           </div>
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button 
+            variant="outline" 
+            onClick={() => setOpen(false)}
+            className="border-slate-600 text-slate-300 hover:bg-slate-700"
+          >
             Cancel
           </Button>
           <Button
             onClick={() => submitStatsMutation.mutate()}
             disabled={submitStatsMutation.isPending}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {submitStatsMutation.isPending ? "Submitting..." : "Submit Stats"}
           </Button>

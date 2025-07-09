@@ -154,16 +154,26 @@ export default function MatchDetail() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-3xl font-bold">Match Details</h1>
-            <Badge 
-              variant={match.status === 'completed' ? 'default' : 'secondary'}
-              className={`${
-                match.status === 'completed' ? 'bg-green-600' :
-                match.status === 'ready' ? 'bg-blue-600' :
-                'bg-gray-600'
-              }`}
-            >
-              {match.status.toUpperCase()}
-            </Badge>
+            <div className="flex items-center gap-3">
+              {match.status === 'completed' && (
+                <div className="flex items-center gap-2 text-green-400">
+                  <Trophy className="h-5 w-5" />
+                  <span className="text-sm font-medium">Match Completed</span>
+                </div>
+              )}
+              <Badge 
+                variant={match.status === 'completed' ? 'default' : 'secondary'}
+                className={`${
+                  match.status === 'completed' ? 'bg-green-600 animate-pulse' :
+                  match.status === 'ready' ? 'bg-blue-600' :
+                  'bg-gray-600'
+                } text-white font-medium px-3 py-1`}
+              >
+                {match.status === 'completed' ? '✅ COMPLETED' : 
+                 match.status === 'ready' ? '🎯 READY' : 
+                 '⏳ OPEN'}
+              </Badge>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -186,8 +196,14 @@ export default function MatchDetail() {
                 <div className="flex items-center gap-3">
                   <Target className="h-5 w-5 text-green-400" />
                   <div>
-                    <p className="text-sm text-gray-400">Budget</p>
-                    <p className="font-semibold">${match.lineupBudget}M</p>
+                    <p className="text-sm text-gray-400">
+                      {match.status === 'completed' && match.finalScore !== null ? 'Final Score' : 'Budget'}
+                    </p>
+                    <p className="font-semibold">
+                      {match.status === 'completed' && match.finalScore !== null 
+                        ? `${match.finalScore} goals` 
+                        : `$${match.lineupBudget}M`}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -239,6 +255,33 @@ export default function MatchDetail() {
             )}
           </div>
         </div>
+
+        {/* Match Completion Status Banner */}
+        {match.status === 'completed' && (
+          <Card className="mb-6 bg-gradient-to-r from-green-600/20 to-emerald-600/20 border-green-500/50">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-center w-12 h-12 bg-green-600 rounded-full">
+                    <Trophy className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-green-400">Match Successfully Completed!</h3>
+                    <p className="text-sm text-green-300">
+                      Final score: {match.finalScore || 0} goals | Players can now submit their individual stats
+                    </p>
+                  </div>
+                </div>
+                {isParticipant && (
+                  <div className="text-right">
+                    <p className="text-sm text-gray-400 mb-1">Next Step:</p>
+                    <p className="text-green-400 font-medium">Submit your stats below</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Admin Goal Validation */}
         {statReports.length > 0 && (

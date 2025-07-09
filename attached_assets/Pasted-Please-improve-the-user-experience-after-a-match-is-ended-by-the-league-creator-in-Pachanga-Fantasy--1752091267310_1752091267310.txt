@@ -1,0 +1,59 @@
+Please improve the user experience after a match is ended by the league creator in Pachanga Fantasy.
+
+This enhancement focuses on visual feedback and flow continuity after the “End Match” action.
+
+---
+
+🧠 Feature Goals:
+
+1. ✅ Visual Confirmation After Ending Match
+- When the league creator clicks “End Match” and confirms the final score:
+  - Display a toast or confirmation alert: “Match marked as completed”
+  - Update the UI immediately to reflect that the match is now in `completed` status
+  - Replace the “End Match” button with a badge or icon: “Match Completed”
+
+2. ✅ Update Match Card or League Detail View
+- Mark the match card with status: “Completed”
+- Use visual distinction (color, label, icon) so the match doesn’t appear open anymore
+- Ensure this applies in both:
+  - MatchDetail page
+  - LeagueDetail match list
+
+3. ✅ Trigger Stat Submission Phase
+- After match is marked completed:
+  - Each player who participated should now see a **“Submit My Stats”** button
+  - This should be the only action available to them in relation to that match
+  - Once submitted, button disappears or shows “Stats Submitted”
+
+4. ✅ Owner Experience After Match End
+- After confirming final score, the league owner should:
+  - Be redirected to a view where they can monitor which participants have submitted stats
+  - See a visual breakdown of:
+    - Player names
+    - Submission status: ✅ submitted, ⏳ pending
+
+---
+
+📂 Files to Update:
+
+Frontend:
+- `EndMatchButton.tsx`: Add toast/confirmation, update local state
+- `MatchCard.tsx` or match list UI: Add visual state indicator (e.g. badge “Completed”)
+- `SubmitMyStats.tsx`: Ensure it appears only after match status = completed
+- `AdminStatsOverview.tsx`: Show submission tracker per player
+
+State/Cache:
+- Use TanStack Query invalidate or mutation success callbacks to refresh match state after completion
+
+Backend:
+- Ensure `match.status` is updated and returned immediately in response to match end
+
+---
+
+✅ Goal:
+Make the flow after ending a match visually clear and actionable:
+→ Owner sees confirmation + status updated  
+→ Participants clearly see when to enter stats  
+→ Match cards reflect actual match state at all times
+
+Please implement t
