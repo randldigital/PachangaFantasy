@@ -17,7 +17,9 @@
     "noAccount": "Don't have an account? Register",
     "hasAccount": "Already have an account? Login",
     "loginButton": "Login",
-    "registerButton": "Register"
+    "registerButton": "Register",
+    "invalidCredentials": "Invalid credentials",
+    "registrationFailed": "Registration failed"
   },
   "dashboard": {
     "title": "My Dashboard",
@@ -47,7 +49,16 @@
     "playerEmoji": "Emoji",
     "addPlayer": "Add Player",
     "startVoting": "Start Voting",
-    "closeVoting": "Close Voting"
+    "closeVoting": "Close Voting",
+    "nameRequired": "League name is required",
+    "nameTooLong": "League name must be 25 characters or less",
+    "descriptionTooLong": "Description must be 200 characters or less",
+    "inviteCodeRequired": "Invite code is required",
+    "createSuccess": "League created with code: {{code}}",
+    "createError": "Failed to create league",
+    "joinSuccess": "Joined league: {{name}}",
+    "joinError": "Failed to join league. Check the invite code.",
+    "inviteCopied": "Invite code copied to clipboard"
   },
   "tierlist": {
     "title": "Create Tier List",
@@ -60,7 +71,10 @@
     "secondBest": "Second best player",
     "thirdBest": "Third best player",
     "restPlayers": "Rest of players (drag to order)",
-    "submit": "Submit My Tier List"
+    "submit": "Submit My Tier List",
+    "submitted": "Tier List submitted",
+    "submittedDescription": "Your tier list has been submitted successfully",
+    "submitError": "Error submitting tier list"
   },
   "results": {
     "title": "Final Results",
@@ -115,9 +129,20 @@
     "noPlayersAvailable": "No players available",
     "allPlayersAlreadyJoined": "All players have already joined this match",
     "addSelectedPlayers": "Add {{count}} Players",
-    "playersAdded": "Players Added",
+    "playersAdded": "{{count}} players were successfully added to the match",
     "playersAddedDescription": "{{count}} players were successfully added to the match",
-    "addPlayersError": "Failed to add players to match"
+    "addPlayersError": "Failed to add players to match",
+    "createSuccess": "Match created successfully",
+    "createError": "Failed to create match"
+  },
+  "player": {
+    "addSuccess": "You have added yourself as a player: {{name}}",
+    "addError": "Could not add yourself as a player"
+  },
+  "lineup": {
+    "saved": "Lineup saved",
+    "savedDescription": "Your lineup has been saved successfully",
+    "saveError": "Error saving lineup"
   },
   "common": {
     "loading": "Loading...",
@@ -132,5 +157,15 @@
     "adding": "Adding...",
     "selectAll": "Select All",
     "deselectAll": "Deselect All"
+  },
+  "stats": {
+    "submitSuccessTitle": "✅ Stats submitted successfully!",
+    "submitSuccess": "Goals: {{goals}}, Assists: {{assists}}",
+    "submitErrorTitle": "Error submitting stats",
+    "submitError": "There was an error submitting your stats. Please try again.",
+    "calculateSuccess": "Scores calculated successfully!",
+    "calculateSuccessDescription": "Player points have been calculated and leaderboards updated.",
+    "calculateErrorTitle": "Error calculating scores",
+    "calculateError": "There was an error calculating scores. Please try again."
   }
 }

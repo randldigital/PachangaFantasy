@@ -63,7 +63,6 @@ async function createExtendedTables() {
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         goals INTEGER DEFAULT 0,
         assists INTEGER DEFAULT 0,
-        verified_by INTEGER REFERENCES users(id),
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);

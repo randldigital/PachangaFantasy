@@ -102,7 +102,7 @@ export default function EnhancedLeaderboard({ leagueId, className = "" }: Enhanc
   const maxPoints = Math.max(...rankings.map(r => r.totalPoints));
 
   return (
-    <Card className={`bg-[#1e1e1e] border-gray-700 ${className}`}>
+    <Card className={`bg-[#1e1e1e] border-gray-700 ${className}`} data-testid="leaderboard-root">
       <CardHeader>
         <CardTitle className="text-white flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -123,6 +123,7 @@ export default function EnhancedLeaderboard({ leagueId, className = "" }: Enhanc
             <div
               key={entry.userId}
               className={`flex items-center gap-4 p-4 rounded-lg border transition-all hover:scale-[1.02] ${getRankColor(position)}`}
+              data-testid="leaderboard-row"
             >
               {/* Rank Icon */}
               <div className="flex-shrink-0">

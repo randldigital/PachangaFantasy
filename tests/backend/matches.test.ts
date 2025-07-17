@@ -47,8 +47,9 @@ describe('Match System (Player-Based)', () => {
     match = await storage.createMatch({
       leagueId: league.id,
       date: new Date('2025-07-10'),
-      lineupBudget: 100
-    }, user.id);
+      lineupBudget: 100,
+      createdBy: user.id
+    });
   });
 
   describe('Match Creation', () => {
@@ -175,7 +176,7 @@ describe('Match System (Player-Based)', () => {
   });
 
   describe('Stats and Scoring', () => {
-    it('should create and verify stat reports', async () => {
+    it('should create stat reports', async () => {
       const statReport = await storage.createStatReport({
         userId: user.id,
         matchId: match.id,
@@ -186,11 +187,6 @@ describe('Match System (Player-Based)', () => {
       expect(statReport).toBeDefined();
       expect(statReport.goals).toBe(2);
       expect(statReport.assists).toBe(1);
-      expect(statReport.verifiedStatus).toBe('pending');
-
-      const verified = await storage.verifyStatReport(statReport.id, user.id, 'confirmed');
-      expect(verified).toBeDefined();
-      expect(verified!.verifiedStatus).toBe('confirmed');
     });
 
     it('should calculate match scores', async () => {
@@ -206,15 +202,13 @@ describe('Match System (Player-Based)', () => {
         totalCost: 50
       });
 
-      // Create and verify stat report
-      const statReport = await storage.createStatReport({
+      // Create stat report
+      await storage.createStatReport({
         userId: user.id,
         matchId: match.id,
         goals: 2,
         assists: 1
       });
-
-      await storage.verifyStatReport(statReport.id, user.id, 'confirmed');
 
       // Calculate scores
       const scores = await storage.calculateMatchScores(match.id);
@@ -243,7 +237,6 @@ describe('Match System (Player-Based)', () => {
         assists: 1
       });
 
-      await storage.verifyStatReport(statReport.id, user.id, 'confirmed');
       await storage.calculateMatchScores(match.id);
 
       const rankings = await storage.getLeagueRankings(league.id);

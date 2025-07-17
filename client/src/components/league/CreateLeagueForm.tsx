@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -51,7 +52,7 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
     if (!formData.name.trim()) {
       toast({
         title: t('common.error'),
-        description: 'League name is required',
+        description: t('league.nameRequired'),
         variant: 'destructive',
       });
       return;
@@ -60,7 +61,7 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
     if (formData.name.length > 25) {
       toast({
         title: t('common.error'),
-        description: 'League name must be 25 characters or less',
+        description: t('league.nameTooLong'),
         variant: 'destructive',
       });
       return;
@@ -69,7 +70,7 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
     if (formData.description.length > 200) {
       toast({
         title: t('common.error'),
-        description: 'Description must be 200 characters or less',
+        description: t('league.descriptionTooLong'),
         variant: 'destructive',
       });
       return;

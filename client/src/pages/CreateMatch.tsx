@@ -15,7 +15,6 @@ import { insertMatchSchema, type InsertMatch } from '@shared/schema';
 export default function CreateMatch() {
   const { id: leagueId } = useParams();
   const [, setLocation] = useLocation();
-  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 

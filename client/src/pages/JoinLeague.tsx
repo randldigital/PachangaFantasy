@@ -1,3 +1,4 @@
+import React from "react";
 import { useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
@@ -33,14 +34,14 @@ export default function JoinLeague() {
       queryClient.invalidateQueries({ queryKey: ['/api/leagues'] });
       toast({
         title: t('common.success'),
-        description: `Joined league: ${league.name}`,
+        description: t('league.joinSuccess', { name: league.name }),
       });
       setLocation(`/league/${league.id}`);
     },
     onError: () => {
       toast({
         title: t('common.error'),
-        description: 'Failed to join league. Check the invite code.',
+        description: t('league.joinError'),
         variant: 'destructive',
       });
     },

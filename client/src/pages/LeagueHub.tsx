@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -17,7 +18,10 @@ import LineupSection from "@/components/league/LineupSection";
 import ClasificacionSection from "@/components/league/ClasificacionSection";
 import HistorialSection from "@/components/league/HistorialSection";
 import TierListSection from "@/components/league/TierListSection";
+import SubmitMyStats from "@/components/league/SubmitMyStats";
+import AdminStatsOverview from "@/components/league/AdminStatsOverview";
 import type { League, Match, Player } from "@shared/schema";
+import { FEATURE_VOTING, FEATURE_WRAPPED } from '../constants';
 
 export default function LeagueHub() {
   const { id } = useParams<{ id: string }>();
@@ -130,7 +134,7 @@ export default function LeagueHub() {
       <MatchContextHeader 
         match={activeMatch} 
         league={league} 
-        user={user}
+        user={user || undefined}
         matches={matches}
         players={players || []}
         onMatchAction={() => {
@@ -143,7 +147,7 @@ export default function LeagueHub() {
         <div className="container mx-auto px-4 pb-4">
           <TeamAssignmentPreview 
             match={activeMatch} 
-            user={user}
+            user={user || undefined}
             players={players || []}
             league={league}
           />
@@ -153,7 +157,7 @@ export default function LeagueHub() {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 pb-20 lg:pb-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5 bg-slate-800 border-slate-700 mb-6">
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-5 bg-slate-800 border-slate-700 mb-6">
             <TabsTrigger 
               value="lineup" 
               className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
@@ -184,11 +188,23 @@ export default function LeagueHub() {
             </TabsTrigger>
             <TabsTrigger 
               value="stats" 
-              className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white hidden lg:flex"
+              className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
             >
               <User className="w-4 h-4 mr-2" />
-              {t('league.tabs.stats')}
+              <span className="hidden sm:inline">{t('league.tabs.stats')}</span>
             </TabsTrigger>
+            {FEATURE_VOTING && (
+              <TabsTrigger value="voting" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
+                <Trophy className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Voting (FUTURE)</span>
+              </TabsTrigger>
+            )}
+            {FEATURE_WRAPPED && (
+              <TabsTrigger value="wrapped" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
+                <History className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Wrapped (FUTURE)</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="lineup" className="mt-0">
@@ -196,7 +212,7 @@ export default function LeagueHub() {
               match={activeMatch} 
               league={league} 
               players={players}
-              user={user}
+              user={user || undefined}
               isLoading={playersLoading}
             />
           </TabsContent>
@@ -204,7 +220,7 @@ export default function LeagueHub() {
           <TabsContent value="clasificacion" className="mt-0">
             <ClasificacionSection 
               leagueId={leagueId}
-              currentUser={user}
+              currentUser={user || undefined}
             />
           </TabsContent>
 
@@ -220,23 +236,86 @@ export default function LeagueHub() {
               leagueId={leagueId}
               league={league}
               players={players}
-              user={user}
+              user={user || undefined}
             />
           </TabsContent>
 
           <TabsContent value="stats" className="mt-0">
-            <Card className="bg-slate-800/50 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <User className="w-5 h-5 mr-2" />
-                  {t('league.tabs.stats')}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-slate-400">{t('league.statsComingSoon')}</p>
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              {/* Stats submission for completed matches */}
+              {activeMatch && activeMatch.status === 'completed' && (
+                <>
+                  {/* User stats submission */}
+                  {user && (
+                    <SubmitMyStats 
+                      match={activeMatch}
+                      userId={user.id}
+                      isParticipant={true} // This prop is ignored, component checks internally
+                    />
+                  )}
+                  
+                  {/* Admin overview for league creator */}
+                  {user && (
+                    <AdminStatsOverview 
+                      match={activeMatch}
+                      isLeagueCreator={league.createdBy === user.id}
+                    />
+                  )}
+                </>
+              )}
+              
+              {/* Placeholder for non-completed matches */}
+              {(!activeMatch || activeMatch.status !== 'completed') && (
+                <Card className="bg-slate-800/50 border-slate-700">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center">
+                      <User className="w-5 h-5 mr-2" />
+                      {t('league.tabs.stats')}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-slate-400">
+                      {activeMatch 
+                        ? "Match statistics will be available after the match is completed."
+                        : "No active match. Create a match to access statistics."
+                      }
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
+
+          {FEATURE_VOTING && (
+            <TabsContent value="voting" className="mt-0">
+              <Card className="bg-slate-800/50 border-slate-700">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center">
+                    <Trophy className="w-5 h-5 mr-2" />
+                    Voting (FUTURE)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-slate-400">MVP/Disappointment voting will be available in a future release.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+          {FEATURE_WRAPPED && (
+            <TabsContent value="wrapped" className="mt-0">
+              <Card className="bg-slate-800/50 border-slate-700">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center">
+                    <History className="w-5 h-5 mr-2" />
+                    Wrapped (FUTURE)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-slate-400">End-of-season highlights will be available in a future release.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 

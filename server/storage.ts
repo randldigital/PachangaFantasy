@@ -54,7 +54,6 @@ export interface IStorage {
   // v0.2 - Stats & Scoring
   createStatReport(statReport: InsertStatReport): Promise<StatReport>;
   getStatReportsForMatch(matchId: number): Promise<StatReport[]>;
-  verifyStatReport(reportId: number, verifiedBy: number, status: 'confirmed' | 'disputed'): Promise<StatReport | undefined>;
   validateMatchGoals(matchId: number, finalScore: number): Promise<{ isValid: boolean; reportedTotal: number; difference: number }>;
   calculateMatchScores(matchId: number): Promise<Score[]>;
   getLeagueRankings(leagueId: number): Promise<{ userId: number, username: string, totalPoints: number }[]>;
@@ -78,15 +77,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const hashedPassword = await bcrypt.hash(insertUser.password, 10);
-    const [user] = await db
-      .insert(users)
-      .values({
-        ...insertUser,
-        password: hashedPassword,
-      })
-      .returning();
-    return user;
+    try {
+      console.log('Storage: Starting user creation for:', insertUser.email);
+      const hashedPassword = await bcrypt.hash(insertUser.password, 10);
+      console.log('Storage: Password hashed successfully');
+      
+      const [user] = await db
+        .insert(users)
+        .values({
+          ...insertUser,
+          password: hashedPassword,
+        })
+        .returning();
+      
+      console.log('Storage: User created successfully:', user.id);
+      return user;
+    } catch (error) {
+      console.error('Storage: Error creating user:', error);
+      throw error;
+    }
   }
 
   async authenticateUser(email: string, password: string): Promise<{ user: User; token: string } | null> {
@@ -458,7 +467,6 @@ export class DatabaseStorage implements IStorage {
 
   async calculateMatchScores(matchId: number): Promise<Score[]> {
     const reports = await this.getStatReportsForMatch(matchId);
-    const confirmedReports = reports.filter(r => r.verifiedStatus === 'confirmed');
     
     const match = await this.getMatch(matchId);
     const teams = match?.matchTeams;
@@ -467,11 +475,11 @@ export class DatabaseStorage implements IStorage {
     let teamBWins = false;
     
     if (teams) {
-      const teamAGoals = confirmedReports
+      const teamAGoals = reports
         .filter(r => teams.teamA.includes(r.userId))
         .reduce((sum, r) => sum + (r.goals || 0), 0);
       
-      const teamBGoals = confirmedReports
+      const teamBGoals = reports
         .filter(r => teams.teamB.includes(r.userId))
         .reduce((sum, r) => sum + (r.goals || 0), 0);
       
@@ -481,7 +489,7 @@ export class DatabaseStorage implements IStorage {
 
     const matchScores: Score[] = [];
     
-    for (const report of confirmedReports) {
+    for (const report of reports) {
       const points = 
         (report.goals || 0) * 3 + 
         (report.assists || 0) * 2 + 

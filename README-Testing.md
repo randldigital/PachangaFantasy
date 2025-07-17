@@ -1,5 +1,62 @@
 # Pachanga Fantasy - Testing Guide
 
+## What’s Implemented Matrix
+| Feature/Area                | v1.0 (Live) | ≥ v1.2 (Planned) |
+|-----------------------------|:-----------:|:----------------:|
+| Leagues, Players, Tier List |      ✔      |        ✔         |
+| Matches, Lineups, Stats     |      ✔      |        ✔         |
+| MVP/Disappointment Voting   |             |        ✔         |
+| Season Wrapped              |             |        ✔         |
+| Stat Verification           |      ✔*     |        ✔         |
+| Football Field Lineup       |      ✔      |        ✔         |
+| Leaderboard Polish          |      ✔      |        ✔         |
+| i18n                        |      ✔      |        ✔         |
+| Testing                     |      ✔      |        ✔         |
+| Feature Flags               |      ✔      |        ✔         |
+| API Routes                  |      ✔      |        ✔         |
+| DB Constraints              |      ✔      |        ✔         |
+
+*Admin-only stat verification in v1.0; cross-verification planned for future.
+
+## Quick Start
+
+To get Pachanga Fantasy running locally:
+
+1. **Clone the repository**
+   ```bash
+   git clone <repo-url>
+   cd PachangaFantasy
+   ```
+2. **Install dependencies**
+   ```bash
+   npm install
+   cd client && npm install
+   cd ../server && npm install
+   cd ..
+   ```
+3. **Run database migrations**
+   ```bash
+   npm run db:migrate
+   ```
+4. **Seed the database with demo data**
+   ```bash
+   npm run db:seed
+   ```
+5. **Start the development servers**
+   - In one terminal:
+     ```bash
+     npm run dev:server
+     ```
+   - In another terminal:
+     ```bash
+     npm run dev:client
+     ```
+
+6. **Access the app**
+   - Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+For feature status, see the What’s Implemented Matrix above.
+
 ## Overview
 
 This project includes a comprehensive testing system using Vitest for both frontend and backend testing, ensuring reliability and maintainability across all application features.

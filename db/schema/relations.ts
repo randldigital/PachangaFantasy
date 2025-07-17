@@ -89,9 +89,9 @@ export const matchParticipantsRelations = relations(matchParticipants, ({ one })
     fields: [matchParticipants.matchId],
     references: [matches.id],
   }),
-  user: one(users, {
-    fields: [matchParticipants.userId],
-    references: [users.id],
+  player: one(players, {
+    fields: [matchParticipants.playerId],
+    references: [players.id],
   }),
 }));
 
@@ -114,10 +114,6 @@ export const statReportsRelations = relations(statReports, ({ one }) => ({
   }),
   user: one(users, {
     fields: [statReports.userId],
-    references: [users.id],
-  }),
-  verifier: one(users, {
-    fields: [statReports.verifiedBy],
     references: [users.id],
   }),
 }));

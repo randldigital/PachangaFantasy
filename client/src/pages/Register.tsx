@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +41,7 @@ export default function Register() {
     } catch (error) {
       toast({
         title: t('common.error'),
-        description: 'Registration failed',
+        description: t('auth.registrationFailed'),
         variant: 'destructive',
       });
       setIsLoading(false);

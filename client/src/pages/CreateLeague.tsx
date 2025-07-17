@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
@@ -34,14 +33,14 @@ export default function CreateLeague() {
       queryClient.invalidateQueries({ queryKey: ['/api/leagues'] });
       toast({
         title: t('common.success'),
-        description: `League created with code: ${league.inviteCode}`,
+        description: t('league.createSuccess', { code: league.inviteCode }),
       });
       setLocation(`/league/${league.id}`);
     },
     onError: () => {
       toast({
         title: t('common.error'),
-        description: 'Failed to create league',
+        description: t('league.createError'),
         variant: 'destructive',
       });
     },

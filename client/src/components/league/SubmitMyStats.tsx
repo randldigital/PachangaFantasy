@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,19 +17,43 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Target, CheckCircle } from "lucide-react";
 import type { Match, StatReport } from "@shared/schema";
+import { useTranslation } from "react-i18next";
 
 interface SubmitMyStatsProps {
   match: Match;
   userId: number;
-  isParticipant: boolean;
+  isParticipant: boolean; // This prop is now ignored, we check internally
 }
 
-export default function SubmitMyStats({ match, userId, isParticipant }: SubmitMyStatsProps) {
+interface ParticipantDetail {
+  matchId: number;
+  playerId: number;
+  status: string;
+  playerName: string;
+  userId?: number;
+  username?: string;
+  userRole?: string;
+}
+
+export default function SubmitMyStats({ match, userId }: SubmitMyStatsProps) {
   const [open, setOpen] = useState(false);
   const [goals, setGoals] = useState<string>("");
   const [assists, setAssists] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  // Check if user is actually a participant in this match
+  const { data: participants = [] } = useQuery<ParticipantDetail[]>({
+    queryKey: ['/api/matches', match.id, 'participants'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/matches/${match.id}/participants`);
+      return response.json();
+    },
+    enabled: match.status === 'completed',
+  });
+
+  const userIsParticipant = participants.some(p => p.userId === userId && p.status === 'accepted');
 
   // Check if user has already submitted stats
   const { data: statReports = [] } = useQuery<StatReport[]>({
@@ -60,8 +85,8 @@ export default function SubmitMyStats({ match, userId, isParticipant }: SubmitMy
     },
     onSuccess: async () => {
       toast({
-        title: "✅ Stats submitted successfully!",
-        description: `Goals: ${goals || '0'}, Assists: ${assists || '0'}`,
+        title: t('stats.submitSuccessTitle'),
+        description: t('stats.submitSuccess', { goals: goals || '0', assists: assists || '0' }),
         duration: 5000,
       });
       
@@ -79,24 +104,24 @@ export default function SubmitMyStats({ match, userId, isParticipant }: SubmitMy
       setGoals("");
       setAssists("");
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
       toast({
-        title: "Error submitting stats",
-        description: error.message,
-        variant: "destructive",
+        title: t('stats.submitErrorTitle'),
+        description: t('stats.submitError'),
+        variant: 'destructive',
       });
     },
   });
 
   // Only show for participants when match is completed
-  if (!isParticipant || match.status !== 'completed') {
+  if (!userIsParticipant || match.status !== 'completed') {
     return null;
   }
 
   // Debug logging to ensure component is rendered properly
   console.log('SubmitMyStats render:', { 
     matchStatus: match.status, 
-    isParticipant, 
+    isParticipant: userIsParticipant, 
     hasSubmitted, 
     userId 
   });

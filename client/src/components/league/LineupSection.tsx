@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Star, DollarSign, Users, Check, X } from "lucide-react";
+import { Star, DollarSign, Users, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,7 +58,7 @@ export default function LineupSection({
   }, [existingLineup]);
 
   const saveLineupMutation = useMutation({
-    mutationFn: async (lineupData: any) => {
+    mutationFn: async (lineupData: unknown) => {
       return apiRequest('POST', `/api/matches/${match?.id}/lineup`, lineupData);
     },
     onSuccess: () => {
@@ -68,10 +68,10 @@ export default function LineupSection({
       });
       queryClient.invalidateQueries({ queryKey: [`/api/matches/${match?.id}/lineup`] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: t('common.error'),
-        description: error.message || t('lineup.saveError'),
+        description: t('lineup.saveError'),
         variant: 'destructive',
       });
     }

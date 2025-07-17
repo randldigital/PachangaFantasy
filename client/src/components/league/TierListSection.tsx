@@ -1,3 +1,4 @@
+import React from "react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -80,8 +81,17 @@ export default function TierListSection({ leagueId, league, players, user }: Tie
   }, [existingTierList, players]);
 
   const submitTierListMutation = useMutation({
-    mutationFn: async (data: { playerOrder: number[]; submitted: boolean }) => {
-      return apiRequest('POST', `/api/tierlist/${leagueId}`, data);
+    mutationFn: async (playerOrder: number[]) => {
+      const response = await fetch(`/api/tierlist/${leagueId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ playerOrder, submitted: true })
+      });
+      if (!response.ok) throw new Error('Failed to submit tier list');
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -92,10 +102,10 @@ export default function TierListSection({ leagueId, league, players, user }: Tie
       queryClient.invalidateQueries({ queryKey: [`/api/tierlist/${leagueId}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/players/${leagueId}`] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: t('common.error'),
-        description: error.message || t('tierlist.submitError'),
+        description: (error as Error).message || t('tierlist.submitError'),
         variant: 'destructive',
       });
     }
@@ -116,10 +126,7 @@ export default function TierListSection({ leagueId, league, players, user }: Tie
   const handleSubmit = () => {
     if (playerOrder.length === 0) return;
     
-    submitTierListMutation.mutate({
-      playerOrder,
-      submitted: true
-    });
+    submitTierListMutation.mutate(playerOrder);
   };
 
   const handleReset = () => {
@@ -227,13 +234,13 @@ export default function TierListSection({ leagueId, league, players, user }: Tie
         <CardContent>
           <div className="flex items-center justify-between">
             <p className="text-slate-400">
-              {league.status === 'voting' 
+              {(league.status === 'open' || league.status === 'voting') 
                 ? t('tierlist.dragToRank')
                 : t('tierlist.votingClosed')
               }
             </p>
             
-            {league.status === 'voting' && !hasSubmitted && (
+            {(league.status === 'open' || league.status === 'voting') && !hasSubmitted && (
               <div className="flex space-x-2">
                 <Button
                   variant="outline"
@@ -261,7 +268,7 @@ export default function TierListSection({ leagueId, league, players, user }: Tie
       {/* Tier List */}
       <Card className="bg-slate-800/50 border-slate-700">
         <CardContent className="p-6">
-          {league.status === 'voting' && !hasSubmitted ? (
+          {(league.status === 'open' || league.status === 'voting') && !hasSubmitted ? (
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '../test-utils';
 import userEvent from '@testing-library/user-event';
-import LeagueDashboard from '@/pages/LeagueDashboard';
+import LeagueHub from '../../client/src/pages/LeagueHub';
 import { createMockUser, createMockLeague, createMockPlayers, createMockMatch } from '../test-utils';
 
 // Mock wouter
@@ -12,12 +12,10 @@ vi.mock('wouter', () => ({
 
 // Mock react-i18next
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
+  useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-describe('LeagueDashboard', () => {
+describe('LeagueHub (Tabbed League Dashboard)', () => {
   const mockUser = createMockUser();
   const mockLeague = createMockLeague();
   const mockPlayers = createMockPlayers(10);
@@ -33,245 +31,100 @@ describe('LeagueDashboard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    // Mock window.location for navigation tests
-    Object.defineProperty(window, 'location', {
-      value: { href: '' },
-      writable: true,
-    });
   });
 
-  it('should render league dashboard with stats cards', async () => {
-    render(<LeagueDashboard />, { initialUser: mockUser });
+  it('shows loading spinner and text initially', () => {
+    render(<LeagueHub />, { initialUser: mockUser });
+    expect(screen.getByText(/loading/i)).toBeTruthy();
+    expect(screen.getByRole('status') || screen.getByTestId('spinner')).toBeTruthy();
+  });
 
+  it('renders header with league name, invite code, and participant count', async () => {
+    render(<LeagueHub />, { initialUser: mockUser });
     await waitFor(() => {
-      expect(screen.getByText(mockLeague.name)).toBeInTheDocument();
+      expect(screen.getByText(mockLeague.name)).toBeTruthy();
     });
-
-    // Should show stats cards
-    expect(screen.getByText('Total Matches')).toBeInTheDocument();
-    expect(screen.getByText('Players')).toBeInTheDocument();
-    expect(screen.getByText('Completed')).toBeInTheDocument();
-    expect(screen.getByText('My Points')).toBeInTheDocument();
+    expect(screen.getByText(mockLeague.inviteCode)).toBeTruthy();
+    expect(screen.getByText(String(mockLeague.participants.length))).toBeTruthy();
   });
 
-  it('should display loading state initially', () => {
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
-    // Should show loading skeleton
-    expect(screen.getByText('Loading')).toBeInTheDocument();
-  });
-
-  it('should show upcoming match section', async () => {
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
+  it('renders all main tabs and bottom navigation', async () => {
+    render(<LeagueHub />, { initialUser: mockUser });
     await waitFor(() => {
-      expect(screen.getByText('Upcoming Match')).toBeInTheDocument();
+      expect(screen.getByText(/lineup/i)).toBeTruthy();
+      expect(screen.getByText(/clasificacion/i)).toBeTruthy();
+      expect(screen.getByText(/historial/i)).toBeTruthy();
+      expect(screen.getByText(/tierlist/i)).toBeTruthy();
     });
-
-    // Should show match date and budget
-    const dateElement = screen.getByText(/2025/);
-    expect(dateElement).toBeInTheDocument();
-    
-    const budgetElement = screen.getByText(/Budget/);
-    expect(budgetElement).toBeInTheDocument();
+    // Bottom nav (mobile)
+    expect(screen.getByRole('navigation') || screen.getByTestId('mobile-bottom-nav')).toBeTruthy();
   });
 
-  it('should show no upcoming matches message when none exist', async () => {
-    // Mock empty matches response
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
+  it('renders match context header with date, time, and status', async () => {
+    render(<LeagueHub />, { initialUser: mockUser });
     await waitFor(() => {
-      expect(screen.getByText('No upcoming matches')).toBeInTheDocument();
+      expect(screen.getByText(/open|ready|completed/i)).toBeTruthy();
     });
+    expect(screen.getByText(/calendar/i)).toBeTruthy();
+    expect(screen.getByText(/clock/i)).toBeTruthy();
   });
 
-  it('should show create match button for league admin', async () => {
-    const adminUser = createMockUser({ id: mockLeague.createdBy });
-    render(<LeagueDashboard />, { initialUser: adminUser });
-
+  it('renders team assignment preview if active match exists', async () => {
+    render(<LeagueHub />, { initialUser: mockUser });
     await waitFor(() => {
-      const createButton = screen.getByText('Create Match');
-      expect(createButton).toBeInTheDocument();
+      expect(screen.getByText(/team assignment|preview/i)).toBeTruthy();
     });
   });
 
-  it('should not show create match button for non-admin', async () => {
-    const regularUser = createMockUser({ id: 999 }); // Not the league creator
-    render(<LeagueDashboard />, { initialUser: regularUser });
-
+  it('renders lineup tab with player list and budget', async () => {
+    render(<LeagueHub />, { initialUser: mockUser });
     await waitFor(() => {
-      expect(screen.queryByText('Create Match')).not.toBeInTheDocument();
+      expect(screen.getByText(/lineup/i)).toBeTruthy();
+    });
+    // Should show 5 player slots (or whatever the lineup size is)
+    expect(screen.getAllByTestId('lineup-player').length + screen.getAllByTestId('lineup-player-captain').length).toBeGreaterThan(0);
+    expect(screen.getByText(/budget/i)).toBeTruthy();
+  });
+
+  it('renders clasificacion tab with leaderboard and user highlight', async () => {
+    render(<LeagueHub />, { initialUser: mockUser });
+    // Switch to clasificacion tab
+    const clasificacionTab = screen.getByText(/clasificacion/i);
+    fireEvent.click(clasificacionTab);
+    await waitFor(() => {
+      expect(screen.getByText(/leaderboard|clasificacion/i)).toBeTruthy();
+    });
+    // User highlight (ring or badge)
+    expect(screen.getByText(mockUser.username)).toBeTruthy();
+  });
+
+  it('renders historial tab with match history', async () => {
+    render(<LeagueHub />, { initialUser: mockUser });
+    // Switch to historial tab
+    const historialTab = screen.getByText(/historial/i);
+    fireEvent.click(historialTab);
+    await waitFor(() => {
+      expect(screen.getByText(/calendar/i)).toBeTruthy();
+    });
+    expect(screen.getByText(/status|completed|open|ready/i)).toBeTruthy();
+  });
+
+  it('renders tierlist tab', async () => {
+    render(<LeagueHub />, { initialUser: mockUser });
+    // Switch to tierlist tab
+    const tierlistTab = screen.getByText(/tierlist/i);
+    fireEvent.click(tierlistTab);
+    await waitFor(() => {
+      expect(screen.getByText(/tierlist/i)).toBeTruthy();
     });
   });
 
-  it('should display league rankings correctly', async () => {
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
+  it('shows not found message if league does not exist', async () => {
+    // Simulate not found by mocking useQuery to return no league
+    vi.mocked(require('@tanstack/react-query').useQuery).mockReturnValue({ data: null, isLoading: false });
+    render(<LeagueHub />, { initialUser: mockUser });
     await waitFor(() => {
-      expect(screen.getByText('Rankings')).toBeInTheDocument();
+      expect(screen.getByText(/not found/i)).toBeTruthy();
     });
-
-    // Should show ranking positions
-    expect(screen.getByText('#1')).toBeInTheDocument();
-    expect(screen.getByText('#2')).toBeInTheDocument();
-    expect(screen.getByText('#3')).toBeInTheDocument();
-
-    // Should show usernames and points
-    expect(screen.getByText('testuser')).toBeInTheDocument();
-    expect(screen.getByText('25 pts')).toBeInTheDocument();
-  });
-
-  it('should highlight current user in rankings', async () => {
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
-    await waitFor(() => {
-      const userRanking = screen.getByText('testuser').closest('div');
-      expect(userRanking).toHaveClass('bg-blue-900/20');
-    });
-  });
-
-  it('should show empty rankings message when no data', async () => {
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
-    await waitFor(() => {
-      // When rankings are empty, should show appropriate message
-      if (screen.queryByText('No rankings yet')) {
-        expect(screen.getByText('No rankings yet')).toBeInTheDocument();
-      }
-    });
-  });
-
-  it('should display players grid correctly', async () => {
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
-    await waitFor(() => {
-      expect(screen.getByText('Players (10)')).toBeInTheDocument();
-    });
-
-    // Should show player count in header
-    const playersHeader = screen.getByText(/Players \(\d+\)/);
-    expect(playersHeader).toBeInTheDocument();
-  });
-
-  it('should show player market values', async () => {
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
-    await waitFor(() => {
-      // Should show market values for players
-      const marketValues = screen.getAllByText(/\$\d+M/);
-      expect(marketValues.length).toBeGreaterThan(0);
-    });
-  });
-
-  it('should handle match navigation correctly', async () => {
-    const user = userEvent.setup();
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
-    await waitFor(() => {
-      const viewMatchButton = screen.getByText('View Match');
-      expect(viewMatchButton).toBeInTheDocument();
-    });
-
-    // Test navigation to match detail
-    const viewMatchButton = screen.getByText('View Match');
-    await user.click(viewMatchButton);
-    
-    // Should navigate to match page
-    expect(window.location.href).toContain('/matches/');
-  });
-
-  it('should handle lineup navigation correctly', async () => {
-    const user = userEvent.setup();
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
-    await waitFor(() => {
-      const setLineupButton = screen.getByText('Set Lineup');
-      expect(setLineupButton).toBeInTheDocument();
-    });
-
-    // Test navigation to lineup page
-    const setLineupButton = screen.getByText('Set Lineup');
-    await user.click(setLineupButton);
-    
-    // Should navigate to lineup page
-    expect(window.location.href).toContain('/lineup');
-  });
-
-  it('should show match status badges correctly', async () => {
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
-    await waitFor(() => {
-      // Should show status badges for matches
-      const statusBadges = screen.getAllByText(/open|ready|completed/i);
-      expect(statusBadges.length).toBeGreaterThan(0);
-    });
-  });
-
-  it('should display correct stats card values', async () => {
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
-    await waitFor(() => {
-      // Should show correct numbers in stats cards
-      expect(screen.getByText('2')).toBeInTheDocument(); // Total matches
-      expect(screen.getByText('10')).toBeInTheDocument(); // Players count
-      expect(screen.getByText('1')).toBeInTheDocument(); // Completed matches
-      expect(screen.getByText('25')).toBeInTheDocument(); // User's points
-    });
-  });
-
-  it('should handle error states gracefully', async () => {
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
-    // Should not crash when data fails to load
-    await waitFor(() => {
-      expect(screen.getByText(mockLeague.name)).toBeInTheDocument();
-    });
-  });
-
-  it('should handle null/undefined matches array without crashing', async () => {
-    // Mock null matches response to test the exact error case
-    const mockInvalidResponse = vi.fn().mockResolvedValueOnce({
-      json: () => null // This simulates the error case
-    });
-    
-    global.fetch = mockInvalidResponse as any;
-    
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
-    // Should still render without crashing
-    await waitFor(() => {
-      // Should show 0 for total matches when matches is null/undefined
-      expect(screen.getByText('0')).toBeInTheDocument();
-    });
-    
-    // Reset fetch mock
-    vi.restoreAllMocks();
-  });
-
-  it('should show responsive design elements', async () => {
-    render(<LeagueDashboard />, { initialUser: mockUser });
-
-    await waitFor(() => {
-      // Should have responsive grid classes
-      const gridElements = screen.getAllByText(/grid-cols/);
-      // This would be tested with actual CSS class presence in real implementation
-    });
-  });
-
-  it('should handle create match navigation for admin', async () => {
-    const user = userEvent.setup();
-    const adminUser = createMockUser({ id: mockLeague.createdBy });
-    render(<LeagueDashboard />, { initialUser: adminUser });
-
-    await waitFor(() => {
-      const createButton = screen.getByText('Create Match');
-      expect(createButton).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByText('Create Match'));
-    
-    // Should navigate to create match page
-    expect(window.location.href).toContain('/create-match');
   });
 });

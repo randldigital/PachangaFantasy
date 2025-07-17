@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import { Star, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -84,6 +84,7 @@ export default function FootballFieldLineup({ lineup, players, className = "" }:
                   top: position.top,
                   left: position.left,
                 }}
+                data-testid={isCaptain ? 'lineup-player-captain' : 'lineup-player'}
               >
                 {/* Player circle */}
                 <div className={`

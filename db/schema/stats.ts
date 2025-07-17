@@ -9,7 +9,6 @@ export const statReports = pgTable("stat_reports", {
   userId: integer("user_id").notNull().references(() => users.id),
   goals: integer("goals").default(0),
   assists: integer("assists").default(0),
-  verifiedBy: integer("verified_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

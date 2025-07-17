@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -61,8 +62,8 @@ export default function AddPlayersToMatchModal({
     },
     onSuccess: (data) => {
       toast({
-        title: t('match.playersAdded'),
-        description: t('match.playersAddedDescription', { count: data.addedCount }),
+        title: t('common.success'),
+        description: t('match.playersAdded', { count: data.addedCount }),
       });
       
       // Invalidate relevant queries
@@ -75,7 +76,7 @@ export default function AddPlayersToMatchModal({
     onError: (error: any) => {
       toast({
         title: t('common.error'),
-        description: error.message || t('match.addPlayersError'),
+        description: t('match.addPlayersError'),
         variant: 'destructive',
       });
     }

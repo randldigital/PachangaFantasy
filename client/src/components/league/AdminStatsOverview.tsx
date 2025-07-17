@@ -1,3 +1,4 @@
+import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
   AlertTriangle 
 } from "lucide-react";
 import type { Match, StatReport } from "@shared/schema";
+import { useTranslation } from "react-i18next";
 
 interface AdminStatsOverviewProps {
   match: Match;
@@ -33,6 +35,7 @@ interface ParticipantDetail {
 export default function AdminStatsOverview({ match, isLeagueCreator }: AdminStatsOverviewProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   // Get match participants
   const { data: participants = [] } = useQuery<ParticipantDetail[]>({
@@ -61,17 +64,17 @@ export default function AdminStatsOverview({ match, isLeagueCreator }: AdminStat
     },
     onSuccess: () => {
       toast({
-        title: "Scores calculated successfully!",
-        description: "Player points have been calculated and leaderboards updated.",
+        title: t('stats.calculateSuccess'),
+        description: t('stats.calculateSuccessDescription'),
       });
       queryClient.invalidateQueries({ queryKey: ['/api/matches', match.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/leagues'] });
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
       toast({
-        title: "Error calculating scores",
-        description: error.message,
-        variant: "destructive",
+        title: t('stats.calculateErrorTitle'),
+        description: t('stats.calculateError'),
+        variant: 'destructive',
       });
     },
   });

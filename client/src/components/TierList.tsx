@@ -1,6 +1,6 @@
+import React from "react";
 import { useState } from 'react';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDroppable } from '@dnd-kit/core';
-import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Player } from '@shared/schema';
@@ -9,12 +9,11 @@ import { Button } from '@/components/ui/button';
 
 interface PlayerCardProps {
   player: Player;
-  isDragging?: boolean;
 }
 
-function PlayerCard({ player, isDragging }: PlayerCardProps) {
+function PlayerCard({ player }: PlayerCardProps) {
   return (
-    <div className={`bg-secondary border border-gray-600 rounded-xl p-3 cursor-move hover:border-accent-blue transition-all duration-300 hover:shadow-lg hover:shadow-accent-blue/20 group ${isDragging ? 'opacity-50' : ''}`}>
+    <div className={`bg-secondary border border-gray-600 rounded-xl p-3 cursor-move hover:border-accent-blue transition-all duration-300 hover:shadow-lg hover:shadow-accent-blue/20 group`}>
       <div className="text-center">
         <div className="w-12 h-12 bg-gradient-to-br from-accent-blue to-accent-purple rounded-full mx-auto mb-2 flex items-center justify-center text-white font-semibold text-xl">
           {player.emoji}
@@ -42,7 +41,7 @@ function SortablePlayerCard({ player }: { player: Player }) {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <PlayerCard player={player} isDragging={isDragging} />
+      <PlayerCard player={player} />
     </div>
   );
 }
@@ -278,7 +277,7 @@ export default function TierList({ players, onSubmit }: TierListProps) {
       </div>
 
       <DragOverlay>
-        {activePlayer ? <PlayerCard player={activePlayer} isDragging /> : null}
+        {activePlayer ? <PlayerCard player={activePlayer} /> : null}
       </DragOverlay>
     </DndContext>
   );

@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -82,10 +83,10 @@ export default function MatchContextHeader({
       queryClient.invalidateQueries({ queryKey: [`/api/matches/${match?.id}/participants`] });
       onMatchAction?.();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: t('common.error'),
-        description: error.message || t('match.joinError'),
+        description: (error as Error).message || t('match.joinError'),
         variant: 'destructive',
       });
     }

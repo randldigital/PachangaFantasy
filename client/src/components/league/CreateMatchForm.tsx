@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -30,8 +31,8 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
     },
     onSuccess: () => {
       toast({
-        title: t('match.created'),
-        description: t('match.createdDescription'),
+        title: t('common.success'),
+        description: t('match.createSuccess'),
       });
       queryClient.invalidateQueries({ queryKey: [`/api/leagues/${leagueId}/matches`] });
       onSuccess?.();
@@ -39,7 +40,7 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
     onError: (error: any) => {
       toast({
         title: t('common.error'),
-        description: error.message || t('match.createError'),
+        description: t('match.createError'),
         variant: 'destructive',
       });
     }

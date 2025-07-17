@@ -4,21 +4,16 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { insertPlayerSchema, type InsertPlayer, type League, type Player } from '@shared/schema';
-import { apiRequest } from '@/lib/queryClient';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
+import { insertPlayerSchema, type InsertPlayer, type League, type Player } from '../../../shared/schema';
+import { apiRequest } from '../lib/queryClient';
+import { useAuth } from '../contexts/AuthContext';
+import { Button } from '../components/ui/button';
+import { Card, CardContent } from '../components/ui/card';
+import { useToast } from '../hooks/use-toast';
 import { Users, Copy, Plus, Play, StopCircle } from 'lucide-react';
-import AddMyselfAsPlayerButton from '@/components/AddMyselfAsPlayerButton';
-import DeleteLeagueButton from '@/components/league/DeleteLeagueButton';
-import AddPlayerForm from '@/components/league/AddPlayerForm';
-
-const playerEmojis = ['⚽', '🏃', '🛡️', '🎯', '🥅', '⚡', '🔥', '💎', '👑', '🌟'];
+import AddMyselfAsPlayerButton from '../components/AddMyselfAsPlayerButton';
+import DeleteLeagueButton from '../components/league/DeleteLeagueButton';
+import AddPlayerForm from '../components/league/AddPlayerForm';
 
 
 export default function LeagueDetail() {
@@ -61,6 +56,41 @@ export default function LeagueDetail() {
       const response = await apiRequest('POST', `/api/players/${id}`, data);
       return response.json();
     },
+    onMutate: async (newPlayer) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/players', id] });
+      const previousPlayers = queryClient.getQueryData<Player[]>(['/api/players', id]);
+      queryClient.setQueryData<Player[]>(['/api/players', id], old => old ? [...old, { ...newPlayer, id: Date.now(), marketValue: 0, emoji: newPlayer.emoji || '⚽' }] : [{ ...newPlayer, id: Date.now(), marketValue: 0, emoji: newPlayer.emoji || '⚽' }]);
+      return { previousPlayers };
+    },
+    onError: (error: unknown, _newPlayer, context: unknown) => {
+      if (context && 'previousPlayers' in context) {
+        queryClient.setQueryData(['/api/players', id], (context as { previousPlayers: Player[] }).previousPlayers);
+      }
+      if (error && 'errors' in error && Array.isArray((error as any).errors)) {
+        (error as any).errors.forEach((err: any) => {
+          toast({
+            title: t('common.error'),
+            description: err.message || 'Validation error',
+            variant: 'destructive',
+          });
+        });
+      } else if (error && 'message' in error) {
+        toast({
+          title: t('common.error'),
+          description: (error as any).message,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: t('common.error'),
+          description: 'Failed to add player',
+          variant: 'destructive',
+        });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/players', id] });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/players', id] });
       queryClient.refetchQueries({ queryKey: ['/api/players', id] });
@@ -70,13 +100,6 @@ export default function LeagueDetail() {
       });
       form.reset();
       setShowAddPlayer(false);
-    },
-    onError: () => {
-      toast({
-        title: t('common.error'),
-        description: 'Failed to add player',
-        variant: 'destructive',
-      });
     },
   });
 
@@ -92,12 +115,28 @@ export default function LeagueDetail() {
         description: 'Voting closed and market values calculated',
       });
     },
-    onError: () => {
-      toast({
-        title: t('common.error'),
-        description: 'Failed to close voting',
-        variant: 'destructive',
-      });
+    onError: (error: unknown) => {
+      if (error && 'errors' in error && Array.isArray((error as any).errors)) {
+        (error as any).errors.forEach((err: any) => {
+          toast({
+            title: t('common.error'),
+            description: err.message || 'Validation error',
+            variant: 'destructive',
+          });
+        });
+      } else if (error && 'message' in error) {
+        toast({
+          title: t('common.error'),
+          description: (error as any).message,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: t('common.error'),
+          description: 'Failed to close voting',
+          variant: 'destructive',
+        });
+      }
     },
   });
 
@@ -110,15 +149,31 @@ export default function LeagueDetail() {
       queryClient.invalidateQueries({ queryKey: ['/api/leagues', id] });
       toast({
         title: t('common.success'),
-        description: 'Successfully joined league',
+        description: t('league.joinSuccess'),
       });
     },
-    onError: () => {
-      toast({
-        title: t('common.error'),
-        description: 'Failed to join league',
-        variant: 'destructive',
-      });
+    onError: (error: unknown) => {
+      if (error && 'errors' in error && Array.isArray((error as any).errors)) {
+        (error as any).errors.forEach((err: any) => {
+          toast({
+            title: t('common.error'),
+            description: t('league.joinError'),
+            variant: 'destructive',
+          });
+        });
+      } else if (error && 'message' in error) {
+        toast({
+          title: t('common.error'),
+          description: t('league.joinError'),
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: t('common.error'),
+          description: t('league.joinError'),
+          variant: 'destructive',
+        });
+      }
     },
   });
 
@@ -144,12 +199,8 @@ export default function LeagueDetail() {
     navigator.clipboard.writeText(league.inviteCode);
     toast({
       title: t('common.success'),
-      description: 'Invite code copied to clipboard',
+      description: t('league.inviteCopied'),
     });
-  };
-
-  const onSubmit = (data: InsertPlayer) => {
-    addPlayerMutation.mutate(data);
   };
 
   const handleCloseVoting = () => {

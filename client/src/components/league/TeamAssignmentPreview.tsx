@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -23,7 +24,7 @@ interface TeamAssignmentPreviewProps {
   match: Match;
   user?: User;
   players?: Player[];
-  league?: any;
+  league?: { createdBy?: number };
 }
 
 export default function TeamAssignmentPreview({ match, user, players = [], league }: TeamAssignmentPreviewProps) {

@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
 import { users, matchParticipants, insertUserSchema, insertLeagueSchema, insertPlayerSchema, insertTierListSchema, loginSchema, joinLeagueSchema, insertMatchSchema, insertLineupSchema, insertStatReportSchema, adminGoalValidationSchema, type User, type Match, type Lineup, type StatReport, type AdminGoalValidationInput } from "@shared/schema";
+import { ZodError } from 'zod';
 
 const JWT_SECRET = process.env.JWT_SECRET || "pachanga-secret-key";
 
@@ -42,23 +43,58 @@ const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
   next();
 };
 
+async function createUserAsPlayerInLeague(user: User, leagueId: number, emoji: string = '👤') {
+  // Always use the current username or fallback to email
+  const playerName = user.username && user.username.trim() !== '' ? user.username : user.email;
+  // Check if player already exists for this user+league
+  const existingPlayer = await storage.checkUserAsPlayer(user.id, leagueId);
+  if (existingPlayer) {
+    // Update the player name if it doesn't match
+    if (existingPlayer.name !== playerName) {
+      await storage.updatePlayer(existingPlayer.id, { name: playerName });
+    }
+    return existingPlayer;
+  }
+  // Only set userId if it is a valid number
+  const playerData: any = {
+    name: playerName,
+    position: 'forward', // Default position for league creator
+    emoji,
+    leagueId,
+    createdBy: user.id
+  };
+  if (typeof user.id === 'number') playerData.userId = user.id;
+  return storage.createPlayer(playerData);
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.post('/api/auth/register', async (req: Request, res: Response) => {
     try {
+      console.log('Registration attempt with data:', req.body);
       const userData = insertUserSchema.parse(req.body);
+      console.log('Parsed user data:', userData);
       
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(userData.email);
       if (existingUser) {
+        console.log('User already exists with email:', userData.email);
         return res.status(400).json({ message: 'User already exists' });
       }
 
+      console.log('Creating user...');
       const user = await storage.createUser(userData);
+      console.log('User created successfully:', user.id);
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
       
       res.json({ user: { ...user, password: undefined }, token });
     } catch (error) {
+      console.error('Registration error:', error);
+      if (error instanceof ZodError) {
+        console.log('Zod validation error:', error.errors);
+        return res.status(400).json({ message: 'Validation error', errors: error.errors });
+      }
+      console.log('Non-Zod error, returning generic message');
       res.status(400).json({ message: 'Invalid input' });
     }
   });
@@ -74,6 +110,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ user: { ...result.user, password: undefined }, token: result.token });
     } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: 'Validation error', errors: error.errors });
+      }
       res.status(400).json({ message: 'Invalid input' });
     }
   });
@@ -92,13 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`League created: ${league.id}, now creating player record...`);
       
       // Automatically add the league creator as a player
-      const creatorPlayer = await storage.createPlayer({
-        name: req.user!.username,
-        emoji: '👑', // Crown emoji for league creator
-        leagueId: league.id,
-        userId: req.user!.id,
-        createdBy: req.user!.id
-      });
+      const creatorPlayer = await createUserAsPlayerInLeague(req.user!, league.id, '👑');
       
       console.log('League created with creator as player:', { 
         league: league.id, 
@@ -109,6 +142,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(league);
     } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: 'Validation error', errors: error.errors });
+      }
       console.error('Create league error:', error);
       if (error instanceof Error) {
         console.error('Error details:', error.message, error.stack);
@@ -143,13 +179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create the user as a player in this league if they don't have one
       if (updatedLeague && !existingPlayer) {
-        const userPlayer = await storage.createPlayer({
-          name: req.user!.username,
-          emoji: '👤',
-          leagueId: league.id,
-          userId: req.user!.id,
-          createdBy: req.user!.id
-        });
+        const userPlayer = await createUserAsPlayerInLeague(req.user!, league.id);
 
         console.log('User joined league and created as player:', { league: updatedLeague.id, player: userPlayer.id, username: req.user!.username });
         res.json({ league: updatedLeague, player: userPlayer });
@@ -195,13 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create the user as a player in this league if they don't have one
       if (updatedLeague && !existingPlayer) {
-        const userPlayer = await storage.createPlayer({
-          name: req.user!.username,
-          emoji: '👤',
-          leagueId: leagueId,
-          userId: req.user!.id,
-          createdBy: req.user!.id
-        });
+        const userPlayer = await createUserAsPlayerInLeague(req.user!, leagueId);
 
         console.log('User joined league and created as player:', { league: updatedLeague.id, player: userPlayer.id, username: req.user!.username });
         res.json({ league: updatedLeague, player: userPlayer });
@@ -297,12 +321,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Player with this name already exists in the league' });
       }
       
-      const player = await storage.createPlayer({ 
-        ...playerData, 
+      // Only set userId if not null
+      const createPlayerData: any = {
+        ...playerData,
         leagueId: parseInt(leagueId),
-        createdBy: req.user!.id,
-        userId: playerData.isExternal ? null : req.user!.id, // External players don't have user accounts
-      });
+        createdBy: req.user!.id
+      };
+      if (!playerData.isExternal && req.user!.id !== null && req.user!.id !== undefined) createPlayerData.userId = req.user!.id;
+      const player = await storage.createPlayer(createPlayerData);
       
       console.log('League creator added player:', { league: leagueId, player: player.id, creator: req.user!.username });
       res.json(player);
@@ -465,13 +491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create user as player
-      const userPlayer = await storage.createPlayer({
-        name: req.user!.username,
-        emoji: '👤',
-        leagueId: leagueId,
-        createdBy: req.user!.id,
-        userId: req.user!.id
-      });
+      const userPlayer = await createUserAsPlayerInLeague(req.user!, leagueId);
 
       console.log('User added themselves as player:', { league: leagueId, player: userPlayer.id, username: req.user!.username });
       res.json(userPlayer);
@@ -504,30 +524,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Invalid input', errors: result.error.issues });
       }
 
-      console.log(`Creating match for user ${req.user!.username} (ID: ${req.user!.id}) in league ${result.data.leagueId}`);
-
       // Check if user is the league creator
       const league = await storage.getLeague(result.data.leagueId);
       if (!league) {
         return res.status(404).json({ message: 'League not found' });
       }
-
       if (league.createdBy !== req.user!.id) {
         return res.status(403).json({ message: 'Only league creator can create matches' });
+      }
+
+      // Enforce only one active match per league
+      const matches = await storage.getMatchesByLeague(result.data.leagueId);
+      const activeMatch = matches.find(m => m.status === 'open' || m.status === 'ready');
+      if (activeMatch) {
+        return res.status(400).json({ message: 'There is already an active match in this league. Only one match can be open at a time.' });
       }
 
       // Ensure creator has player record in this league (repair if missing)
       const creatorAsPlayer = await storage.checkUserAsPlayer(req.user!.id, result.data.leagueId);
       if (!creatorAsPlayer) {
-        console.log(`Creator missing player record, creating one for league ${result.data.leagueId}`);
-        await storage.createPlayer({
-          name: req.user!.username,
-          emoji: '👑',
-          leagueId: result.data.leagueId,
-          userId: req.user!.id,
-          createdBy: req.user!.id
-        });
-        console.log(`Created missing player record for league creator`);
+        await createUserAsPlayerInLeague(req.user!, result.data.leagueId);
       }
 
       const matchData = {
@@ -535,16 +551,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: req.user!.id
       };
       const match = await storage.createMatch(matchData);
-      console.log('League creator created match:', { league: league.id, match: match.id, creator: req.user!.username });
       res.json(match);
     } catch (error) {
-      console.error('Error creating match:', error);
-      if (error instanceof Error) {
-        console.error('Error details:', error.message, error.stack);
-        res.status(500).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: 'Internal server error' });
-      }
+      res.status(500).json({ message: 'Internal server error' });
     }
   });
 

@@ -16,7 +16,37 @@
 
 ---
 
-## Application Overview
+## Documentation Structure: Live vs Planned
+
+This documentation is split into two main sections:
+- **Live (v1.0):** Features, workflows, and database schema that are currently implemented and available in production.
+- **Planned (≥ v1.2):** Features, enhancements, and schema changes that are planned for future releases. These are clearly marked as 'FUTURE'.
+
+Refer to the 'What’s Implemented' matrix below for a quick overview of current vs planned features.
+
+## What’s Implemented Matrix
+| Feature/Area                | v1.0 (Live) | ≥ v1.2 (Planned) |
+|-----------------------------|:-----------:|:----------------:|
+| Leagues, Players, Tier List |      ✔      |        ✔         |
+| Matches, Lineups, Stats     |      ✔      |        ✔         |
+| MVP/Disappointment Voting   |             |        ✔         |
+| Season Wrapped              |             |        ✔         |
+| Stat Verification           |      ✔*     |        ✔         |
+| Football Field Lineup       |      ✔      |        ✔         |
+| Leaderboard Polish          |      ✔      |        ✔         |
+| i18n                        |      ✔      |        ✔         |
+| Testing                     |      ✔      |        ✔         |
+| Feature Flags               |      ✔      |        ✔         |
+| API Routes                  |      ✔      |        ✔         |
+| DB Constraints              |      ✔      |        ✔         |
+
+*Admin-only stat verification in v1.0; cross-verification planned for future.
+
+---
+
+## Live (v1.0) Features & Architecture
+
+### Application Overview
 
 ### Purpose
 Pachanga Fantasy is a full-stack web application for creating and managing fantasy sports leagues with a tier list ranking system. Users can create leagues, invite friends, rank players through drag-and-drop interfaces, manage matches, create lineups, and track statistics.
@@ -109,9 +139,9 @@ CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   username TEXT NOT NULL UNIQUE,
   email TEXT NOT NULL UNIQUE,
-  password TEXT NOT NULL,           -- bcrypt hashed
+  password_hash TEXT NOT NULL,           -- bcrypt hashed
   role TEXT NOT NULL DEFAULT 'player',  -- 'admin' | 'player'
-  league_id INTEGER                 -- Optional default league
+  created_at TIMESTAMP DEFAULT NOW()
 );
 ```
 
@@ -122,9 +152,7 @@ CREATE TABLE leagues (
   name TEXT NOT NULL,
   description TEXT DEFAULT '',
   invite_code TEXT NOT NULL UNIQUE, -- Generated with nanoid
-  created_by INTEGER NOT NULL REFERENCES users(id),
-  status TEXT NOT NULL DEFAULT 'open', -- 'open' | 'voting' | 'closed'
-  participants JSONB NOT NULL DEFAULT '[]', -- Array of user IDs
+  admin_id INTEGER NOT NULL REFERENCES users(id), -- called 'created_by' in some docs
   created_at TIMESTAMP DEFAULT NOW()
 );
 ```
@@ -134,6 +162,7 @@ CREATE TABLE leagues (
 CREATE TABLE players (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
+  position TEXT NOT NULL, -- ADDED: position field
   league_id INTEGER NOT NULL REFERENCES leagues(id),
   market_value INTEGER DEFAULT 0,   -- Calculated from tier lists
   emoji TEXT NOT NULL DEFAULT '⚽',
@@ -150,8 +179,7 @@ CREATE TABLE tier_lists (
   league_id INTEGER NOT NULL REFERENCES leagues(id),
   user_id INTEGER NOT NULL REFERENCES users(id),
   player_order JSONB NOT NULL,     -- Array of player IDs in ranking order
-  submitted BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT NOW()
+  submitted_at TIMESTAMP DEFAULT NOW()
 );
 ```
 
@@ -163,10 +191,9 @@ CREATE TABLE matches (
   id SERIAL PRIMARY KEY,
   league_id INTEGER NOT NULL REFERENCES leagues(id),
   date TIMESTAMP NOT NULL,
+  status TEXT DEFAULT 'open', -- 'open' | 'closed' | 'completed'
   lineup_budget INTEGER DEFAULT 100,
-  status TEXT DEFAULT 'open', -- 'open' | 'ready' | 'completed'
-  match_teams JSONB, -- {teamA: number[], teamB: number[]}
-  created_by INTEGER NOT NULL REFERENCES users(id),
+  created_by INTEGER NOT NULL REFERENCES users(id), -- called 'adminId' in code
   created_at TIMESTAMP DEFAULT NOW()
 );
 ```
@@ -187,8 +214,7 @@ CREATE TABLE lineups (
   id SERIAL PRIMARY KEY,
   match_id INTEGER NOT NULL REFERENCES matches(id),
   user_id INTEGER NOT NULL REFERENCES users(id),
-  player_ids INTEGER[] NOT NULL, -- Array of exactly 5 player IDs
-  captain_id INTEGER NOT NULL,   -- One of the player_ids (2x points)
+  player_ids JSONB NOT NULL, -- Array of exactly 5 player IDs
   total_cost INTEGER NOT NULL,   -- Sum of player market values
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -198,21 +224,39 @@ CREATE TABLE lineups (
 ```sql
 CREATE TABLE stat_reports (
   id SERIAL PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(id),
   match_id INTEGER NOT NULL REFERENCES matches(id),
+  user_id INTEGER NOT NULL REFERENCES users(id),
   goals INTEGER DEFAULT 0,
   assists INTEGER DEFAULT 0,
-  verified_by INTEGER REFERENCES users(id),
-  verified_status TEXT DEFAULT 'pending', -- 'pending' | 'confirmed' | 'disputed'
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE scores (
+-- FUTURE: Voting system for MVP/Disappointment
+CREATE TABLE votes (
   id SERIAL PRIMARY KEY,
+  match_id INTEGER NOT NULL REFERENCES matches(id),
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  mvps JSONB NOT NULL, -- FUTURE
+  flops JSONB NOT NULL, -- FUTURE
+  submitted_at TIMESTAMP DEFAULT NOW()
+);
+
+-- FUTURE: End-of-season summary
+CREATE TABLE season_wrapped (
+  league_id INTEGER NOT NULL REFERENCES leagues(id),
+  summary JSONB, -- FUTURE: cached aggregation blob
+  PRIMARY KEY (league_id)
+);
+```
+
+**Scores Table**
+```sql
+CREATE TABLE scores (
   user_id INTEGER NOT NULL REFERENCES users(id),
   match_id INTEGER NOT NULL REFERENCES matches(id),
   points INTEGER NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW()
+  calculated_at TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (user_id, match_id)
 );
 ```
 
@@ -227,6 +271,16 @@ CREATE TABLE scores (
 4. **Normalized Structure**: Separate tables for different concerns (users, players, matches, lineups) with proper foreign key relationships.
 
 5. **Audit Trail**: Timestamps and created_by fields for tracking data lineage.
+
+### Enforced Constraints
+
+- **One active match per league:**
+  - Enforced in API logic: When creating a new match, the backend checks that no other match in the league has status 'open' or 'ready'.
+  - (Recommended) Add a partial unique index in the database for (league_id, status) where status in ('open', 'ready') if supported by your DB.
+
+- **One lineup per user per match:**
+  - Enforced in API logic: When creating a lineup, the backend checks if a lineup already exists for (match_id, user_id) and updates instead of creating a duplicate.
+  - Enforced in the database: The `lineups` table should have a unique constraint on (match_id, user_id).
 
 ---
 
@@ -467,9 +521,8 @@ const calculateMarketValue = (rankings: number[][]): number[] => {
 
 #### Stat Reporting
 1. Users report their own statistics (goals, assists)
-2. Other participants can verify or dispute reports
-3. Admin can override verification status
-4. Only verified stats count toward scoring
+2. Admin can verify total goals for the match
+3. Only verified stats by admin count toward scoring
 
 #### Points Calculation
 ```typescript
@@ -483,53 +536,69 @@ const calculatePoints = (stats: StatReport, iscaptain: boolean): number => {
 
 ## API Design
 
-### RESTful Endpoints
+### RESTful Endpoints (Live v1.0)
 
 #### Authentication
 ```
-POST /api/auth/register    - User registration
-POST /api/auth/login       - User login
-GET  /api/auth/me          - Get current user
+POST   /api/auth/register                - User registration
+POST   /api/auth/login                   - User login
+GET    /api/auth/me                      - Get current user
 ```
 
 #### Leagues
 ```
-GET    /api/leagues                    - Get user's leagues
-POST   /api/leagues                    - Create league (admin)
-GET    /api/leagues/:id                - Get league details
-POST   /api/leagues/:inviteCode/join   - Join league by invite
+GET    /api/leagues                      - Get user's leagues
+POST   /api/leagues                      - Create league (creator)
+GET    /api/leagues/:id                  - Get league details
+DELETE /api/leagues/:id                  - Delete league (creator only)
+POST   /api/leagues/:inviteCode/join     - Join league by invite code
+POST   /api/leagues/:id/join             - Join league by ID
+POST   /api/leagues/:leagueId/add-me-as-player - Add self as player
+GET    /api/leagues/:leagueId/check-user-player - Check if user is player
 ```
 
 #### Players
 ```
-GET    /api/players/:leagueId                      - Get league players
-POST   /api/players/:leagueId                      - Add player (admin)
-POST   /api/leagues/:leagueId/add-me-as-player     - Add self as player
+GET    /api/players/:leagueId            - Get league players
+POST   /api/players/:leagueId            - Add player (creator only)
+```
+
+#### Tier Lists
+```
+POST   /api/tierlist/:leagueId           - Submit or update tier list
+GET    /api/tierlist/:leagueId           - Get user's tier list
+POST   /api/tierlist/:leagueId/close     - Close voting and calculate values (creator only)
 ```
 
 #### Matches
 ```
-GET    /api/leagues/:leagueId/matches     - Get league matches
-POST   /api/matches                       - Create match (admin)
-GET    /api/matches/:id                   - Get match details
-POST   /api/matches/:id/join              - Join match
-POST   /api/matches/:id/add-players       - Add players to match (admin)
-GET    /api/matches/:id/participants      - Get match participants
+POST   /api/matches                      - Create match (creator only)
+GET    /api/leagues/:leagueId/matches    - Get matches for league
+GET    /api/matches/:id                  - Get match details
+DELETE /api/matches/:id                  - Delete match (creator only)
+POST   /api/matches/:id/end              - End match (creator only)
+POST   /api/matches/:id/add-players      - Add players to match (creator only)
+GET    /api/matches/:id/participants     - Get match participants
+POST   /api/matches/:id/join             - Join match
 ```
 
 #### Lineups
 ```
-GET    /api/matches/:matchId/lineup       - Get user's lineup
-POST   /api/matches/:matchId/lineup       - Create/update lineup
+POST   /api/matches/:matchId/lineup      - Create or update lineup
+GET    /api/matches/:matchId/lineup      - Get user's lineup for match
 ```
 
-#### Statistics
+#### Statistics & Validation
 ```
-POST   /api/matches/:matchId/stats        - Report statistics
-GET    /api/matches/:matchId/stats        - Get match statistics
-POST   /api/stats/:reportId/verify        - Verify stat report
+POST   /api/matches/:matchId/stats       - Submit stat report
+GET    /api/matches/:matchId/stats       - Get stat reports for match
+POST   /api/matches/:matchId/validate-goals - Admin validates final score (creator only)
 POST   /api/matches/:matchId/calculate-scores - Calculate match scores
-GET    /api/leagues/:leagueId/rankings    - Get league rankings
+```
+
+#### Leaderboards
+```
+GET    /api/leagues/:leagueId/rankings   - Get league rankings
 ```
 
 ### API Response Patterns
@@ -610,111 +679,3 @@ GET    /api/leagues/:leagueId/rankings    - Get league rankings
 
 ### Test Structure
 ```
-tests/
-├── backend/           # API and database tests
-├── frontend/          # Component and UI tests
-├── e2e/              # End-to-end user workflows
-├── integration/       # Cross-system tests
-├── utils/            # Utility and calculation tests
-└── mocks/            # Mock data and service workers
-```
-
----
-
-## Development Guidelines
-
-### Code Quality Standards
-- TypeScript for all code (100% type coverage)
-- ESLint and Prettier for consistent formatting
-- Strict null checks and type validation
-- Comprehensive error handling
-
-### Database Guidelines
-- Use Drizzle ORM for all database operations
-- Never write raw SQL unless absolutely necessary
-- Use `npm run db:push` for schema changes
-- Validate all inputs with Zod schemas
-
-### Frontend Guidelines
-- Use shadcn/ui components as foundation
-- Implement proper loading and error states
-- Follow mobile-first responsive design
-- Use TanStack Query for all server state
-
-### API Guidelines
-- RESTful design with consistent patterns
-- Proper HTTP status codes
-- Input validation on all endpoints
-- Comprehensive error messages
-
----
-
-## Evolution & Scalability
-
-### Current Capabilities
-- Supports multiple leagues with independent management
-- Handles complex player ranking and market value calculation
-- Comprehensive match and lineup system
-- Real-time statistics tracking and verification
-- Multilingual support (English/Spanish)
-
-### Architectural Strengths
-- **Type Safety**: Full TypeScript coverage prevents runtime errors
-- **Modular Design**: Clean separation of concerns for easy maintenance
-- **Database Normalization**: Scalable schema with proper relationships
-- **Caching Strategy**: TanStack Query provides intelligent caching
-- **Component Reusability**: shadcn/ui foundation allows easy extensions
-
-### Scalability Considerations
-
-#### Database Scaling
-- PostgreSQL with Neon provides automatic scaling
-- Normalized schema allows efficient indexing
-- JSONB fields provide flexibility without performance loss
-- Connection pooling handles concurrent users
-
-#### Frontend Scaling
-- Component-based architecture supports large codebases
-- Lazy loading and code splitting available through Vite
-- TanStack Query provides efficient data fetching and caching
-- Responsive design works across all device types
-
-### Future Enhancement Opportunities
-
-#### Feature Expansions
-1. **Real-time Notifications**: WebSocket integration for live updates
-2. **Advanced Statistics**: More detailed player metrics and analytics
-3. **Tournament System**: Multi-league competitions and brackets
-4. **Mobile App**: React Native version using same backend
-5. **Social Features**: Comments, likes, player profiles
-6. **Payment Integration**: Premium leagues with Stripe integration
-
-#### Technical Improvements
-1. **Microservices**: Split into separate services for different domains
-2. **Redis Caching**: Add Redis for session management and caching
-3. **CDN Integration**: Static asset delivery optimization
-4. **Advanced Analytics**: User behavior tracking and performance metrics
-5. **API Rate Limiting**: Implement rate limiting for production use
-
-#### DevOps Enhancements
-1. **CI/CD Pipeline**: Automated testing and deployment
-2. **Monitoring**: Application performance monitoring (APM)
-3. **Logging**: Structured logging with search capabilities
-4. **Security**: Advanced security scanning and OWASP compliance
-5. **Backup Strategy**: Automated database backups and disaster recovery
-
-### Migration Strategies
-- **Database Migrations**: Use Drizzle Kit for schema versioning
-- **API Versioning**: Implement API versioning for backward compatibility
-- **Feature Flags**: Toggle new features without deployments
-- **Gradual Rollouts**: Blue-green deployments for zero downtime
-
----
-
-## Conclusion
-
-Pachanga Fantasy represents a modern, well-architected fantasy sports application built with production-ready technologies and patterns. The unified player-based system, comprehensive testing strategy, and clean architecture provide a solid foundation for future growth and feature development.
-
-The application successfully balances flexibility with type safety, performance with maintainability, and user experience with developer experience. The modular design and comprehensive documentation make it easy for new developers to understand and contribute to the codebase.
-
-Key strengths include the unified player system for consistency, robust authentication and authorization, comprehensive API design, and thorough testing coverage. The application is ready for production deployment and positioned for scalable growth.

@@ -1,5 +1,6 @@
+import React from "react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from '../ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,10 +11,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from '../ui/alert-dialog';
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from '../../lib/queryClient';
+import { useToast } from '../../hooks/use-toast';
 import { useLocation } from "wouter";
 import { Trash2 } from "lucide-react";
 import type { League } from "@shared/schema";

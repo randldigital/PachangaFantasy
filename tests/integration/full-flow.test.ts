@@ -77,8 +77,7 @@ describe('Full Pachanga Fantasy Flow Integration', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .send(tierListData);
 
-      // Should succeed or return appropriate status
-      expect([200, 400, 500]).toContain(tierListResponse.status);
+      expect(tierListResponse.status).toBe(200);
     }
 
     // Step 5: Create Match (if league has enough data)
@@ -102,7 +101,7 @@ describe('Full Pachanga Fantasy Flow Integration', () => {
         .post(`/api/matches/${matchId}/join`)
         .set('Authorization', `Bearer ${userToken}`);
 
-      expect([200, 400]).toContain(joinResponse.status);
+      expect(joinResponse.status).toBe(200);
     }
 
     // Step 7: Test Rankings Endpoint
@@ -110,7 +109,7 @@ describe('Full Pachanga Fantasy Flow Integration', () => {
       .get(`/api/leagues/${leagueId}/rankings`)
       .set('Authorization', `Bearer ${userToken}`);
 
-    expect([200, 404]).toContain(rankingsResponse.status);
+    expect(rankingsResponse.status).toBe(200);
 
     // Verify the flow completed without critical errors
     expect(userToken).toBeDefined();

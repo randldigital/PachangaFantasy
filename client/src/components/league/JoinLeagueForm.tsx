@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -40,7 +41,14 @@ export default function JoinLeagueForm({ onSuccess }: JoinLeagueFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteCode.trim()) return;
+    if (!inviteCode.trim()) {
+      toast({
+        title: t('common.error'),
+        description: t('league.inviteCodeRequired'),
+        variant: 'destructive',
+      });
+      return;
+    }
     
     joinLeagueMutation.mutate(inviteCode.trim().toUpperCase());
   };

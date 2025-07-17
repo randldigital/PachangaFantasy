@@ -14,8 +14,8 @@ import type { Match, StatReport } from '@shared/schema';
 interface AdminGoalValidationProps {
   match: Match;
   statReports: StatReport[];
-  user: any;
-  league: any;
+  user: { id?: number };
+  league: { createdBy?: number };
 }
 
 interface ValidationResult {
@@ -28,7 +28,7 @@ export default function AdminGoalValidation({ match, statReports, user, league }
   const [finalScore, setFinalScore] = useState<number>(0);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  // const queryClient = useQueryClient(); // Removed as per edit hint
 
   // Only show to league creator
   if (!user || !league || user.id !== league.createdBy) {
@@ -57,10 +57,10 @@ export default function AdminGoalValidation({ match, statReports, user, league }
         });
       }
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => { // Replaced 'any' with 'unknown'
       toast({
         title: "Validation Error",
-        description: error.message || "Failed to validate goals",
+        description: (error as Error).message || "Failed to validate goals",
         variant: "destructive",
       });
     }

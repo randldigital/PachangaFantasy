@@ -17,7 +17,9 @@
     "noAccount": "¿No tienes cuenta? Regístrate",
     "hasAccount": "¿Ya tienes cuenta? Inicia sesión",
     "loginButton": "Iniciar Sesión",
-    "registerButton": "Registrarse"
+    "registerButton": "Registrarse",
+    "invalidCredentials": "Credenciales inválidas",
+    "registrationFailed": "Registro fallido"
   },
   "dashboard": {
     "title": "Mi Dashboard",
@@ -47,7 +49,16 @@
     "playerEmoji": "Emoji",
     "addPlayer": "Agregar Jugador",
     "startVoting": "Iniciar Votación",
-    "closeVoting": "Cerrar Votación"
+    "closeVoting": "Cerrar Votación",
+    "nameRequired": "El nombre de la liga es obligatorio",
+    "nameTooLong": "El nombre de la liga debe tener 25 caracteres o menos",
+    "descriptionTooLong": "La descripción debe tener 200 caracteres o menos",
+    "inviteCodeRequired": "El código de invitación es obligatorio",
+    "createSuccess": "Liga creada con código: {{code}}",
+    "createError": "No se pudo crear la liga",
+    "joinSuccess": "Te has unido a la liga: {{name}}",
+    "joinError": "No se pudo unir a la liga. Verifica el código de invitación.",
+    "inviteCopied": "Código de invitación copiado al portapapeles"
   },
   "tierlist": {
     "title": "Crear Tier List",
@@ -150,6 +161,7 @@
     "created": "Partido creado",
     "createdDescription": "El partido ha sido creado exitosamente",
     "createError": "Error al crear el partido",
+    "createSuccess": "Partido creado exitosamente",
     "join": "Unirse al Partido",
     "view": "Ver Partido",
     "details": "Detalles del Partido",
@@ -172,11 +184,13 @@
     "noPlayersAvailable": "No hay jugadores disponibles",
     "allPlayersAlreadyJoined": "Todos los jugadores ya se han unido a este partido",
     "addSelectedPlayers": "Añadir {{count}} Jugadores",
-    "playersAdded": "Jugadores Añadidos",
-    "playersAddedDescription": "{{count}} jugadores fueron añadidos exitosamente al partido",
+    "playersAdded": "{{count}} jugadores fueron añadidos exitosamente al partido",
     "addPlayersError": "Error al añadir jugadores al partido",
     "budget": "Presupuesto",
-    "player": "Jugador",
+    "player": {
+      "addSuccess": "Te has agregado como jugador: {{name}}",
+      "addError": "No se pudo agregar como jugador"
+    },
     "noPlayers": "Sin jugadores",
     "goals": "Goles",
     "assists": "Asistencias",
@@ -236,5 +250,15 @@
     "noPlayersDescription": "Agrega jugadores a la liga primero",
     "position": "Posición",
     "marketValue": "Valor de Mercado"
+  },
+  "stats": {
+    "submitSuccessTitle": "✅ ¡Estadísticas enviadas exitosamente!",
+    "submitSuccess": "Goles: {{goals}}, Asistencias: {{assists}}",
+    "submitErrorTitle": "Error al enviar estadísticas",
+    "submitError": "Hubo un error al enviar tus estadísticas. Por favor, inténtalo de nuevo.",
+    "calculateSuccess": "¡Puntuaciones calculadas exitosamente!",
+    "calculateSuccessDescription": "Los puntos de los jugadores han sido calculados y los marcadores actualizados.",
+    "calculateErrorTitle": "Error al calcular puntuaciones",
+    "calculateError": "Hubo un error al calcular las puntuaciones. Por favor, inténtalo de nuevo."
   }
 }

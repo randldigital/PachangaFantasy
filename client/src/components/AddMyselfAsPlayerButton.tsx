@@ -1,18 +1,19 @@
+import React from "react";
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
+import { Button } from './ui/button';
 import { UserPlus, Check, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { apiRequest } from '@/lib/queryClient';
-import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '../lib/queryClient';
+import { useToast } from '../hooks/use-toast';
 
 interface AddMyselfAsPlayerButtonProps {
   leagueId: number;
 }
 
 export default function AddMyselfAsPlayerButton({ leagueId }: AddMyselfAsPlayerButtonProps) {
-  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   // Check if user is already a player
   const { data: userPlayerStatus, isLoading } = useQuery({
@@ -43,14 +44,14 @@ export default function AddMyselfAsPlayerButton({ leagueId }: AddMyselfAsPlayerB
       queryClient.refetchQueries({ queryKey: ['/api/players', String(leagueId)] });
       
       toast({
-        title: '¡Éxito!',
-        description: `Te has agregado como jugador: ${data.name}`,
+        title: t('common.success'),
+        description: t('player.addSuccess', { name: data.name }),
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
-        title: 'Error',
-        description: error?.message || 'No se pudo agregar como jugador',
+        title: t('common.error'),
+        description: t('player.addError'),
         variant: 'destructive',
       });
     }

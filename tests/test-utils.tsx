@@ -1,55 +1,52 @@
-import { render, RenderOptions } from '@testing-library/react';
-import React, { ReactElement, ReactNode } from 'react';
+import React, { ReactElement, ReactNode, createContext, useContext } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import type { User, League, Player, Match } from '@shared/schema';
+import { TooltipProvider } from '../client/src/components/ui/tooltip';
+import type { User, League, Player, Match } from '../shared/schema';
 
-// Create a new QueryClient for each test to avoid cross-test pollution
+// --- Mock Auth Context ---
+interface MockAuthContextType {
+  user: User | null;
+  login: () => void;
+  register: () => void;
+  logout: () => void;
+  loading: boolean;
+}
+const MockAuthContext = createContext<MockAuthContextType | undefined>(undefined);
+export function useAuth() {
+  const context = useContext(MockAuthContext);
+  if (!context) throw new Error('useAuth must be used within a MockAuthProvider');
+  return context;
+}
+const MockAuthProvider = ({ children, user = null }: { children: ReactNode; user?: User | null }) => (
+  <MockAuthContext.Provider value={{
+    user,
+    login: () => {},
+    register: () => {},
+    logout: () => {},
+    loading: false,
+  }}>
+    {children}
+  </MockAuthContext.Provider>
+);
+
+// --- Query Client ---
 const createTestQueryClient = () =>
   new QueryClient({
     defaultOptions: {
-      queries: {
-        retry: false,
-      },
-      mutations: {
-        retry: false,
-      },
+      queries: { retry: false },
+      mutations: { retry: false },
     },
   });
 
-interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
+interface CustomRenderOptions {
   initialUser?: User | null;
 }
 
-const AllTheProviders = ({ 
-  children, 
-  initialUser = null 
-}: { 
-  children: React.ReactNode;
-  initialUser?: User | null;
-}) => {
+const AllTheProviders = ({ children, initialUser = null }: { children: ReactNode; initialUser?: User | null }) => {
   const queryClient = createTestQueryClient();
-  
-  // Mock AuthProvider with test user
-  const MockAuthProvider = ({ children }: { children: React.ReactNode }) => {
-    const mockAuthValue = {
-      user: initialUser,
-      login: vi.fn(),
-      logout: vi.fn(),
-      isLoading: false,
-    };
-    
-    return (
-      <AuthProvider value={mockAuthValue as any}>
-        {children}
-      </AuthProvider>
-    );
-  };
-
   return (
     <QueryClientProvider client={queryClient}>
-      <MockAuthProvider>
+      <MockAuthProvider user={initialUser}>
         <TooltipProvider>
           {children}
         </TooltipProvider>
@@ -58,39 +55,35 @@ const AllTheProviders = ({
   );
 };
 
-const customRender = (
-  ui: ReactElement,
-  options: CustomRenderOptions = {}
-) => {
+import { render as rtlRender, RenderOptions } from '@testing-library/react';
+const render = (ui: ReactElement, options: CustomRenderOptions = {}) => {
   const { initialUser, ...renderOptions } = options;
-  
-  return render(ui, {
-    wrapper: (props) => <AllTheProviders {...props} initialUser={initialUser} />,
-    ...renderOptions,
+  return rtlRender(ui, {
+    wrapper: (props) => <AllTheProviders {...props} initialUser={initialUser} />, ...renderOptions,
   });
 };
 
-// Mock data generators
+// --- Mock Data Generators ---
 export const createMockUser = (overrides: Partial<User> = {}): User => ({
   id: 1,
   username: 'testuser',
   email: 'test@example.com',
+  password: 'password',
   role: 'player',
   leagueId: null,
   ...overrides,
 });
-
 export const createMockLeague = (overrides: Partial<League> = {}): League => ({
   id: 1,
   name: 'Test League',
-  description: 'A test league for unit tests',
+  description: '',
   inviteCode: 'TEST123',
-  status: 'open',
   createdBy: 1,
+  status: 'open',
   participants: [1],
+  createdAt: new Date(),
   ...overrides,
 });
-
 export const createMockPlayer = (overrides: Partial<Player> = {}): Player => ({
   id: 1,
   name: 'Test Player',
@@ -101,7 +94,6 @@ export const createMockPlayer = (overrides: Partial<Player> = {}): Player => ({
   userId: 1,
   ...overrides,
 });
-
 export const createMockMatch = (overrides: Partial<Match> = {}): Match => ({
   id: 1,
   leagueId: 1,
@@ -109,12 +101,13 @@ export const createMockMatch = (overrides: Partial<Match> = {}): Match => ({
   lineupBudget: 100,
   status: 'open',
   matchTeams: null,
+  finalScore: null,
+  createdBy: 1,
   createdAt: new Date(),
   ...overrides,
 });
-
 export const createMockPlayers = (count: number = 5): Player[] => {
-  return Array.from({ length: count }, (_, index) => 
+  return Array.from({ length: count }, (_, index) =>
     createMockPlayer({
       id: index + 1,
       name: `Player ${index + 1}`,
@@ -124,29 +117,6 @@ export const createMockPlayers = (count: number = 5): Player[] => {
   );
 };
 
-// Database test utilities
-export const setupTestDatabase = async () => {
-  // This would set up a test database instance
-  // For now, we'll use mocks in tests
-};
-
-export const cleanupTestDatabase = async () => {
-  // This would clean up the test database
-};
-
-// API response helpers
-export const mockSuccessResponse = <T,>(data: T) => ({
-  ok: true,
-  status: 200,
-  json: async () => data,
-});
-
-export const mockErrorResponse = (message: string, status: number = 400) => ({
-  ok: false,
-  status,
-  json: async () => ({ message }),
-});
-
-// Export everything from testing-library
+// --- Export everything from testing-library ---
 export * from '@testing-library/react';
-export { customRender as render };
+export { render };

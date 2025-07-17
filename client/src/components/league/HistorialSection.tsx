@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Calendar, Clock, Users, Trophy, ChevronDown, ChevronUp } from "lucide-react";

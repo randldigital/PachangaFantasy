@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
-import express from 'express';
-import { registerRoutes } from '@server/routes';
-import { DatabaseStorage } from '@server/storage';
+import express, { type Express } from 'express';
+import { registerRoutes } from '../../server/routes';
+import { DatabaseStorage } from '../../server/storage';
 
 // Mock the storage
 vi.mock('@server/storage', () => {
@@ -12,25 +12,20 @@ vi.mock('@server/storage', () => {
     authenticateUser: vi.fn(),
     getUser: vi.fn(),
   };
-  
   return {
     DatabaseStorage: vi.fn(() => mockStorage),
     storage: mockStorage,
   };
 });
 
-describe('Authentication Routes', () => {
-  let app: express.Application;
+describe('Authentication API', () => {
+  let app: Express;
   let mockStorage: any;
 
   beforeEach(async () => {
     app = express();
     app.use(express.json());
-    
-    // Get the mocked storage instance
     mockStorage = new DatabaseStorage();
-    
-    // Register routes
     await registerRoutes(app);
   });
 
@@ -39,165 +34,67 @@ describe('Authentication Routes', () => {
   });
 
   describe('POST /api/auth/register', () => {
-    it('should register a new user successfully', async () => {
-      const newUser = {
-        username: 'testuser',
-        email: 'test@example.com',
-        password: 'password123'
-      };
-
-      const createdUser = {
-        id: 1,
-        username: 'testuser',
-        email: 'test@example.com',
-        role: 'player',
-        leagueId: null
-      };
-
+    it('registers a new user', async () => {
+      const newUser = { username: 'user', email: 'user@example.com', password: 'pw12345' };
+      const createdUser = { id: 1, username: 'user', email: 'user@example.com', role: 'player', leagueId: null };
       mockStorage.getUserByEmail.mockResolvedValue(null);
       mockStorage.createUser.mockResolvedValue(createdUser);
-
-      const response = await request(app)
-        .post('/api/auth/register')
-        .send(newUser);
-
-      expect(response.status).toBe(200);
-      expect(response.body.user).toEqual(createdUser);
-      expect(response.body.token).toBeDefined();
-      expect(mockStorage.createUser).toHaveBeenCalledWith(
-        expect.objectContaining({
-          username: newUser.username,
-          email: newUser.email,
-          password: newUser.password
-        })
-      );
+      const res = await request(app).post('/api/auth/register').send(newUser);
+      expect(res.status).toBe(200);
+      expect(res.body.user).toEqual(createdUser);
+      expect(res.body.token).toBeDefined();
     });
-
-    it('should return error if user already exists', async () => {
-      const existingUser = {
-        username: 'testuser',
-        email: 'test@example.com',
-        password: 'password123'
-      };
-
-      mockStorage.getUserByEmail.mockResolvedValue({ id: 1, email: 'test@example.com' });
-
-      const response = await request(app)
-        .post('/api/auth/register')
-        .send(existingUser);
-
-      expect(response.status).toBe(400);
-      expect(response.body.message).toBe('User already exists');
+    it('rejects duplicate email', async () => {
+      mockStorage.getUserByEmail.mockResolvedValue({ id: 1, email: 'user@example.com' });
+      const res = await request(app).post('/api/auth/register').send({ username: 'user', email: 'user@example.com', password: 'pw12345' });
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('User already exists');
     });
-
-    it('should validate required fields', async () => {
-      const invalidUser = {
-        username: '',
-        email: 'invalid-email', 
-        password: '123'
-      };
-
-      // Mock user exists check to return null but createUser should throw validation error
+    it('validates required fields', async () => {
       mockStorage.getUserByEmail.mockResolvedValue(null);
       mockStorage.createUser.mockRejectedValue(new Error('Validation failed'));
-
-      const response = await request(app)
-        .post('/api/auth/register')
-        .send(invalidUser);
-
-      expect(response.status).toBe(400);
-      expect(response.body.message).toBe('Invalid input');
+      const res = await request(app).post('/api/auth/register').send({ username: '', email: 'bad', password: '1' });
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('Invalid input');
     });
   });
 
   describe('POST /api/auth/login', () => {
-    it('should login user with valid credentials', async () => {
-      const loginData = {
-        email: 'test@example.com',
-        password: 'password123'
-      };
-
-      const userWithToken = {
-        user: {
-          id: 1,
-          username: 'testuser',
-          email: 'test@example.com',
-          role: 'player',
-          leagueId: null
-        },
-        token: 'mock-jwt-token'
-      };
-
+    it('logs in with valid credentials', async () => {
+      const loginData = { email: 'user@example.com', password: 'pw12345' };
+      const userWithToken = { user: { id: 1, username: 'user', email: 'user@example.com', role: 'player', leagueId: null }, token: 'mock-token' };
       mockStorage.authenticateUser.mockResolvedValue(userWithToken);
-
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send(loginData);
-
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual(userWithToken);
-      expect(mockStorage.authenticateUser).toHaveBeenCalledWith(
-        loginData.email,
-        loginData.password
-      );
+      const res = await request(app).post('/api/auth/login').send(loginData);
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual(userWithToken);
     });
-
-    it('should return error for invalid credentials', async () => {
-      const loginData = {
-        email: 'test@example.com',
-        password: 'wrongpassword'
-      };
-
+    it('rejects invalid credentials', async () => {
       mockStorage.authenticateUser.mockResolvedValue(null);
-
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send(loginData);
-
-      expect(response.status).toBe(401);
-      expect(response.body.message).toBe('Invalid credentials');
+      const res = await request(app).post('/api/auth/login').send({ email: 'user@example.com', password: 'wrong' });
+      expect(res.status).toBe(401);
+      expect(res.body.message).toBe('Invalid credentials');
     });
   });
 
   describe('GET /api/auth/me', () => {
-    it('should return user info for valid token', async () => {
-      const user = {
-        id: 1,
-        username: 'testuser',
-        email: 'test@example.com',
-        role: 'player',
-        leagueId: null
-      };
-
+    it('returns user info for valid token', async () => {
+      const user = { id: 1, username: 'user', email: 'user@example.com', role: 'player', leagueId: null };
       mockStorage.getUser.mockResolvedValue(user);
-
-      // Create a valid JWT token for testing
       const jwt = require('jsonwebtoken');
       const token = jwt.sign({ userId: 1 }, process.env.JWT_SECRET || 'pachanga-secret-key');
-
-      const response = await request(app)
-        .get('/api/auth/me')
-        .set('Authorization', `Bearer ${token}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.user).toEqual(user);
+      const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.user).toEqual(user);
     });
-
-    it('should return error for missing token', async () => {
-      const response = await request(app)
-        .get('/api/auth/me');
-
-      expect(response.status).toBe(401);
-      expect(response.body.message).toBe('Access token required');
+    it('rejects missing token', async () => {
+      const res = await request(app).get('/api/auth/me');
+      expect(res.status).toBe(401);
+      expect(res.body.message).toBe('Access token required');
     });
-
-    it('should return error for invalid token', async () => {
-      const response = await request(app)
-        .get('/api/auth/me')
-        .set('Authorization', 'Bearer invalid-token');
-
-      expect(response.status).toBe(403);
-      expect(response.body.message).toBe('Invalid token');
+    it('rejects invalid token', async () => {
+      const res = await request(app).get('/api/auth/me').set('Authorization', 'Bearer badtoken');
+      expect(res.status).toBe(403);
+      expect(res.body.message).toBe('Invalid token');
     });
   });
 });

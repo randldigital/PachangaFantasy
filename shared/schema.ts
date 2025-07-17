@@ -30,6 +30,7 @@ export const players = pgTable("players", {
   emoji: text("emoji").notNull().default("⚽"),
   createdBy: integer("created_by"),
   userId: integer("user_id"), // Optional FK to users.id for user-players
+  position: text("position").notNull().default("forward"),
 });
 
 export const tierLists = pgTable("tier_lists", {

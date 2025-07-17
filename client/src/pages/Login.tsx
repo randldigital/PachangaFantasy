@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
@@ -38,7 +39,7 @@ export default function Login() {
     } catch (error) {
       toast({
         title: t('common.error'),
-        description: 'Invalid credentials',
+        description: t('auth.invalidCredentials'),
         variant: 'destructive',
       });
       setIsLoading(false);
