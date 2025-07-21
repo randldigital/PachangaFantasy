@@ -978,6 +978,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Manager Leaderboard (Fantasy)
+  app.get('/api/leaderboards/:leagueId/users', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const leagueId = parseInt(req.params.leagueId);
+      const league = await storage.getLeague(leagueId);
+      if (!league || !league.participants || !league.participants.includes(req.user!.id)) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+      const leaderboard = await storage.getManagerLeaderboard(leagueId);
+      res.json(leaderboard);
+    } catch (error) {
+      console.error('Error fetching manager leaderboard:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

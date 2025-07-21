@@ -528,6 +528,76 @@ export class DatabaseStorage implements IStorage {
     
     return result;
   }
+
+  /**
+   * Returns the manager leaderboard for a league, based on user lineups and stat reports.
+   * Each user's totalPoints is the sum of their fantasy lineup scores across all matches in the league.
+   * Captain gets a 2x multiplier. Excludes users with no valid lineups.
+   */
+  async getManagerLeaderboard(leagueId: number): Promise<{ userId: number, username: string, totalPoints: number }[]> {
+    // Get all matches in the league
+    const matchesInLeague = await db.select().from(matches).where(eq(matches.leagueId, leagueId));
+    if (!matchesInLeague.length) return [];
+
+    // Get all lineups for these matches
+    const matchIds = matchesInLeague.map(m => m.id);
+    const allLineups = await db.select().from(lineups).where(sql`match_id = ANY(${matchIds})`);
+    if (!allLineups.length) return [];
+
+    // Get all users with at least one lineup
+    const userIds = Array.from(new Set(allLineups.map(l => l.userId)));
+    if (!userIds.length) return [];
+
+    // Get all users (for username)
+    const usersMap = new Map<number, { id: number, username: string }>();
+    const usersList = await db.select({ id: users.id, username: users.username }).from(users).where(sql`id = ANY(${userIds})`);
+    usersList.forEach(u => usersMap.set(u.id, u));
+
+    // Get all stat reports for these matches
+    const allStatReports = await db.select().from(statReports).where(sql`match_id = ANY(${matchIds})`);
+    // Map: { [matchId]: { [playerId]: { goals, assists } } }
+    const statsByMatchAndPlayer = new Map<number, Map<number, { goals: number, assists: number }>>();
+    for (const report of allStatReports) {
+      if (!statsByMatchAndPlayer.has(report.matchId)) {
+        statsByMatchAndPlayer.set(report.matchId, new Map());
+      }
+      statsByMatchAndPlayer.get(report.matchId)!.set(report.userId, {
+        goals: report.goals || 0,
+        assists: report.assists || 0,
+      });
+    }
+
+    // For each user, sum up their fantasy points across all matches where they submitted a lineup
+    const userPoints: { [userId: number]: number } = {};
+    for (const lineup of allLineups) {
+      const { userId, matchId, playerIds, captainId } = lineup;
+      // Only count if playerIds is a non-empty array
+      if (!Array.isArray(playerIds) || playerIds.length === 0) continue;
+      // For this lineup, get stats for each player
+      let lineupPoints = 0;
+      const statsForMatch = statsByMatchAndPlayer.get(matchId) || new Map();
+      for (const pid of playerIds) {
+        const stats = statsForMatch.get(pid) || { goals: 0, assists: 0 };
+        let playerPoints = (stats.goals * 3) + (stats.assists * 2);
+        if (pid === captainId) playerPoints *= 2;
+        lineupPoints += playerPoints;
+      }
+      if (!userPoints[userId]) userPoints[userId] = 0;
+      userPoints[userId] += lineupPoints;
+    }
+
+    // Build leaderboard array, exclude users with 0 points
+    const leaderboard = Object.entries(userPoints)
+      .filter(([userId, totalPoints]) => totalPoints > 0)
+      .map(([userId, totalPoints]) => ({
+        userId: Number(userId),
+        username: usersMap.get(Number(userId))?.username || 'Unknown',
+        totalPoints: totalPoints as number,
+      }))
+      .sort((a, b) => b.totalPoints - a.totalPoints);
+
+    return leaderboard;
+  }
 }
 
 export const storage = new DatabaseStorage();

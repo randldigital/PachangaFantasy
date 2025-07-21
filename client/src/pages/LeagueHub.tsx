@@ -20,6 +20,7 @@ import HistorialSection from "@/components/league/HistorialSection";
 import TierListSection from "@/components/league/TierListSection";
 import SubmitMyStats from "@/components/league/SubmitMyStats";
 import AdminStatsOverview from "@/components/league/AdminStatsOverview";
+import ManagerLeaderboardSection from '@/components/league/ManagerLeaderboardSection';
 import type { League, Match, Player } from "@shared/schema";
 import { FEATURE_VOTING, FEATURE_WRAPPED } from '../constants';
 
@@ -70,7 +71,11 @@ export default function LeagueHub() {
   });
 
   // Find active match
-  const activeMatch = matches && matches.length > 0 ? matches.find(match => match.status === 'open' || match.status === 'ready') || matches[0] : undefined;
+  const activeMatch = matches && matches.length > 0
+    ? matches.find(match => match.status === 'open' || match.status === 'ready')
+      || matches.find(match => match.status === 'completed')
+      || matches[0]
+    : undefined;
 
   if (leagueLoading) {
     return (
@@ -157,7 +162,7 @@ export default function LeagueHub() {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 pb-20 lg:pb-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-5 bg-slate-800 border-slate-700 mb-6">
+          <TabsList className="grid w-full grid-cols-6 lg:grid-cols-6 bg-slate-800 border-slate-700 mb-6">
             <TabsTrigger 
               value="lineup" 
               className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
@@ -171,6 +176,13 @@ export default function LeagueHub() {
             >
               <Trophy className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">{t('league.tabs.clasificacion')}</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="managers" 
+              className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">{t('league.tabs.managers', 'Managers')}</span>
             </TabsTrigger>
             <TabsTrigger 
               value="historial" 
@@ -219,6 +231,13 @@ export default function LeagueHub() {
 
           <TabsContent value="clasificacion" className="mt-0">
             <ClasificacionSection 
+              leagueId={leagueId}
+              currentUser={user || undefined}
+            />
+          </TabsContent>
+
+          <TabsContent value="managers" className="mt-0">
+            <ManagerLeaderboardSection 
               leagueId={leagueId}
               currentUser={user || undefined}
             />
