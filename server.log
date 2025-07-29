@@ -1,0 +1,402 @@
+
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.js
+
+12:32:05 PM [express] serving on port 5000
+12:32:18 PM [express] GET /api/leagues 401 in 11ms :: {"message":"Access token required"}
+Registration attempt with data: {
+  username: 'league_owner_1753792338339',
+  email: 'owner_1753792338339@test.com',
+  password: 'password123'
+}
+Parsed user data: {
+  username: 'league_owner_1753792338339',
+  email: 'owner_1753792338339@test.com',
+  password: 'password123'
+}
+Creating user...
+Storage: Starting user creation for: owner_1753792338339@test.com
+Storage: Password hashed successfully
+Storage: User created successfully: 155
+User created successfully: 155
+12:32:18 PM [express] POST /api/auth/register 200 in 146ms :: {"user":{"id":155,"username":"league_ow…
+Registration attempt with data: {
+  username: 'user1_1753792338339',
+  email: 'user1_1753792338339@test.com',
+  password: 'password123'
+}
+Parsed user data: {
+  username: 'user1_1753792338339',
+  email: 'user1_1753792338339@test.com',
+  password: 'password123'
+}
+Creating user...
+Storage: Starting user creation for: user1_1753792338339@test.com
+Storage: Password hashed successfully
+Storage: User created successfully: 156
+User created successfully: 156
+12:32:18 PM [express] POST /api/auth/register 200 in 66ms :: {"user":{"id":156,"username":"user1_1753…
+Registration attempt with data: {
+  username: 'user2_1753792338339',
+  email: 'user2_1753792338339@test.com',
+  password: 'password123'
+}
+Parsed user data: {
+  username: 'user2_1753792338339',
+  email: 'user2_1753792338339@test.com',
+  password: 'password123'
+}
+Creating user...
+Storage: Starting user creation for: user2_1753792338339@test.com
+Storage: Password hashed successfully
+Storage: User created successfully: 157
+User created successfully: 157
+12:32:18 PM [express] POST /api/auth/register 200 in 73ms :: {"user":{"id":157,"username":"user2_1753…
+Registration attempt with data: {
+  username: 'user3_1753792338339',
+  email: 'user3_1753792338339@test.com',
+  password: 'password123'
+}
+Parsed user data: {
+  username: 'user3_1753792338339',
+  email: 'user3_1753792338339@test.com',
+  password: 'password123'
+}
+Creating user...
+Storage: Starting user creation for: user3_1753792338339@test.com
+Storage: Password hashed successfully
+Storage: User created successfully: 158
+User created successfully: 158
+12:32:18 PM [express] POST /api/auth/register 200 in 66ms :: {"user":{"id":158,"username":"user3_1753…
+Registration attempt with data: {
+  username: 'user4_1753792338339',
+  email: 'user4_1753792338339@test.com',
+  password: 'password123'
+}
+Parsed user data: {
+  username: 'user4_1753792338339',
+  email: 'user4_1753792338339@test.com',
+  password: 'password123'
+}
+Creating user...
+Storage: Starting user creation for: user4_1753792338339@test.com
+Storage: Password hashed successfully
+Storage: User created successfully: 159
+User created successfully: 159
+12:32:18 PM [express] POST /api/auth/register 200 in 71ms :: {"user":{"id":159,"username":"user4_1753…
+Registration attempt with data: {
+  username: 'user5_1753792338339',
+  email: 'user5_1753792338339@test.com',
+  password: 'password123'
+}
+Parsed user data: {
+  username: 'user5_1753792338339',
+  email: 'user5_1753792338339@test.com',
+  password: 'password123'
+}
+Creating user...
+Storage: Starting user creation for: user5_1753792338339@test.com
+Storage: Password hashed successfully
+Storage: User created successfully: 160
+User created successfully: 160
+12:32:19 PM [express] POST /api/auth/register 200 in 76ms :: {"user":{"id":160,"username":"user5_1753…
+Registration attempt with data: {
+  username: 'user6_1753792338339',
+  email: 'user6_1753792338339@test.com',
+  password: 'password123'
+}
+Parsed user data: {
+  username: 'user6_1753792338339',
+  email: 'user6_1753792338339@test.com',
+  password: 'password123'
+}
+Creating user...
+Storage: Starting user creation for: user6_1753792338339@test.com
+Storage: Password hashed successfully
+Storage: User created successfully: 161
+User created successfully: 161
+12:32:19 PM [express] POST /api/auth/register 200 in 76ms :: {"user":{"id":161,"username":"user6_1753…
+Registration attempt with data: {
+  username: 'user7_1753792338339',
+  email: 'user7_1753792338339@test.com',
+  password: 'password123'
+}
+Parsed user data: {
+  username: 'user7_1753792338339',
+  email: 'user7_1753792338339@test.com',
+  password: 'password123'
+}
+Creating user...
+Storage: Starting user creation for: user7_1753792338339@test.com
+Storage: Password hashed successfully
+Storage: User created successfully: 162
+User created successfully: 162
+12:32:19 PM [express] POST /api/auth/register 200 in 80ms :: {"user":{"id":162,"username":"user7_1753…
+Registration attempt with data: {
+  username: 'user8_1753792338339',
+  email: 'user8_1753792338339@test.com',
+  password: 'password123'
+}
+Parsed user data: {
+  username: 'user8_1753792338339',
+  email: 'user8_1753792338339@test.com',
+  password: 'password123'
+}
+Creating user...
+Storage: Starting user creation for: user8_1753792338339@test.com
+Storage: Password hashed successfully
+Storage: User created successfully: 163
+User created successfully: 163
+12:32:19 PM [express] POST /api/auth/register 200 in 81ms :: {"user":{"id":163,"username":"user8_1753…
+Registration attempt with data: {
+  username: 'user9_1753792338339',
+  email: 'user9_1753792338339@test.com',
+  password: 'password123'
+}
+Parsed user data: {
+  username: 'user9_1753792338339',
+  email: 'user9_1753792338339@test.com',
+  password: 'password123'
+}
+Creating user...
+Storage: Starting user creation for: user9_1753792338339@test.com
+Storage: Password hashed successfully
+Storage: User created successfully: 164
+User created successfully: 164
+12:32:19 PM [express] POST /api/auth/register 200 in 79ms :: {"user":{"id":164,"username":"user9_1753…
+Creating league for user league_owner_1753792338339 (ID: 155)
+League created: 21, now creating player record...
+League created with creator as player: {
+  league: 21,
+  player: 258,
+  creator: 'league_owner_1753792338339',
+  playerUserId: 155
+}
+12:32:19 PM [express] POST /api/leagues 200 in 25ms :: {"id":21,"name":"Comprehensive Test League","d…
+12:32:19 PM [express] GET /api/leagues/21 200 in 9ms :: {"id":21,"name":"Comprehensive Test League","…
+User joined league and created as player: { league: 21, player: 259, username: 'user1_1753792338339' }
+12:32:19 PM [express] POST /api/leagues/QKPVFA/join 200 in 23ms :: {"league":{"id":21,"name":"Compreh…
+User joined league and created as player: { league: 21, player: 260, username: 'user2_1753792338339' }
+12:32:19 PM [express] POST /api/leagues/QKPVFA/join 200 in 17ms :: {"league":{"id":21,"name":"Compreh…
+User joined league and created as player: { league: 21, player: 261, username: 'user3_1753792338339' }
+12:32:19 PM [express] POST /api/leagues/QKPVFA/join 200 in 20ms :: {"league":{"id":21,"name":"Compreh…
+User joined league and created as player: { league: 21, player: 262, username: 'user4_1753792338339' }
+12:32:19 PM [express] POST /api/leagues/QKPVFA/join 200 in 15ms :: {"league":{"id":21,"name":"Compreh…
+User joined league and created as player: { league: 21, player: 263, username: 'user5_1753792338339' }
+12:32:19 PM [express] POST /api/leagues/QKPVFA/join 200 in 18ms :: {"league":{"id":21,"name":"Compreh…
+User joined league and created as player: { league: 21, player: 264, username: 'user6_1753792338339' }
+12:32:19 PM [express] POST /api/leagues/QKPVFA/join 200 in 19ms :: {"league":{"id":21,"name":"Compreh…
+User joined league and created as player: { league: 21, player: 265, username: 'user7_1753792338339' }
+12:32:19 PM [express] POST /api/leagues/QKPVFA/join 200 in 18ms :: {"league":{"id":21,"name":"Compreh…
+User joined league and created as player: { league: 21, player: 266, username: 'user8_1753792338339' }
+12:32:19 PM [express] POST /api/leagues/QKPVFA/join 200 in 21ms :: {"league":{"id":21,"name":"Compreh…
+User joined league and created as player: { league: 21, player: 267, username: 'user9_1753792338339' }
+12:32:19 PM [express] POST /api/leagues/QKPVFA/join 200 in 20ms :: {"league":{"id":21,"name":"Compreh…
+League creator added player: { league: '21', player: 268, creator: 'league_owner_1753792338339' }
+12:32:19 PM [express] POST /api/players/21 200 in 14ms :: {"id":268,"name":"Messi","leagueId":21,"mar…
+League creator added player: { league: '21', player: 269, creator: 'league_owner_1753792338339' }
+12:32:19 PM [express] POST /api/players/21 200 in 15ms :: {"id":269,"name":"Ronaldo","leagueId":21,"m…
+League creator added player: { league: '21', player: 270, creator: 'league_owner_1753792338339' }
+12:32:19 PM [express] POST /api/players/21 200 in 12ms :: {"id":270,"name":"Neymar","leagueId":21,"ma…
+League creator added player: { league: '21', player: 271, creator: 'league_owner_1753792338339' }
+12:32:19 PM [express] POST /api/players/21 200 in 14ms :: {"id":271,"name":"Mbappe","leagueId":21,"ma…
+League creator added player: { league: '21', player: 272, creator: 'league_owner_1753792338339' }
+12:32:19 PM [express] POST /api/players/21 200 in 13ms :: {"id":272,"name":"Haaland","leagueId":21,"m…
+League creator added player: { league: '21', player: 273, creator: 'league_owner_1753792338339' }
+12:32:19 PM [express] POST /api/players/21 200 in 13ms :: {"id":273,"name":"Bellingham","leagueId":21…
+League creator added player: { league: '21', player: 274, creator: 'league_owner_1753792338339' }
+12:32:19 PM [express] POST /api/players/21 200 in 14ms :: {"id":274,"name":"De Bruyne","leagueId":21,…
+League creator added player: { league: '21', player: 275, creator: 'league_owner_1753792338339' }
+12:32:19 PM [express] POST /api/players/21 200 in 14ms :: {"id":275,"name":"Modric","leagueId":21,"ma…
+League creator added player: { league: '21', player: 276, creator: 'league_owner_1753792338339' }
+12:32:19 PM [express] POST /api/players/21 200 in 13ms :: {"id":276,"name":"Kane","leagueId":21,"mark…
+League creator added player: { league: '21', player: 277, creator: 'league_owner_1753792338339' }
+12:32:19 PM [express] POST /api/players/21 200 in 14ms :: {"id":277,"name":"Salah","leagueId":21,"mar…
+Tier list request body: {
+  playerOrder: [
+    268, 269, 270, 271,
+    272, 273, 274, 275,
+    276, 277
+  ]
+}
+12:32:19 PM [express] POST /api/tierlist/21 200 in 19ms :: {"id":110,"leagueId":21,"userId":156,"play…
+Tier list request body: {
+  playerOrder: [
+    268, 269, 270, 271,
+    272, 273, 274, 275,
+    276, 277
+  ]
+}
+12:32:19 PM [express] POST /api/tierlist/21 200 in 14ms :: {"id":111,"leagueId":21,"userId":157,"play…
+Tier list request body: {
+  playerOrder: [
+    268, 269, 270, 271,
+    272, 273, 274, 275,
+    276, 277
+  ]
+}
+12:32:19 PM [express] POST /api/tierlist/21 200 in 13ms :: {"id":112,"leagueId":21,"userId":158,"play…
+Tier list request body: {
+  playerOrder: [
+    268, 269, 270, 271,
+    272, 273, 274, 275,
+    276, 277
+  ]
+}
+12:32:19 PM [express] POST /api/tierlist/21 200 in 12ms :: {"id":113,"leagueId":21,"userId":159,"play…
+Tier list request body: {
+  playerOrder: [
+    268, 269, 270, 271,
+    272, 273, 274, 275,
+    276, 277
+  ]
+}
+12:32:19 PM [express] POST /api/tierlist/21 200 in 13ms :: {"id":114,"leagueId":21,"userId":160,"play…
+Tier list request body: {
+  playerOrder: [
+    268, 269, 270, 271,
+    272, 273, 274, 275,
+    276, 277
+  ]
+}
+12:32:19 PM [express] POST /api/tierlist/21 200 in 12ms :: {"id":115,"leagueId":21,"userId":161,"play…
+Tier list request body: {
+  playerOrder: [
+    268, 269, 270, 271,
+    272, 273, 274, 275,
+    276, 277
+  ]
+}
+12:32:19 PM [express] POST /api/tierlist/21 200 in 13ms :: {"id":116,"leagueId":21,"userId":162,"play…
+Tier list request body: {
+  playerOrder: [
+    268, 269, 270, 271,
+    272, 273, 274, 275,
+    276, 277
+  ]
+}
+12:32:19 PM [express] POST /api/tierlist/21 200 in 15ms :: {"id":117,"leagueId":21,"userId":163,"play…
+Tier list request body: {
+  playerOrder: [
+    268, 269, 270, 271,
+    272, 273, 274, 275,
+    276, 277
+  ]
+}
+12:32:19 PM [express] POST /api/tierlist/21 200 in 15ms :: {"id":118,"leagueId":21,"userId":164,"play…
+12:32:20 PM [express] POST /api/matches 200 in 17ms :: {"id":18,"leagueId":21,"date":"2025-02-15T00:0…
+Join match attempt: matchId=18, userId=156
+Match found: leagueId=21, status=open
+User as player check: player ID 259
+Calling storage.joinMatch with matchId=18, userId=156
+Join match successful: participant playerId=259, status=accepted
+Getting participants for team balancing check...
+Participant count: 1 accepted participants
+12:32:20 PM [express] POST /api/matches/18/join 200 in 27ms :: {"matchId":18,"playerId":259,"status":…
+Join match attempt: matchId=18, userId=157
+Match found: leagueId=21, status=open
+User as player check: player ID 260
+Calling storage.joinMatch with matchId=18, userId=157
+Join match successful: participant playerId=260, status=accepted
+Getting participants for team balancing check...
+Participant count: 2 accepted participants
+12:32:20 PM [express] POST /api/matches/18/join 200 in 26ms :: {"matchId":18,"playerId":260,"status":…
+Join match attempt: matchId=18, userId=158
+Match found: leagueId=21, status=open
+User as player check: player ID 261
+Calling storage.joinMatch with matchId=18, userId=158
+Join match successful: participant playerId=261, status=accepted
+Getting participants for team balancing check...
+Participant count: 3 accepted participants
+12:32:20 PM [express] POST /api/matches/18/join 200 in 23ms :: {"matchId":18,"playerId":261,"status":…
+Join match attempt: matchId=18, userId=159
+Match found: leagueId=21, status=open
+User as player check: player ID 262
+Calling storage.joinMatch with matchId=18, userId=159
+Join match successful: participant playerId=262, status=accepted
+Getting participants for team balancing check...
+Participant count: 4 accepted participants
+12:32:20 PM [express] POST /api/matches/18/join 200 in 23ms :: {"matchId":18,"playerId":262,"status":…
+Join match attempt: matchId=18, userId=160
+Match found: leagueId=21, status=open
+User as player check: player ID 263
+Calling storage.joinMatch with matchId=18, userId=160
+Join match successful: participant playerId=263, status=accepted
+Getting participants for team balancing check...
+Participant count: 5 accepted participants
+12:32:20 PM [express] POST /api/matches/18/join 200 in 20ms :: {"matchId":18,"playerId":263,"status":…
+Join match attempt: matchId=18, userId=161
+Match found: leagueId=21, status=open
+User as player check: player ID 264
+Calling storage.joinMatch with matchId=18, userId=161
+Join match successful: participant playerId=264, status=accepted
+Getting participants for team balancing check...
+Participant count: 6 accepted participants
+12:32:20 PM [express] POST /api/matches/18/join 200 in 23ms :: {"matchId":18,"playerId":264,"status":…
+Join match attempt: matchId=18, userId=162
+Match found: leagueId=21, status=open
+User as player check: player ID 265
+Calling storage.joinMatch with matchId=18, userId=162
+Join match successful: participant playerId=265, status=accepted
+Getting participants for team balancing check...
+Participant count: 7 accepted participants
+12:32:20 PM [express] POST /api/matches/18/join 200 in 22ms :: {"matchId":18,"playerId":265,"status":…
+Join match attempt: matchId=18, userId=163
+Match found: leagueId=21, status=open
+User as player check: player ID 266
+Calling storage.joinMatch with matchId=18, userId=163
+Join match successful: participant playerId=266, status=accepted
+Getting participants for team balancing check...
+Participant count: 8 accepted participants
+12:32:20 PM [express] POST /api/matches/18/join 200 in 24ms :: {"matchId":18,"playerId":266,"status":…
+Join match attempt: matchId=18, userId=164
+Match found: leagueId=21, status=open
+User as player check: player ID 267
+Calling storage.joinMatch with matchId=18, userId=164
+Join match successful: participant playerId=267, status=accepted
+Getting participants for team balancing check...
+Participant count: 9 accepted participants
+12:32:20 PM [express] POST /api/matches/18/join 200 in 26ms :: {"matchId":18,"playerId":267,"status":…
+12:32:20 PM [express] GET /api/players/21 200 in 7ms :: [{"id":258,"name":"league_owner_1753792338339…
+12:32:20 PM [express] POST /api/matches/18/lineup 200 in 18ms :: {"id":74,"matchId":18,"userId":156,"…
+12:32:20 PM [express] POST /api/matches/18/lineup 200 in 14ms :: {"id":75,"matchId":18,"userId":157,"…
+12:32:20 PM [express] POST /api/matches/18/lineup 200 in 29ms :: {"id":76,"matchId":18,"userId":158,"…
+12:32:20 PM [express] POST /api/matches/18/lineup 200 in 17ms :: {"id":77,"matchId":18,"userId":159,"…
+12:32:20 PM [express] POST /api/matches/18/lineup 200 in 15ms :: {"id":78,"matchId":18,"userId":160,"…
+12:32:20 PM [express] POST /api/matches/18/lineup 200 in 19ms :: {"id":79,"matchId":18,"userId":161,"…
+12:32:20 PM [express] POST /api/matches/18/lineup 200 in 15ms :: {"id":80,"matchId":18,"userId":162,"…
+12:32:20 PM [express] POST /api/matches/18/lineup 200 in 14ms :: {"id":81,"matchId":18,"userId":163,"…
+12:32:20 PM [express] POST /api/matches/18/lineup 200 in 15ms :: {"id":82,"matchId":18,"userId":164,"…
+12:32:20 PM [express] POST /api/matches/18/stats 200 in 10ms :: {"id":79,"userId":156,"matchId":18,"g…
+12:32:20 PM [express] POST /api/matches/18/stats 200 in 8ms :: {"id":80,"userId":157,"matchId":18,"go…
+12:32:20 PM [express] POST /api/matches/18/stats 200 in 9ms :: {"id":81,"userId":158,"matchId":18,"go…
+12:32:20 PM [express] POST /api/matches/18/stats 200 in 8ms :: {"id":82,"userId":159,"matchId":18,"go…
+12:32:20 PM [express] POST /api/matches/18/stats 200 in 9ms :: {"id":83,"userId":160,"matchId":18,"go…
+12:32:20 PM [express] POST /api/matches/18/stats 200 in 9ms :: {"id":84,"userId":161,"matchId":18,"go…
+12:32:20 PM [express] POST /api/matches/18/stats 200 in 11ms :: {"id":85,"userId":162,"matchId":18,"g…
+12:32:20 PM [express] POST /api/matches/18/stats 200 in 9ms :: {"id":86,"userId":163,"matchId":18,"go…
+12:32:20 PM [express] POST /api/matches/18/stats 200 in 9ms :: {"id":87,"userId":164,"matchId":18,"go…
+League creator validated goals: { league: 21, match: 18, creator: 'league_owner_1753792338339' }
+12:32:20 PM [express] POST /api/matches/18/validate-goals 200 in 12ms :: {"isValid":true,"reportedTot…
+Route: Starting score calculation for match 18
+Route: Calling storage.calculateMatchScores(18)
+Debug: Found 9 lineups for match 18
+Debug: Found 9 stat reports for match 18
+Debug: Match 18 status: open, matchTeams: null
+Debug: No teams data available for match 18
+Route: Scores calculated successfully, got 9 scores
+Route: Updating match status to completed
+Route: Match status updated successfully
+12:32:20 PM [express] POST /api/matches/18/calculate-scores 200 in 58ms :: [{"id":7,"userId":156,"mat…
+Debug: matchIds = [ 18 ]
+Debug: userIds = [
+  156, 157, 158,
+  159, 160, 161,
+  162, 163, 164
+]
+12:32:20 PM [express] GET /api/leaderboards/21/users 200 in 28ms :: [{"userId":156,"username":"user1_…
+12:32:20 PM [express] GET /api/leagues/21/rankings 200 in 7ms :: [{"userId":156,"username":"user1_175…
+12:32:20 PM [express] GET /api/matches/18/participants 200 in 67ms :: [{"matchId":18,"playerId":259,"…
+12:32:20 PM [express] GET /api/matches/18/stats 200 in 9ms :: [{"id":79,"userId":156,"matchId":18,"go…
+12:32:20 PM [express] GET /api/leagues/21 200 in 5ms :: {"id":21,"name":"Comprehensive Test League","…
+12:32:20 PM [express] GET /api/players/21 200 in 10ms :: [{"id":258,"name":"league_owner_175379233833…

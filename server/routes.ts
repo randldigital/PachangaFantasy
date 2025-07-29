@@ -830,9 +830,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'You must be a member of this league to create a lineup' });
       }
 
-      // Only allow lineup creation for open matches
-      if (match.status !== 'open') {
-        return res.status(400).json({ message: 'Can only create lineups for open matches' });
+      // Only allow lineup creation for open or ready matches
+      if (match.status !== 'open' && match.status !== 'ready') {
+        return res.status(400).json({ message: 'Can only create lineups for open or ready matches' });
       }
 
       const result = insertLineupSchema.safeParse({
@@ -955,13 +955,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/matches/:matchId/calculate-scores', authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.matchId);
+      console.log(`Route: Starting score calculation for match ${matchId}`);
       
+      console.log(`Route: Calling storage.calculateMatchScores(${matchId})`);
       const scores = await storage.calculateMatchScores(matchId);
+      console.log(`Route: Scores calculated successfully, got ${scores.length} scores`);
+      
+      console.log(`Route: Updating match status to completed`);
       await storage.updateMatch(matchId, { status: 'completed' });
+      console.log(`Route: Match status updated successfully`);
       
       res.json(scores);
     } catch (error) {
-      console.error('Error calculating match scores:', error);
+      console.error('Route: Error calculating match scores:', error);
+      console.error('Route: Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       res.status(500).json({ message: 'Internal server error' });
     }
   });

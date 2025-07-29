@@ -1,6 +1,6 @@
 import { users, leagues, players, tierLists, matches, matchParticipants, lineups, statReports, scores, type User, type InsertUser, type League, type InsertLeague, type Player, type InsertPlayer, type TierList, type InsertTierList, type Match, type InsertMatch, type MatchParticipant, type Lineup, type InsertLineup, type StatReport, type InsertStatReport, type Score } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, arrayContains, or, sql } from "drizzle-orm";
+import { eq, and, arrayContains, or, sql, inArray } from "drizzle-orm";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { nanoid } from 'nanoid';
@@ -177,11 +177,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserLeagues(userId: number): Promise<League[]> {
     // Get leagues where user is creator or in participants array
-    const userLeagues = await db.select().from(leagues).where(
-      or(
-        eq(leagues.createdBy, userId),
-        sql`${leagues.participants} @> ${JSON.stringify([userId])}`
-      )
+    const allLeagues = await db.select().from(leagues);
+    
+    const userLeagues = allLeagues.filter(league => 
+      league.createdBy === userId || 
+      (league.participants && league.participants.includes(userId))
     );
     
     return userLeagues;
@@ -387,10 +387,13 @@ export class DatabaseStorage implements IStorage {
 
   async balanceTeams(matchId: number, playerIds: number[]): Promise<{ teamA: number[], teamB: number[] }> {
     // Get players with their market values for balancing
-    const playersData = await db
-      .select()
-      .from(players)
-      .where(sql`id = ANY(${playerIds})`);
+    const playersData: Player[] = [];
+    for (const playerId of playerIds) {
+      const [player] = await db.select().from(players).where(eq(players.id, playerId));
+      if (player) {
+        playersData.push(player);
+      }
+    }
 
     // Sort by market value and distribute alternately for balance
     const sortedPlayers = playersData.sort((a, b) => (b.marketValue || 0) - (a.marketValue || 0));
@@ -420,6 +423,13 @@ export class DatabaseStorage implements IStorage {
       .from(lineups)
       .where(and(eq(lineups.matchId, matchId), eq(lineups.userId, userId)));
     return lineup || undefined;
+  }
+
+  async getLineupsForMatch(matchId: number): Promise<Lineup[]> {
+    return await db
+      .select()
+      .from(lineups)
+      .where(eq(lineups.matchId, matchId));
   }
 
   async createLineup(lineup: InsertLineup): Promise<Lineup> {
@@ -466,50 +476,91 @@ export class DatabaseStorage implements IStorage {
   }
 
   async calculateMatchScores(matchId: number): Promise<Score[]> {
-    const reports = await this.getStatReportsForMatch(matchId);
-    
-    const match = await this.getMatch(matchId);
-    const teams = match?.matchTeams;
-    
-    let teamAWins = false;
-    let teamBWins = false;
-    
-    if (teams) {
-      const teamAGoals = reports
-        .filter(r => teams.teamA.includes(r.userId))
-        .reduce((sum, r) => sum + (r.goals || 0), 0);
+    try {
+      // Fetch all lineups for the match
+      const lineupsForMatch = await this.getLineupsForMatch(matchId);
+      console.log(`Debug: Found ${lineupsForMatch.length} lineups for match ${matchId}`);
       
-      const teamBGoals = reports
-        .filter(r => teams.teamB.includes(r.userId))
-        .reduce((sum, r) => sum + (r.goals || 0), 0);
+      // Fetch all stat reports for the match
+      const reports = await this.getStatReportsForMatch(matchId);
+      console.log(`Debug: Found ${reports.length} stat reports for match ${matchId}`);
       
-      teamAWins = teamAGoals > teamBGoals;
-      teamBWins = teamBGoals > teamAGoals;
-    }
+      const match = await this.getMatch(matchId);
+      if (!match) {
+        throw new Error(`Match ${matchId} not found`);
+      }
+      
+      console.log(`Debug: Match ${matchId} status: ${match.status}, matchTeams:`, match.matchTeams);
+      
+      const teams = match.matchTeams;
+      let teamAWins = false;
+      let teamBWins = false;
 
-    const matchScores: Score[] = [];
-    
-    for (const report of reports) {
-      const points = 
-        (report.goals || 0) * 3 + 
-        (report.assists || 0) * 2 + 
-        (teams && 
-          ((teamAWins && teams.teamA.includes(report.userId)) || 
-           (teamBWins && teams.teamB.includes(report.userId))) ? 1 : 0);
-      
-      const [score] = await db
-        .insert(scores)
-        .values({
-          userId: report.userId,
-          matchId: report.matchId,
-          points,
-        })
-        .returning();
-      
-      matchScores.push(score);
+      if (teams && teams.teamA && teams.teamB) {
+        const teamAGoals = reports
+          .filter(r => teams.teamA.includes(r.userId))
+          .reduce((sum, r) => sum + (r.goals || 0), 0);
+        const teamBGoals = reports
+          .filter(r => teams.teamB.includes(r.userId))
+          .reduce((sum, r) => sum + (r.goals || 0), 0);
+        teamAWins = teamAGoals > teamBGoals;
+        teamBWins = teamBGoals > teamAGoals;
+        console.log(`Debug: Team A goals: ${teamAGoals}, Team B goals: ${teamBGoals}`);
+      } else {
+        console.log(`Debug: No teams data available for match ${matchId}`);
+      }
+
+      const matchScores: Score[] = [];
+
+      for (const lineup of lineupsForMatch) {
+        // Find stat report for this user
+        const report = reports.find(r => r.userId === lineup.userId);
+        let points = 0;
+        
+        if (report) {
+          // Calculate points based on stats
+          points = (report.goals || 0) * 3 + (report.assists || 0) * 2;
+          // Add win bonus if applicable
+          if (teams && ((teamAWins && teams.teamA.includes(report.userId)) || (teamBWins && teams.teamB.includes(report.userId)))) {
+            points += 1;
+          }
+        }
+        // If no stat report, points remain 0
+        
+        // Try to insert, if it fails due to conflict, update instead
+        let score: Score;
+        try {
+          const [insertedScore] = await db
+            .insert(scores)
+            .values({
+              userId: lineup.userId,
+              matchId: lineup.matchId,
+              points,
+            })
+            .returning();
+          score = insertedScore;
+        } catch (error: any) {
+          // If insert fails due to primary key conflict, update instead
+          if (error.code === '23505') { // PostgreSQL unique violation error code
+            const [updatedScore] = await db
+              .update(scores)
+              .set({ points })
+              .where(and(eq(scores.userId, lineup.userId), eq(scores.matchId, lineup.matchId)))
+              .returning();
+            score = updatedScore;
+          } else {
+            throw error;
+          }
+        }
+        
+        matchScores.push(score);
+      }
+
+      return matchScores;
+    } catch (error) {
+      console.error(`Error calculating match scores for match ${matchId}:`, error);
+      throw error;
     }
-    
-    return matchScores;
   }
 
   async getLeagueRankings(leagueId: number): Promise<{ userId: number, username: string, totalPoints: number }[]> {
@@ -541,20 +592,35 @@ export class DatabaseStorage implements IStorage {
 
     // Get all lineups for these matches
     const matchIds = matchesInLeague.map(m => m.id);
-    const allLineups = await db.select().from(lineups).where(sql`match_id = ANY(${matchIds})`);
+    console.log('Debug: matchIds =', matchIds);
+    
+    // Use a simpler approach - get lineups one by one to avoid SQL template issues
+    const allLineups: Lineup[] = [];
+    for (const matchId of matchIds) {
+      const lineupsForMatch = await db.select().from(lineups).where(eq(lineups.matchId, matchId));
+      allLineups.push(...lineupsForMatch);
+    }
+    
     if (!allLineups.length) return [];
 
     // Get all users with at least one lineup
     const userIds = Array.from(new Set(allLineups.map(l => l.userId)));
+    console.log('Debug: userIds =', userIds);
     if (!userIds.length) return [];
 
     // Get all users (for username)
     const usersMap = new Map<number, { id: number, username: string }>();
-    const usersList = await db.select({ id: users.id, username: users.username }).from(users).where(sql`id = ANY(${userIds})`);
-    usersList.forEach(u => usersMap.set(u.id, u));
+    for (const userId of userIds) {
+      const [user] = await db.select({ id: users.id, username: users.username }).from(users).where(eq(users.id, userId));
+      if (user) usersMap.set(user.id, user);
+    }
 
     // Get all stat reports for these matches
-    const allStatReports = await db.select().from(statReports).where(sql`match_id = ANY(${matchIds})`);
+    const allStatReports: StatReport[] = [];
+    for (const matchId of matchIds) {
+      const reportsForMatch = await db.select().from(statReports).where(eq(statReports.matchId, matchId));
+      allStatReports.push(...reportsForMatch);
+    }
     // Map: { [matchId]: { [playerId]: { goals, assists } } }
     const statsByMatchAndPlayer = new Map<number, Map<number, { goals: number, assists: number }>>();
     for (const report of allStatReports) {
@@ -586,9 +652,8 @@ export class DatabaseStorage implements IStorage {
       userPoints[userId] += lineupPoints;
     }
 
-    // Build leaderboard array, exclude users with 0 points
+    // Build leaderboard array, include all users with valid lineups (even 0 points)
     const leaderboard = Object.entries(userPoints)
-      .filter(([userId, totalPoints]) => totalPoints > 0)
       .map(([userId, totalPoints]) => ({
         userId: Number(userId),
         username: usersMap.get(Number(userId))?.username || 'Unknown',

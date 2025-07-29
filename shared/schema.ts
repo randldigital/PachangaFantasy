@@ -66,7 +66,7 @@ export const lineups = pgTable("lineups", {
   id: serial("id").primaryKey(),
   matchId: integer("match_id").notNull().references(() => matches.id),
   userId: integer("user_id").notNull().references(() => users.id),
-  playerIds: integer("player_ids").array().notNull(),
+  playerIds: jsonb("player_ids").$type<number[]>().notNull(),
   captainId: integer("captain_id").notNull(),
   totalCost: integer("total_cost").notNull(),
   createdAt: timestamp("created_at").defaultNow(),

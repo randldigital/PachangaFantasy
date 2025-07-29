@@ -77,7 +77,7 @@ export default function ManagerLeaderboardSection({ leagueId, currentUser }: Man
         <CardContent className="p-8 text-center">
           <TrendingUp className="w-12 h-12 text-slate-400 mx-auto mb-4" />
           <h3 className="text-white font-medium mb-2">{t('managerLeaderboard.noData', 'No fantasy scores yet')}</h3>
-          <p className="text-slate-400">{t('managerLeaderboard.noDataDescription', 'No users have submitted valid lineups yet.')}</p>
+          <p className="text-slate-400">{t('managerLeaderboard.noDataDescription', 'No users have submitted lineups or no matches have been scored yet.')}</p>
         </CardContent>
       </Card>
     );
