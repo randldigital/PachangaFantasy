@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import { ensureTestDatabase, resetTestSchema } from "../helpers/testDb";
 import { createApp } from "../../server/app";
+import { sqlClient } from "../../server/db";
 import {
   createLeagueWithMembers,
   createOpenMatch,
@@ -152,5 +153,31 @@ describe("phase 4 lineup integrity", () => {
       .send({ playerIds: ids, captainId: ids[0] });
     expect(overBudget.status).toBe(400);
     expect(overBudget.body.code).toBe("LINEUP_OVER_BUDGET");
+  });
+
+  it("saves after converting a legacy jsonb player_ids column to integer[]", async () => {
+    const { owner, users, league } = await createLeagueWithMembers(app, 5);
+    const match = (await createOpenMatch(app, owner.token, league.id)).body;
+    await joinAll(app, match.id, users);
+    const ids = (await playerIds(app, owner.token, league.id)).slice(0, 5);
+
+    await sqlClient.unsafe(
+      `ALTER TABLE lineups ALTER COLUMN player_ids TYPE jsonb USING to_jsonb(player_ids)`,
+    );
+    const rejected = await request(app)
+      .post(`/api/matches/${match.id}/lineup`)
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({ playerIds: ids, captainId: ids[0] });
+    expect(rejected.status).toBe(500);
+
+    await sqlClient.unsafe(
+      `ALTER TABLE lineups ALTER COLUMN player_ids TYPE integer[] USING translate(player_ids::text, '[]', '{}')::integer[]`,
+    );
+    const saved = await request(app)
+      .post(`/api/matches/${match.id}/lineup`)
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({ playerIds: ids, captainId: ids[0] });
+    expect(saved.status).toBe(200);
+    expect(saved.body.playerIds).toEqual(ids);
   });
 });

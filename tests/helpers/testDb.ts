@@ -154,6 +154,24 @@ export async function resetTestSchema() {
   await client.unsafe(`ALTER TABLE tier_lists DROP COLUMN IF EXISTS player_order`);
   await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS stats_acknowledged boolean NOT NULL DEFAULT false`);
   await client.unsafe(`ALTER TABLE stat_reports ADD COLUMN IF NOT EXISTS player_id integer`);
+  await client.unsafe(`
+    DO $lineup$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'lineups'
+          AND column_name = 'player_ids'
+          AND data_type IN ('json', 'jsonb')
+      ) THEN
+        ALTER TABLE lineups
+          ALTER COLUMN player_ids TYPE integer[]
+          USING translate(player_ids::text, '[]', '{}')::integer[];
+      END IF;
+    END
+    $lineup$;
+  `);
 
   const hasStatUserId = await client`
     SELECT 1

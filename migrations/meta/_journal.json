@@ -43,6 +43,13 @@
       "when": 1788873000000,
       "tag": "0005_match_points",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788874000000,
+      "tag": "0006_lineups_player_ids_array",
+      "breakpoints": true
     }
   ]
 }
