@@ -29,6 +29,7 @@ These close Appendix A. They are product rules, not recommendations. Revisit the
 | **P0.9** | At most **one match in Open or Started** per league. A previous match may still be awaiting stats or validation while the next is created. |
 | **P0.10** | **Automatic team balancing is not a product feature.** Remove it, including the `ready` status it creates. The administrator **must** divide every participant into Team A or Team B before starting. There is no automatic balancing, no `ready` status, and no team-win scoring bonus. |
 | **P0.11** | Display names need not be globally unique. Player names must be unique within a league (case-insensitive). On collision, auto-created player names become `Name`, then `Name (2)`, `Name (3)`, and so on. |
+| **P0.12** | After statistics are valid, every logged-in participant must vote Player of the Match and rate assigned peers. Scoring then updates each participant's Market Value from that match's performance. The S/A/B/C/D tier list remains **initial VM only**. Player Points stay `goals × 3 + assists × 2` and must not be changed by this pass. |
 
 ### How to read the status markers
 
@@ -139,7 +140,7 @@ The following vocabulary is authoritative. Use it consistently in code, in the i
 | **Manager** | A League Member acting as a fantasy team selector. Every League Member is implicitly a Manager. |
 | **Player Valuation** | The act of a member ranking the League's players by perceived quality. See Section 9. |
 | **Tier List** | The interface through which Player Valuation is expressed. |
-| **Market Value** | The fantasy price of a Player, derived from aggregated Player Valuation. See Section 10. |
+| **Market Value** | The fantasy price of a Player. Initial value comes from aggregated Player Valuation (Section 10.2). After each scored match it updates from that match's performance, independently of Player Points. |
 | **Match** | A single real football game within a League, and the fantasy round attached to it. |
 | **Match Participant** | A Player registered as taking part in a specific Match. |
 | **Lineup** | A Manager's fantasy selection of five Match Participants for one Match. |
@@ -423,16 +424,22 @@ The algorithm in Section 10.2 must remain:
 
 ### 10.1 Functional rules
 
-- Every selectable Player has a Market Value. **[Implemented as a field]**
+- Every selectable Player has a Market Value. **[Implemented]**
 - Market Value is **league-specific**. The same person may be expensive in one league and cheap in another. **[Implemented]**
-- It reflects the collective valuation of the group, not real-world performance.
+- **Initial** Market Value comes from the group's S/A/B/C/D valuation, not from real-world football history. **[Implemented]**
+- **After a match is scored**, Market Value updates from that match's performance (goals, assists, MVP votes, peer ratings, and the result), independently of Player Points and Manager Points (P0.12). **[Implemented]**
+- Dynamic Market Value is clamped to **8–28**. A player who opened at S (30) is clamped to 28 on the first performance update.
 - It contributes to the total cost of a fantasy lineup. **[Implemented]**
-- A lineup may not exceed the match budget. **[Implemented]**
+- A lineup may not exceed the match budget. Cost is taken from Market Values **at lineup save / match start**, not from later updates. New values apply only to matches that are still Open. **[Implemented]**
+- Pre-match Market Value used for the performance update is snapshotted when the match **starts**, so a later valuation reopen cannot rewrite that match.
+- A history row is stored for every participant on every scored match so the change can be replayed.
 - Market Values must remain visible wherever a Manager needs them to make a selection decision. **[Implemented]**
 
 ### 10.2 Market Value calculation
 
-**Decision (P0.1, P0.2):** Market Value is produced from genuine tiers, not from list position.
+#### Initial value (valuation)
+
+**Decision (P0.1, P0.2):** the first Market Value is produced from genuine tiers, not from list position.
 
 Each tier has a fixed numeric value:
 
@@ -459,13 +466,52 @@ Worked examples:
 - Five players all valued S: `5 × 30 = 150` — illegal under the default budget. That tension is intended.
 - Mixed S + B + C + C + D: `30 + 18 + 12 + 12 + 8 = 80` — legal.
 
-> **[Implemented]** Market Value is the trimmed mean of submitted tier values, rounded to an integer. Closing awaits every player write.
+Reopening valuation still overwrites Market Value from the current tiers (an administrator reset). New or unranked players still start at **B / 18**.
+
+> **[Implemented]** Closing valuation writes the trimmed mean of submitted tier values, rounded to an integer.
+
+#### After each scored match (performance)
+
+Scoring writes Player and Manager point snapshots first, then Market Value history, then `players.marketValue`, then the league scoring baseline, in one transaction. Point formulas are unchanged: Player Points remain `goals × 3 + assists × 2`.
+
+**Voters** are accepted participants **with a user account**. Guests do not vote. Scoring waits until every voter has submitted a ballot (`RATINGS_INCOMPLETE`). Each ballot is:
+
+- one **Player of the Match** (any other accepted participant; no self-vote);
+- integer **1–5** scores for the assigned teammate and rival (mapped to 0–1 as `(score − 1) / 4`).
+
+Assignments are generated once when the match is ended (seeded by match id) so they are stable. Each participant, including guests, is targeted for **two incoming** ratings. Extra outgoing slots are given to voters who currently have the fewest. If a voter is alone on a team, they rate two rivals. Remaining peer-score gaps at compute time use **0.50** (neutral). Missing **ballots** still block scoring.
+
+**Expected contribution** from pre-match VM:
+
+`ExpectedContribution = 0.33 × ((VM − 8) / 20)` so D/8 → 0 and S/28 → 0.33.
+
+**PerformanceScore** = `0.40×mvp + 0.25×peer + 0.25×offensive + 0.10×result`
+
+- **MVP (40%):** unique max-vote winner(s) get 1.0; everyone else gets `votes / totalVotes`.
+- **Peer (25%):** mean of received 1–5 scores, mapped to 0–1. No ratings → 0.50.
+- **Offensive (25%):** share of team weighted output (`goals + 0.8 × assists`), scaled by team goals vs the league baseline and opponent average VM (±10%). Neutral 0.5 when meeting expected contribution.
+- **Result (10%):** win/draw/loss adjusted by pre-match team average VM difference.
+
+**VM change:**
+
+- `RawChange = 20 × (PerformanceScore − 0.50)`
+- Position `X = (preMatchVm − 8) / 20` clamped to `[0, 1]`
+- Upward changes shrink as VM rises; downward changes grow as VM rises
+- Clamp the delta to **[−3, +5]**, add, round to nearest integer, clamp VM to **[8, 28]**
+
+League **scoring baseline** (default 5): `0.8 × previous + 0.2 × ((teamAGoals + teamBGoals) / 2)`.
+
+> **[Implemented]** Domain math lives in `shared/domain/marketValue.ts`. Pairing lives in `shared/domain/ratingAssignments.ts`. History rows store the four components and a full breakdown for replay.
 
 ### 10.3 Edge cases
 
 - **A player nobody ranked** receives **B (18)**. They are never left at 0. **[Implemented]**
 - **A league with a single player** is valid: that player receives the average of the votes they got, or 18 if nobody voted. No division by `playerCount - 1`. **[Implemented]**
-- **A player added after valuation closed** receives **B (18)** immediately. Reopening valuation is the way to reprice them. **[Implemented]**
+- **A player added after valuation closed** receives **B (18)** immediately. Reopening valuation is the way to reprice them from tiers. **[Implemented]**
+- **A player at 30** from initial S is clamped to **28** on the first performance update.
+- **A player at 8** with PerformanceScore ≥ 0.75 hits the +5 cap; two such matches reach **18**.
+- **Zero logged-in voters** does not deadlock scoring; peer and MVP components use the neutral 0.50.
+- **This is not statistics verification.** MVP and peer ratings do not confirm or dispute goals and assists (Section 15.4).
 
 ---
 
@@ -500,8 +546,9 @@ Calling both "completed" is the single most confusing thing the application can 
 - The real football match has been played.
 - The administrator has marked it as finished and recorded Team A goals and Team B goals. The persisted total (`finalScore`) is their sum.
 - Participants submit their goals and assists.
+- Logged-in participants vote Player of the Match and rate assigned peers (Section 10.2). Guests do not vote.
 - Lineups are locked (Section 13.4).
-- Fantasy points are not final and must not be presented as if they were.
+- Fantasy points and the post-match Market Value update are not final and must not be presented as if they were.
 
 **Ready for Validation**
 
@@ -514,6 +561,7 @@ Calling both "completed" is the single most confusing thing the application can 
 - Statistics are final.
 - Player Points are final.
 - Manager Points are final.
+- Market Values have been updated from this match and a history row exists for each participant.
 - Both leaderboards include this Match.
 - The result is historical and immutable.
 
@@ -522,8 +570,8 @@ Calling both "completed" is the single most confusing thing the application can 
 > **[Implemented]** Persisted statuses are `open`, `started`, `completed` (football finished / awaiting stats) and `scored`. Legacy `ready` is treated as `started` and migrated away. Automatic team balancing is removed. Manual two-team assignment is required before start.
 >
 > - **Started** locks lineups, joining and teams.
-> - **Finished** (`completed`) is football over, statistics still open. Both team scores are stored; `finalScore` is their sum.
-> - **Scored** is fantasy points final. It does not reuse the Finished word.
+> - **Finished** (`completed`) is football over, statistics and ratings still open. Both team scores are stored; `finalScore` is their sum.
+> - **Scored** is fantasy points and the Market Value update final. It does not reuse the Finished word.
 > - **Validated** is a derived statistics state (complete + goals match the result + assists do not exceed it, or goals acknowledged with assists still within the total), not a persisted match status.
 
 ### 11.3 Match creation
@@ -762,6 +810,8 @@ The last option matters for **goal** totals. This is a group of friends, and som
 
 **No approval workflows.** There is no peer verification, no confirm/dispute cycle and no multi-step sign-off. This was explicitly removed from the product and must not be reintroduced.
 
+Post-match MVP and peer ratings (Section 10.2) are a **separate required step**. They do not confirm, dispute, or replace statistics. An administrator may submit another participant's **statistics** (P0.7) but must **not** submit another person's votes.
+
 ---
 
 ## 16. Scoring Rules
@@ -776,7 +826,7 @@ Player Points measure real football performance.
 Player Points = (Goals × 3) + (Assists × 2)
 ```
 
-**[Implemented]** — this is the current rule and should be preserved.
+**[Implemented]** — this is the current rule and should be preserved. The post-match Market Value update (Section 10.2) must not change stored Player Match Points.
 
 **Player scoring must NOT include the Captain multiplier.** Captaincy is a fantasy concept that exists only inside a Manager's lineup and has no meaning on the pitch.
 
@@ -906,8 +956,8 @@ This section is the authoritative checklist. It is written so that it can be tur
 | 2 | League access is controlled through league membership. | **[Implemented]** |
 | 3 | The league creator is the league administrator. | **[Implemented]** |
 | 4 | A league member always corresponds to a real Player in that league. | **[Implemented]** |
-| 5 | Player Valuation determines Market Value. | **[Implemented]** |
-| 6 | Market Value is different from Player Points and is never derived from performance. | **[Implemented]** |
+| 5 | Player Valuation determines **initial** Market Value. | **[Implemented]** |
+| 6 | Market Value is different from Player Points. After a match is scored, Market Value updates from that match's performance; Player Points stay `goals × 3 + assists × 2`. | **[Implemented]** |
 | 7 | Only the administrator creates Matches. | **[Implemented]** |
 | 8 | Players join, or are added by the administrator, to Matches. | **[Implemented]** |
 | 9 | Only Match participants can be selected in that Match's lineup. | **[Implemented]** |
@@ -919,7 +969,7 @@ This section is the authoritative checklist. It is written so that it can be tur
 | 15 | Real Players generate Player Points from real statistics only. | **[Implemented]** |
 | 16 | The Captain multiplier affects Manager Points only, never Player Points. | **[Implemented]** |
 | 17 | The Player Leaderboard and the Manager Leaderboard are independent. | **[Implemented]** |
-| 18 | Match scoring must not become final before required statistics are complete and valid, or the inconsistency has been explicitly acknowledged. | **[Implemented]** |
+| 18 | Match scoring must not become final before required statistics are complete and valid (or the inconsistency has been explicitly acknowledged) **and** every registered participant has submitted a ratings ballot. | **[Implemented]** |
 | 19 | Scored historical Matches remain reproducible and immutable. | **[Implemented]** |
 | 20 | Future features must not unnecessarily complicate the core game loop. | Product principle |
 
@@ -1084,7 +1134,7 @@ The following features constitute the current core product. Everything not in th
 
 ### 22.1 The critical path
 
-**[Implemented]** The core loop can be completed end to end: register → create league → join → open valuation → rank → close → create match → join → build lineup → start → finish → submit statistics → score → both leaderboards. Automated coverage is `tests/api/full-loop.test.ts`.
+**[Implemented]** The core loop can be completed end to end: register → create league → join → open valuation → rank → close → create match → join → build lineup → start → finish → submit statistics → vote → score → both leaderboards and updated Market Values. Automated coverage is `tests/api/full-loop.test.ts` and `tests/api/market-value.test.ts`.
 
 ---
 
@@ -1096,7 +1146,6 @@ They are recorded so they are not lost, not because they are committed. **A futu
 
 | Feature | Notes |
 |---|---|
-| **MVP / Disappointment voting** | Post-match peer voting. Historically planned for v1.5. Table definitions exist in the extended schema; no behaviour is implemented. |
 | **Season cycles** | An administrator-triggered "End Season" action, with no dates and no season entity. Explicitly scoped as manual, not time-based. |
 | **End-of-season Wrapped** | A simple in-app summary screen showing best player, best manager and highlights. No export, no image generation, no sharing. |
 | **Historical seasons** | Browsing previous seasons after the season concept exists. |
@@ -1153,7 +1202,7 @@ The application uses React, TypeScript, Express, PostgreSQL and Drizzle. **These
 
 Not a database specification — but the persistence model must be able to represent, unambiguously:
 
-Users · Leagues · League Membership · Players · Player-to-User association · Player Valuations · Market Values · Matches · Match Participants · Fantasy Lineups · Captain · Match Statistics · Player Match Points · Manager Match Points · Historical leaderboard inputs
+Users · Leagues · League Membership · Players · Player-to-User association · Player Valuations · Market Values · Matches · Match Participants · Fantasy Lineups · Captain · Match Statistics · Player of the Match votes · Peer ratings · Market Value history · Player Match Points · Manager Match Points · Historical leaderboard inputs
 
 Two principles:
 
@@ -1239,7 +1288,7 @@ Before merging any change, a developer should be able to answer every question b
 
 - [ ] Does the feature support the core Pachanga loop?
 - [ ] Does it preserve the distinction between Player and Manager?
-- [ ] Does it preserve the distinction between Market Value and Player Points?
+- [ ] Does it preserve the distinction between Market Value and Player Points (points stay `goals × 3 + assists × 2` even when VM updates from performance)?
 - [ ] Does it preserve the distinction between the Player Leaderboard and the Manager Leaderboard?
 - [ ] Could this be left out entirely without weakening the loop?
 

@@ -39,6 +39,8 @@
  *   Estado de stats                   GET  /api/matches/:matchId/stats-status
  *   Validar goles                     POST /api/matches/:matchId/validate-goals
  *   Reconocer stats                   POST /api/matches/:matchId/acknowledge-stats
+ *   Votar MVP y compañeros            GET  /api/matches/:matchId/ratings
+ *   Enviar votos                      POST /api/matches/:matchId/ratings
  *   Calcular puntuación               POST /api/matches/:matchId/calculate-scores
  *   Clasificación jugadores           GET  /api/leagues/:leagueId/rankings
  *   Clasificación managers            GET  /api/leagues/:leagueId/manager-rankings
@@ -63,6 +65,7 @@ import {
   listPlayers,
   registerUser,
   startMatch,
+  submitAllRatings,
 } from "../helpers/fixtures";
 import { db } from "../../server/db";
 import { players } from "@shared/schema";
@@ -396,6 +399,19 @@ describe("deep surface catalog", () => {
       .set(auth(owner.token));
     ok(validated, "POST /api/matches/:matchId/validate-goals");
     expect(validated.body.isValid).toBe(true);
+
+    const ratings = await request(app)
+      .get(`/api/matches/${match.id}/ratings`)
+      .set(auth(owner.token));
+    ok(ratings, "GET /api/matches/:matchId/ratings");
+    expect(ratings.body.myBallot).toBeTruthy();
+
+    await submitAllRatings(app, match.id, users);
+    const voted = await request(app)
+      .get(`/api/matches/${match.id}/ratings`)
+      .set(auth(owner.token));
+    ok(voted, "GET /api/matches/:matchId/ratings after ballots");
+    expect(voted.body.ratingsComplete).toBe(true);
 
     const scored = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)

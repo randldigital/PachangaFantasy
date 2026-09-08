@@ -8,6 +8,7 @@ import { registerMatchRoutes } from "./matches";
 import { registerLineupRoutes } from "./lineups";
 import { registerStatsRoutes } from "./stats";
 import { registerScoringRoutes } from "./scoring";
+import { registerRatingRoutes } from "./ratings";
 import { registerLeaderboardRoutes } from "./leaderboards";
 
 export function registerRoutes(app: Express) {
@@ -19,6 +20,7 @@ export function registerRoutes(app: Express) {
   registerMatchRoutes(app);
   registerLineupRoutes(app);
   registerStatsRoutes(app);
+  registerRatingRoutes(app);
   registerScoringRoutes(app);
   registerLeaderboardRoutes(app);
 }

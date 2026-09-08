@@ -89,6 +89,41 @@ export function auth(token: string) {
   return { Authorization: `Bearer ${token}` };
 }
 
+export async function submitAllRatings(
+  app: Express,
+  matchId: number,
+  users: { token: string }[],
+) {
+  for (const user of users) {
+    const payload = await request(app).get(`/api/matches/${matchId}/ratings`).set(auth(user.token));
+    if (payload.status !== 200 || !payload.body.myBallot) {
+      continue;
+    }
+    const voterId = payload.body.myBallot.voterPlayerId as number;
+    const assignments = (payload.body.assignments ?? []) as { playerId: number }[];
+    const participants = await request(app)
+      .get(`/api/matches/${matchId}/participants`)
+      .set(auth(user.token));
+    const mvpPlayerId = (
+      (participants.body as { playerId: number; status: string }[]) || []
+    ).find((participant) => participant.status === "accepted" && participant.playerId !== voterId)
+      ?.playerId;
+    if (mvpPlayerId == null) {
+      throw new Error(`no MVP candidate for voter ${voterId}`);
+    }
+    const submitted = await request(app)
+      .post(`/api/matches/${matchId}/ratings`)
+      .set(auth(user.token))
+      .send({
+        mvpPlayerId,
+        ratings: assignments.map((row) => ({ playerId: row.playerId, score: 3 })),
+      });
+    if (submitted.status !== 200) {
+      throw new Error(`ratings failed: ${submitted.status} ${JSON.stringify(submitted.body)}`);
+    }
+  }
+}
+
 export async function joinAllMatches(
   app: Express,
   matchId: number,

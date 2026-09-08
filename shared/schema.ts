@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp, json, primaryKey, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, json, primaryKey, uniqueIndex, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import type { ValuationTier } from "./domain/valuation";
@@ -22,6 +22,7 @@ export const leagues = pgTable("leagues", {
   createdBy: integer("created_by").notNull(),
   status: text("status").notNull().default("open"), // "open" | "voting" | "closed"
   participants: jsonb("participants").$type<number[]>().notNull().default([]),
+  scoringBaseline: doublePrecision("scoring_baseline").notNull().default(5),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -124,6 +125,67 @@ export const managerMatchPoints = pgTable("manager_match_points", {
   matchUserUnique: uniqueIndex("manager_match_points_match_user").on(table.matchId, table.userId),
 }));
 
+export const matchPlayerVm = pgTable("match_player_vm", {
+  matchId: integer("match_id").notNull().references(() => matches.id),
+  playerId: integer("player_id").notNull().references(() => players.id),
+  marketValue: integer("market_value").notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.matchId, table.playerId] }),
+}));
+
+export const matchRatingAssignments = pgTable("match_rating_assignments", {
+  matchId: integer("match_id").notNull().references(() => matches.id),
+  raterPlayerId: integer("rater_player_id").notNull().references(() => players.id),
+  rateePlayerId: integer("ratee_player_id").notNull().references(() => players.id),
+  kind: text("kind").$type<"teammate" | "rival">().notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.matchId, table.raterPlayerId, table.rateePlayerId] }),
+}));
+
+export const matchMvpVotes = pgTable("match_mvp_votes", {
+  matchId: integer("match_id").notNull().references(() => matches.id),
+  voterPlayerId: integer("voter_player_id").notNull().references(() => players.id),
+  mvpPlayerId: integer("mvp_player_id").notNull().references(() => players.id),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.matchId, table.voterPlayerId] }),
+}));
+
+export const matchPeerRatings = pgTable("match_peer_ratings", {
+  matchId: integer("match_id").notNull().references(() => matches.id),
+  raterPlayerId: integer("rater_player_id").notNull().references(() => players.id),
+  rateePlayerId: integer("ratee_player_id").notNull().references(() => players.id),
+  score: integer("score").notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.matchId, table.raterPlayerId, table.rateePlayerId] }),
+}));
+
+export const playerMarketValueHistory = pgTable("player_market_value_history", {
+  id: serial("id").primaryKey(),
+  matchId: integer("match_id").notNull().references(() => matches.id),
+  playerId: integer("player_id").notNull().references(() => players.id),
+  vmBefore: integer("vm_before").notNull(),
+  vmAfter: integer("vm_after").notNull(),
+  delta: integer("delta").notNull(),
+  mvp: doublePrecision("mvp").notNull(),
+  peer: doublePrecision("peer").notNull(),
+  offensive: doublePrecision("offensive").notNull(),
+  result: doublePrecision("result").notNull(),
+  performanceScore: doublePrecision("performance_score").notNull(),
+  rawChange: doublePrecision("raw_change").notNull(),
+  multiplier: doublePrecision("multiplier").notNull(),
+  adjustedContribution: doublePrecision("adjusted_contribution").notNull(),
+  expectedContribution: doublePrecision("expected_contribution").notNull(),
+  baseline: doublePrecision("baseline").notNull(),
+  ownTeamAvgVm: doublePrecision("own_team_avg_vm").notNull(),
+  oppTeamAvgVm: doublePrecision("opp_team_avg_vm").notNull(),
+  mvpVotes: integer("mvp_votes").notNull().default(0),
+  peerAverage: doublePrecision("peer_average"),
+  breakdown: jsonb("breakdown").$type<Record<string, unknown>>().notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  matchPlayerUnique: uniqueIndex("player_market_value_history_match_player").on(table.matchId, table.playerId),
+}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   email: true,
@@ -138,6 +200,7 @@ export const insertLeagueSchema = createInsertSchema(leagues).omit({
   createdBy: true,
   status: true,
   participants: true,
+  scoringBaseline: true,
   createdAt: true,
 }).extend({
   name: z.string().min(1, "Name is required").max(25, "Name must be 25 characters or less"),
@@ -211,6 +274,16 @@ export const saveTeamsSchema = z.object({
   teamB: z.array(z.number().int()).min(1),
 });
 
+export const submitRatingsSchema = z.object({
+  mvpPlayerId: z.number().int().positive(),
+  ratings: z.array(
+    z.object({
+      playerId: z.number().int().positive(),
+      score: z.coerce.number().int().min(1).max(5),
+    }),
+  ),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertLeague = z.infer<typeof insertLeagueSchema>;
@@ -234,3 +307,9 @@ export type PlayerMatchPoints = typeof playerMatchPoints.$inferSelect;
 export type ManagerMatchPoints = typeof managerMatchPoints.$inferSelect;
 export type SubmitStatsInput = z.infer<typeof submitStatsSchema>;
 export type EndMatchInput = z.infer<typeof endMatchSchema>;
+export type SubmitRatingsInput = z.infer<typeof submitRatingsSchema>;
+export type MatchPlayerVm = typeof matchPlayerVm.$inferSelect;
+export type MatchRatingAssignment = typeof matchRatingAssignments.$inferSelect;
+export type MatchMvpVote = typeof matchMvpVotes.$inferSelect;
+export type MatchPeerRating = typeof matchPeerRatings.$inferSelect;
+export type PlayerMarketValueHistory = typeof playerMarketValueHistory.$inferSelect;

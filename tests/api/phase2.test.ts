@@ -7,6 +7,7 @@ import {
   createOpenMatch,
   registerUser,
   startMatch,
+  submitAllRatings,
 } from "../helpers/fixtures";
 
 describe("phase 2 regressions", () => {
@@ -224,6 +225,8 @@ describe("phase 2 regressions", () => {
       .post(`/api/matches/${match.id}/stats`)
       .set("Authorization", `Bearer ${owner.token}`)
       .send({ playerId: guest.body.id, goals: 0, assists: 0 });
+
+    await submitAllRatings(app, match.id, [owner]);
 
     const forbidden = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)

@@ -6,6 +6,7 @@ import { loadLeagueMember, loadMatchMember, rejectUnlessAdmin } from "../middlew
 import * as leagueRepo from "../repos/leagueRepo";
 import * as matchRepo from "../repos/matchRepo";
 import * as playerRepo from "../repos/playerRepo";
+import * as ratingRepo from "../repos/ratingRepo";
 import * as userRepo from "../repos/userRepo";
 import {
   canEndMatch,
@@ -159,6 +160,7 @@ export function registerMatchRoutes(app: Express) {
       }
 
       const updatedMatch = await matchRepo.updateMatch(matchId, { status: "started" });
+      await ratingRepo.snapshotMatchPlayerVm(matchId);
       logger.info("Match started", {
         match: matchId,
         league: access.league.id,
@@ -202,6 +204,8 @@ export function registerMatchRoutes(app: Express) {
         teamBGoals: parsed.data.teamBGoals,
         finalScore: parsed.data.teamAGoals + parsed.data.teamBGoals,
       });
+      await ratingRepo.snapshotMatchPlayerVm(matchId);
+      await ratingRepo.ensureRatingAssignments(matchId);
       logger.info("Match ended", {
         match: matchId,
         league: access.league.id,

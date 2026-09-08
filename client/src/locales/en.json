@@ -215,14 +215,19 @@
       "description": "Enter your goals and assists for this match.",
       "cta": "Go to Statistics"
     },
+    "vote_match": {
+      "title": "Vote Player of the Match",
+      "description": "Pick the MVP and rate the teammate and rival assigned to you.",
+      "cta": "Go to Statistics"
+    },
     "score_match": {
       "title": "Calculate scores",
-      "description": "When every participant has submitted, store Player and Manager points.",
+      "description": "When statistics and votes are in, store points and update Market Values.",
       "cta": "Go to Statistics"
     },
     "wait_for_stats": {
-      "title": "Waiting for statistics",
-      "description": "Scoring runs after everyone has submitted.",
+      "title": "Waiting for statistics and votes",
+      "description": "Scoring runs after everyone has submitted stats and ballots.",
       "cta": "View Statistics"
     },
     "wait_for_match": {
@@ -268,6 +273,8 @@
     "STATS_INCONSISTENT": "Submitted goals do not match the recorded total.",
     "STATS_ASSISTS_EXCEED": "Assists cannot exceed the match goal total.",
     "STATS_ALREADY_VALID": "The totals already match, so there is nothing to acknowledge.",
+    "RATINGS_INCOMPLETE": "Scoring waits until every registered participant has voted.",
+    "RATINGS_INVALID": "Choose a Player of the Match and rate exactly the assigned players.",
     "MATCH_NOT_SCOREABLE": "This match cannot be scored yet."
   },
   "match": {
@@ -434,6 +441,19 @@
     "unplaced": "Needs a tier",
     "editWhileOpen": "You can change your tiers and submit again until the administrator closes valuation."
   },
+  "ratings": {
+    "title": "Match ratings",
+    "historyTitle": "Market Value after this match",
+    "mvp": "Player of the Match",
+    "chooseMvp": "Choose a player",
+    "teammate": "Teammate",
+    "rival": "Rival",
+    "submit": "Submit votes",
+    "update": "Update votes",
+    "submitted": "Votes submitted",
+    "progress": "{{submitted}} of {{total}} registered players have voted",
+    "waiting": "Waiting for registered players to vote ({{submitted}} of {{total}})."
+  },
   "stats": {
     "goals": "Goals",
     "assists": "Assists",
@@ -463,7 +483,7 @@
     "waitingOn": "Waiting on: {{names}}",
     "inconsistentDetail": "Submitted goals ({{reported}}) do not match the recorded total ({{expected}}). Difference: {{difference}}.",
     "assistsExceedDetail": "Submitted assists ({{assists}}) cannot exceed the match total ({{expected}}). Correct the statistics.",
-    "validatedDetail": "All participants have submitted, goals match the result, and assists do not exceed it. Scoring can proceed.",
+    "validatedDetail": "All participants have submitted, goals match the result, and assists do not exceed it. Scoring still needs every registered vote.",
     "acknowledge": "Acknowledge difference and allow scoring",
     "acknowledged": "Difference acknowledged",
     "acknowledgedDescription": "Scoring can now run even though the totals do not match.",
@@ -478,6 +498,7 @@
     "scoreBlockedIncomplete": "Scoring waits until every participant has submitted.",
     "scoreBlockedInconsistent": "Correct the totals or acknowledge the difference before scoring.",
     "scoreBlockedAssists": "Assists cannot exceed the match goal total. Correct the statistics.",
+    "scoreBlockedRatings": "Scoring waits for votes ({{submitted}} of {{total}}).",
     "states": {
       "pending": "Pending",
       "submitted": "Submitted",

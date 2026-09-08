@@ -6,6 +6,11 @@ import {
   managerMatchPoints,
   statReports,
   lineups,
+  matchPlayerVm,
+  matchRatingAssignments,
+  matchMvpVotes,
+  matchPeerRatings,
+  playerMarketValueHistory,
   type Match,
   type InsertMatch,
   type MatchParticipant,
@@ -37,6 +42,11 @@ export async function updateMatch(
 }
 
 export async function deleteMatch(id: number): Promise<void> {
+  await db.delete(playerMarketValueHistory).where(eq(playerMarketValueHistory.matchId, id));
+  await db.delete(matchPeerRatings).where(eq(matchPeerRatings.matchId, id));
+  await db.delete(matchMvpVotes).where(eq(matchMvpVotes.matchId, id));
+  await db.delete(matchRatingAssignments).where(eq(matchRatingAssignments.matchId, id));
+  await db.delete(matchPlayerVm).where(eq(matchPlayerVm.matchId, id));
   await db.delete(playerMatchPoints).where(eq(playerMatchPoints.matchId, id));
   await db.delete(managerMatchPoints).where(eq(managerMatchPoints.matchId, id));
   await db.delete(statReports).where(eq(statReports.matchId, id));

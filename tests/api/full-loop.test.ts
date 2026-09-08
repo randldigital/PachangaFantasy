@@ -10,6 +10,7 @@ import {
   joinAllMatches,
   listPlayers,
   startMatch,
+  submitAllRatings,
 } from "../helpers/fixtures";
 import { db } from "../../server/db";
 import { lineups, statReports } from "@shared/schema";
@@ -91,6 +92,8 @@ describe("full loop", () => {
         .send(statsByUserId[user.user.id]);
       expect(submitted.status).toBe(200);
     }
+
+    await submitAllRatings(app, match.id, users);
 
     const scored = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)

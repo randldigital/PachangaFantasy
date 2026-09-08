@@ -212,14 +212,19 @@
       "description": "Introduce tus goles y asistencias de este partido.",
       "cta": "Ir a Estadísticas"
     },
+    "vote_match": {
+      "title": "Vota el jugador del partido",
+      "description": "Elige el MVP y puntúa al compañero y al rival que te han asignado.",
+      "cta": "Ir a Estadísticas"
+    },
     "score_match": {
       "title": "Calcular puntuaciones",
-      "description": "Cuando todos hayan enviado, se guardan los puntos de jugador y de manager.",
+      "description": "Cuando estén las estadísticas y los votos, se guardan los puntos y se actualiza el Valor de Mercado.",
       "cta": "Ir a Estadísticas"
     },
     "wait_for_stats": {
-      "title": "Esperando estadísticas",
-      "description": "La puntuación se calcula cuando todos hayan enviado.",
+      "title": "Esperando estadísticas y votos",
+      "description": "La puntuación se calcula cuando todos hayan enviado estadísticas y votos.",
       "cta": "Ver Estadísticas"
     },
     "wait_for_match": {
@@ -265,6 +270,8 @@
     "STATS_INCONSISTENT": "Los goles enviados no coinciden con el total registrado.",
     "STATS_ASSISTS_EXCEED": "Las asistencias no pueden superar el total de goles del partido.",
     "STATS_ALREADY_VALID": "Los totales ya coinciden, no hay nada que aceptar.",
+    "RATINGS_INCOMPLETE": "La puntuación espera a que todos los participantes registrados hayan votado.",
+    "RATINGS_INVALID": "Elige un jugador del partido y puntúa exactamente a los jugadores asignados.",
     "MATCH_NOT_SCOREABLE": "Este partido aún no se puede puntuar."
   },
   "match": {
@@ -431,6 +438,19 @@
     "unplaced": "Falta un nivel",
     "editWhileOpen": "Puedes cambiar los niveles y volver a enviarlos hasta que el administrador cierre la valoración."
   },
+  "ratings": {
+    "title": "Valoraciones del partido",
+    "historyTitle": "Valor de Mercado después de este partido",
+    "mvp": "Jugador del partido",
+    "chooseMvp": "Elige un jugador",
+    "teammate": "Compañero",
+    "rival": "Rival",
+    "submit": "Enviar votos",
+    "update": "Actualizar votos",
+    "submitted": "Votos enviados",
+    "progress": "{{submitted}} de {{total}} jugadores registrados han votado",
+    "waiting": "Esperando a que voten los jugadores registrados ({{submitted}} de {{total}})."
+  },
   "stats": {
     "goals": "Goles",
     "assists": "Asistencias",
@@ -460,7 +480,7 @@
     "waitingOn": "Pendientes: {{names}}",
     "inconsistentDetail": "Los goles enviados ({{reported}}) no coinciden con el total registrado ({{expected}}). Diferencia: {{difference}}.",
     "assistsExceedDetail": "Las asistencias enviadas ({{assists}}) no pueden superar el total del partido ({{expected}}). Corrige las estadísticas.",
-    "validatedDetail": "Todos han enviado, los goles coinciden con el resultado y las asistencias no lo superan. Se puede puntuar.",
+    "validatedDetail": "Todos han enviado, los goles coinciden con el resultado y las asistencias no lo superan. Aún faltan los votos de los registrados.",
     "acknowledge": "Aceptar la diferencia y permitir puntuar",
     "acknowledged": "Diferencia aceptada",
     "acknowledgedDescription": "Se puede puntuar aunque los totales no coincidan.",
@@ -475,6 +495,7 @@
     "scoreBlockedIncomplete": "La puntuación espera a que todos envíen sus estadísticas.",
     "scoreBlockedInconsistent": "Corrige los totales o acepta la diferencia antes de puntuar.",
     "scoreBlockedAssists": "Las asistencias no pueden superar el total de goles del partido. Corrige las estadísticas.",
+    "scoreBlockedRatings": "La puntuación espera a los votos ({{submitted}} de {{total}}).",
     "states": {
       "pending": "Pendiente",
       "submitted": "Enviada",

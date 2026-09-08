@@ -3,8 +3,12 @@ import {
   managerMatchPoints,
   users,
   matches,
+  players,
+  leagues,
+  playerMarketValueHistory,
   type PlayerMatchPoints,
   type ManagerMatchPoints,
+  type PlayerMarketValueHistory,
 } from "@shared/schema";
 import { db } from "../db";
 import { eq, sql, inArray, and } from "drizzle-orm";
@@ -13,12 +17,19 @@ import * as leagueRepo from "./leagueRepo";
 import * as playerRepo from "./playerRepo";
 import * as matchRepo from "./matchRepo";
 import * as lineupRepo from "./lineupRepo";
+import * as ratingRepo from "./ratingRepo";
 import { playerPointsFromStats, scoreManagerLineup } from "@shared/domain/scoring";
+import {
+  computeMatchMarketValues,
+  DEFAULT_SCORING_BASELINE,
+  nextScoringBaseline,
+} from "@shared/domain/marketValue";
 
 export type MatchScoreResult = {
   playerPoints: PlayerMatchPoints[];
   managerPoints: ManagerMatchPoints[];
   lineupIssues: { userId: number; codes: string[]; message: string }[];
+  marketValues?: PlayerMarketValueHistory[];
 };
 
 export async function getPlayerPointsForMatch(matchId: number): Promise<PlayerMatchPoints[]> {
@@ -30,13 +41,15 @@ export async function getManagerPointsForMatch(matchId: number): Promise<Manager
 }
 
 export async function getScoredMatchResult(matchId: number): Promise<MatchScoreResult> {
-  const [playerPoints, managerPoints] = await Promise.all([
+  const [playerPoints, managerPoints, marketValues] = await Promise.all([
     getPlayerPointsForMatch(matchId),
     getManagerPointsForMatch(matchId),
+    ratingRepo.getMarketValueHistory(matchId),
   ]);
   return {
     playerPoints,
     managerPoints,
+    marketValues,
     lineupIssues: managerPoints
       .filter((row) => row.lineupStatus === "invalid")
       .map((row) => ({
@@ -109,9 +122,51 @@ export async function scoreMatch(matchId: number): Promise<MatchScoreResult> {
     };
   });
 
+  const vmRows = await ratingRepo.snapshotMatchPlayerVm(matchId);
+  const preMatchVm = Object.fromEntries(vmRows.map((row) => [row.playerId, row.marketValue]));
+  const mvpVotes = await ratingRepo.getMvpVotes(matchId);
+  const peerRatings = await ratingRepo.getPeerRatings(matchId);
+  const baseline = league?.scoringBaseline ?? DEFAULT_SCORING_BASELINE;
+  const teamA = match.matchTeams?.teamA ?? [];
+  const teamB = match.matchTeams?.teamB ?? [];
+  const marketResults =
+    teamA.length > 0 && teamB.length > 0
+      ? computeMatchMarketValues({
+          participantIds: acceptedIds,
+          teamA,
+          teamB,
+          teamAGoals: match.teamAGoals ?? 0,
+          teamBGoals: match.teamBGoals ?? 0,
+          baseline,
+          preMatchVm,
+          stats: reports
+            .filter((report) => acceptedIds.includes(report.playerId))
+            .map((report) => ({
+              playerId: report.playerId,
+              goals: report.goals ?? 0,
+              assists: report.assists ?? 0,
+            })),
+          mvpVotes: mvpVotes.map((vote) => ({
+            voterPlayerId: vote.voterPlayerId,
+            mvpPlayerId: vote.mvpPlayerId,
+          })),
+          peerRatings: peerRatings.map((rating) => ({
+            raterPlayerId: rating.raterPlayerId,
+            rateePlayerId: rating.rateePlayerId,
+            score: rating.score,
+          })),
+        })
+      : [];
+  const nextBaseline = nextScoringBaseline(
+    baseline,
+    match.teamAGoals ?? 0,
+    match.teamBGoals ?? 0,
+  );
+
   return await db.transaction(async (tx) => {
     await tx.delete(playerMatchPoints).where(eq(playerMatchPoints.matchId, matchId));
     await tx.delete(managerMatchPoints).where(eq(managerMatchPoints.matchId, matchId));
+    await tx.delete(playerMarketValueHistory).where(eq(playerMarketValueHistory.matchId, matchId));
     const insertedPlayers =
       playerRows.length > 0
         ? await tx.insert(playerMatchPoints).values(playerRows).returning()
@@ -120,11 +175,57 @@ export async function scoreMatch(matchId: number): Promise<MatchScoreResult> {
       managerRows.length > 0
         ? await tx.insert(managerMatchPoints).values(managerRows).returning()
         : [];
+
+    let insertedHistory: PlayerMarketValueHistory[] = [];
+    if (marketResults.length > 0) {
+      insertedHistory = await tx
+        .insert(playerMarketValueHistory)
+        .values(
+          marketResults.map((row) => ({
+            matchId,
+            playerId: row.playerId,
+            vmBefore: row.change.vmBefore,
+            vmAfter: row.change.vmAfter,
+            delta: row.change.delta,
+            mvp: row.mvp,
+            peer: row.peer,
+            offensive: row.offensive,
+            result: row.result,
+            performanceScore: row.performanceScore,
+            rawChange: row.change.rawChange,
+            multiplier: row.change.multiplier,
+            adjustedContribution: row.adjustedContribution,
+            expectedContribution: row.expectedContribution,
+            baseline: row.baseline,
+            ownTeamAvgVm: row.ownTeamAvgVm,
+            oppTeamAvgVm: row.oppTeamAvgVm,
+            mvpVotes: row.mvpVotes,
+            peerAverage: row.peerAverage,
+            breakdown: row as unknown as Record<string, unknown>,
+          })),
+        )
+        .returning();
+      for (const row of marketResults) {
+        await tx
+          .update(players)
+          .set({ marketValue: row.change.vmAfter })
+          .where(eq(players.id, row.playerId));
+      }
+    }
+
+    if (league) {
+      await tx
+        .update(leagues)
+        .set({ scoringBaseline: nextBaseline })
+        .where(eq(leagues.id, league.id));
+    }
+
     await tx.update(matches).set({ status: "scored" }).where(eq(matches.id, matchId));
     return {
       playerPoints: insertedPlayers,
       managerPoints: insertedManagers,
       lineupIssues,
+      marketValues: insertedHistory,
     };
   });
 }

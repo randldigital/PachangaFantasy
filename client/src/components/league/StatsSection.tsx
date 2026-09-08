@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import SubmitMyStats from "./SubmitMyStats";
+import MatchRatings from "./MatchRatings";
 import AdminStatsOverview, { type ParticipantDetail } from "./AdminStatsOverview";
 import type { StatsStatus } from "@shared/domain/stats";
 import type { League, Match, Player, StatReport, User } from "@shared/schema";
@@ -81,6 +82,8 @@ export default function StatsSection({ match, league, players, user, onGoToMatch
           existing={ownReport}
         />
       )}
+
+      <MatchRatings match={match} participants={participants} />
 
       {!ownParticipant && !isAdmin && (
         <Card className="bg-slate-800/50 border-slate-700">

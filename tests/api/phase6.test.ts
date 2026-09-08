@@ -7,6 +7,7 @@ import {
   createLeagueWithMembers,
   createOpenMatch,
   startMatch,
+  submitAllRatings,
 } from "../helpers/fixtures";
 import { db } from "../../server/db";
 import { lineups, statReports } from "@shared/schema";
@@ -88,6 +89,8 @@ describe("phase 6 scoring and leaderboards", () => {
         .send(statsByUserId[user.user.id]);
       expect(submitted.status).toBe(200);
     }
+
+    await submitAllRatings(app, match.id, users);
 
     const scored = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)
@@ -178,6 +181,8 @@ describe("phase 6 scoring and leaderboards", () => {
       .post(`/api/matches/${match.id}/stats`)
       .set("Authorization", `Bearer ${owner.token}`)
       .send({ playerId: external.body.id, goals: 0, assists: 0 });
+
+    await submitAllRatings(app, match.id, users);
 
     await db
       .update(lineups)

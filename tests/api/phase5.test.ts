@@ -6,6 +6,7 @@ import {
   createLeagueWithMembers,
   createOpenMatch,
   startMatch,
+  submitAllRatings,
 } from "../helpers/fixtures";
 
 async function finishMatch(
@@ -118,6 +119,8 @@ describe("phase 5 statistics and validation", () => {
     expect(edited.body.goals).toBe(1);
     expect(edited.body.assists).toBe(1);
 
+    await submitAllRatings(app, match.id, [owner]);
+
     const scored = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)
       .set("Authorization", `Bearer ${owner.token}`);
@@ -178,6 +181,8 @@ describe("phase 5 statistics and validation", () => {
     expect(ack.status).toBe(200);
     expect(ack.body.status.canScore).toBe(true);
     expect(ack.body.status.state).toBe("inconsistent");
+
+    await submitAllRatings(app, match.id, users);
 
     const scored = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)

@@ -9,6 +9,7 @@ import {
   joinAllMatches,
   listPlayers,
   startMatch,
+  submitAllRatings,
 } from "../helpers/fixtures";
 
 describe("negative paths", () => {
@@ -105,6 +106,8 @@ describe("negative paths", () => {
       .post(`/api/matches/${match.id}/stats`)
       .set(auth(owner.token))
       .send({ goals: 3, assists: 0 });
+
+    await submitAllRatings(app, match.id, users);
 
     const scored = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)

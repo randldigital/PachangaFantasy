@@ -5,6 +5,7 @@ import { loadMatchMember, rejectUnlessAdmin } from "../middleware/access";
 import * as matchRepo from "../repos/matchRepo";
 import * as scoreRepo from "../repos/scoreRepo";
 import * as statsRepo from "../repos/statsRepo";
+import * as ratingRepo from "../repos/ratingRepo";
 import type { AuthRequest } from "../types";
 
 export function registerScoringRoutes(app: Express) {
@@ -47,6 +48,14 @@ export function registerScoringRoutes(app: Express) {
               : "Goal totals are inconsistent. Correct the statistics or acknowledge the difference.",
           code,
           ...status,
+        });
+      }
+
+      const ratingsComplete = await ratingRepo.matchRatingsComplete(matchId);
+      if (!ratingsComplete) {
+        return res.status(400).json({
+          message: "Every registered participant must vote Player of the Match and rate assigned peers",
+          code: "RATINGS_INCOMPLETE",
         });
       }
 

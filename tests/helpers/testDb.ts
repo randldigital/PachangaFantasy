@@ -64,6 +64,7 @@ export async function resetTestSchema() {
       created_by integer NOT NULL,
       status text NOT NULL DEFAULT 'open',
       participants jsonb NOT NULL DEFAULT '[]'::jsonb,
+      scoring_baseline double precision NOT NULL DEFAULT 5,
       created_at timestamp DEFAULT now()
     );
     CREATE TABLE IF NOT EXISTS players (
@@ -149,6 +150,56 @@ export async function resetTestSchema() {
       points integer NOT NULL,
       created_at timestamp DEFAULT now()
     );
+    CREATE TABLE IF NOT EXISTS match_player_vm (
+      match_id integer NOT NULL,
+      player_id integer NOT NULL,
+      market_value integer NOT NULL,
+      PRIMARY KEY (match_id, player_id)
+    );
+    CREATE TABLE IF NOT EXISTS match_rating_assignments (
+      match_id integer NOT NULL,
+      rater_player_id integer NOT NULL,
+      ratee_player_id integer NOT NULL,
+      kind text NOT NULL,
+      PRIMARY KEY (match_id, rater_player_id, ratee_player_id)
+    );
+    CREATE TABLE IF NOT EXISTS match_mvp_votes (
+      match_id integer NOT NULL,
+      voter_player_id integer NOT NULL,
+      mvp_player_id integer NOT NULL,
+      PRIMARY KEY (match_id, voter_player_id)
+    );
+    CREATE TABLE IF NOT EXISTS match_peer_ratings (
+      match_id integer NOT NULL,
+      rater_player_id integer NOT NULL,
+      ratee_player_id integer NOT NULL,
+      score integer NOT NULL,
+      PRIMARY KEY (match_id, rater_player_id, ratee_player_id)
+    );
+    CREATE TABLE IF NOT EXISTS player_market_value_history (
+      id serial PRIMARY KEY,
+      match_id integer NOT NULL,
+      player_id integer NOT NULL,
+      vm_before integer NOT NULL,
+      vm_after integer NOT NULL,
+      delta integer NOT NULL,
+      mvp double precision NOT NULL,
+      peer double precision NOT NULL,
+      offensive double precision NOT NULL,
+      result double precision NOT NULL,
+      performance_score double precision NOT NULL,
+      raw_change double precision NOT NULL,
+      multiplier double precision NOT NULL,
+      adjusted_contribution double precision NOT NULL,
+      expected_contribution double precision NOT NULL,
+      baseline double precision NOT NULL,
+      own_team_avg_vm double precision NOT NULL,
+      opp_team_avg_vm double precision NOT NULL,
+      mvp_votes integer NOT NULL DEFAULT 0,
+      peer_average double precision,
+      breakdown jsonb NOT NULL,
+      created_at timestamp DEFAULT now()
+    );
   `);
 
   await client.unsafe(`ALTER TABLE players DROP COLUMN IF EXISTS position`);
@@ -157,6 +208,7 @@ export async function resetTestSchema() {
   await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS stats_acknowledged boolean NOT NULL DEFAULT false`);
   await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS team_a_goals integer`);
   await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS team_b_goals integer`);
+  await client.unsafe(`ALTER TABLE leagues ADD COLUMN IF NOT EXISTS scoring_baseline double precision NOT NULL DEFAULT 5`);
   await client.unsafe(`ALTER TABLE stat_reports ADD COLUMN IF NOT EXISTS player_id integer`);
   await client.unsafe(`
     DO $lineup$
@@ -193,10 +245,15 @@ export async function resetTestSchema() {
   await client.unsafe(`ALTER TABLE stat_reports ALTER COLUMN player_id SET NOT NULL`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS stat_reports_match_player ON stat_reports (match_id, player_id)`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS player_match_points_match_player ON player_match_points (match_id, player_id)`);
-  await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS manager_match_points_match_user ON manager_match_points (match_id, user_id)`);
+  await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS player_market_value_history_match_player ON player_market_value_history (match_id, player_id)`);
 
   await client.unsafe(`
     TRUNCATE TABLE
+      player_market_value_history,
+      match_peer_ratings,
+      match_mvp_votes,
+      match_rating_assignments,
+      match_player_vm,
       manager_match_points,
       player_match_points,
       scores,

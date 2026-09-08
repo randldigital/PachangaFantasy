@@ -11,7 +11,9 @@ const base: PrimaryActionInput = {
   teamsAssigned: false,
   userPlayedStatsMatch: false,
   userSubmittedStats: false,
+  userSubmittedRatings: true,
   statsCanScore: false,
+  ratingsComplete: true,
 };
 
 describe("nextPrimaryAction", () => {
@@ -82,11 +84,22 @@ describe("nextPrimaryAction", () => {
     expect(
       nextPrimaryAction({
         ...base,
+        statsMatchStatus: "completed",
+        userPlayedStatsMatch: true,
+        userSubmittedStats: true,
+        userSubmittedRatings: false,
+      }).id,
+    ).toBe("vote_match");
+    expect(
+      nextPrimaryAction({
+        ...base,
         isAdmin: true,
         statsMatchStatus: "completed",
         userPlayedStatsMatch: true,
         userSubmittedStats: true,
+        userSubmittedRatings: true,
         statsCanScore: true,
+        ratingsComplete: true,
       }).id,
     ).toBe("score_match");
     expect(

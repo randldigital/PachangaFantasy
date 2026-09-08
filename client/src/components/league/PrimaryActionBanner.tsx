@@ -24,6 +24,11 @@ interface StatsStatusResponse {
   status: { canScore: boolean };
 }
 
+interface RatingsStatusResponse {
+  ratingsComplete: boolean;
+  myBallot: { submitted: boolean } | null;
+}
+
 interface PrimaryActionBannerProps {
   league: League;
   matches: Match[];
@@ -78,6 +83,12 @@ export default function PrimaryActionBanner({
     enabled: Boolean(statsMatch?.id),
   });
 
+  const { data: ratingsPayload } = useQuery<RatingsStatusResponse>({
+    queryKey: queryKeys.matchRatings(statsMatch?.id || 0),
+    queryFn: () => api.get<RatingsStatusResponse>(`/api/matches/${statsMatch!.id}/ratings`),
+    enabled: Boolean(statsMatch?.id),
+  });
+
   const statsPeople = statsMatch?.id === activeMatch?.id ? participants : statsParticipants;
   const playedStatsMatch = Boolean(
     ownPlayer &&
@@ -107,7 +118,11 @@ export default function PrimaryActionBanner({
     userSubmittedStats: Boolean(
       ownPlayer && statsPayload?.reports.some((report) => report.playerId === ownPlayer.id),
     ),
+    userSubmittedRatings: ratingsPayload?.myBallot
+      ? ratingsPayload.myBallot.submitted
+      : true,
     statsCanScore: Boolean(statsPayload?.status.canScore),
+    ratingsComplete: Boolean(ratingsPayload?.ratingsComplete),
   });
 
   const joinMutation = useMutation({

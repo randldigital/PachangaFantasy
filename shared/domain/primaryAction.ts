@@ -17,6 +17,7 @@ export type PrimaryActionId =
   | "end_match"
   | "wait_for_end"
   | "submit_stats"
+  | "vote_match"
   | "score_match"
   | "wait_for_stats"
   | "wait_for_match"
@@ -34,7 +35,9 @@ export type PrimaryActionInput = {
   statsMatchStatus?: string | null;
   userPlayedStatsMatch: boolean;
   userSubmittedStats: boolean;
+  userSubmittedRatings: boolean;
   statsCanScore: boolean;
+  ratingsComplete: boolean;
 };
 
 export type PrimaryAction = {
@@ -97,7 +100,10 @@ export function nextPrimaryAction(input: PrimaryActionInput): PrimaryAction {
     if (input.userPlayedStatsMatch && !input.userSubmittedStats) {
       return { id: "submit_stats", tab: "stats" };
     }
-    if (input.isAdmin) {
+    if (input.userPlayedStatsMatch && !input.userSubmittedRatings) {
+      return { id: "vote_match", tab: "stats" };
+    }
+    if (input.isAdmin && input.statsCanScore && input.ratingsComplete) {
       return { id: "score_match", tab: "stats" };
     }
     return { id: "wait_for_stats", tab: "stats" };

@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,11 +56,24 @@ export default function AdminStatsOverview({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const { data: ratingsPayload } = useQuery<{ ratingsComplete: boolean; submittedCount: number; voterCount: number }>({
+    queryKey: queryKeys.matchRatings(match.id),
+    queryFn: () =>
+      api.get<{ ratingsComplete: boolean; submittedCount: number; voterCount: number }>(
+        `/api/matches/${match.id}/ratings`,
+      ),
+    enabled: match.status === "completed" || match.status === "scored",
+  });
+
+  const ratingsComplete = Boolean(ratingsPayload?.ratingsComplete);
+
   const invalidate = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.matchStats(match.id) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.matchStatsStatus(match.id) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.matchRatings(match.id) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(match.leagueId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaguePlayers(match.leagueId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.leagueRankings(match.leagueId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.leagueManagerRankings(match.leagueId) }),
     ]);
@@ -269,7 +282,9 @@ export default function AdminStatsOverview({
         <div className="pt-2 border-t border-slate-700">
           <Button
             onClick={() => calculateScoresMutation.mutate()}
-            disabled={calculateScoresMutation.isPending || !status.canScore || scored}
+            disabled={
+              calculateScoresMutation.isPending || !status.canScore || !ratingsComplete || scored
+            }
             className="w-full bg-emerald-600 hover:bg-emerald-700"
           >
             <Calculator className="h-4 w-4 mr-2" />
@@ -279,13 +294,18 @@ export default function AdminStatsOverview({
                 ? t("stats.scoring")
                 : t("stats.calculateScores")}
           </Button>
-          {!status.canScore && !scored && (
+          {!scored && (!status.canScore || !ratingsComplete) && (
             <p className="text-xs text-slate-400 mt-2 text-center">
               {!status.complete
                 ? t("stats.scoreBlockedIncomplete")
                 : !status.assistsOk
                   ? t("stats.scoreBlockedAssists")
-                  : t("stats.scoreBlockedInconsistent")}
+                  : !status.canScore
+                    ? t("stats.scoreBlockedInconsistent")
+                    : t("stats.scoreBlockedRatings", {
+                        submitted: ratingsPayload?.submittedCount ?? 0,
+                        total: ratingsPayload?.voterCount ?? 0,
+                      })}
             </p>
           )}
         </div>
