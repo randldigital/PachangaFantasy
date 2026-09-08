@@ -11,6 +11,7 @@ export type PrimaryActionId =
   | "create_match"
   | "join_match"
   | "build_lineup"
+  | "assign_teams"
   | "start_match"
   | "wait_for_start"
   | "end_match"
@@ -29,6 +30,7 @@ export type PrimaryActionInput = {
   activeMatchStatus?: string | null;
   userJoinedActiveMatch: boolean;
   hasSavedLineup: boolean;
+  teamsAssigned: boolean;
   statsMatchStatus?: string | null;
   userPlayedStatsMatch: boolean;
   userSubmittedStats: boolean;
@@ -70,6 +72,9 @@ export function nextPrimaryAction(input: PrimaryActionInput): PrimaryAction {
     }
     if (!input.hasSavedLineup) {
       return { id: "build_lineup", tab: "lineup" };
+    }
+    if (input.isAdmin && !input.teamsAssigned) {
+      return { id: "assign_teams", tab: "lineup" };
     }
     if (input.isAdmin) {
       return { id: "start_match", tab: "lineup" };

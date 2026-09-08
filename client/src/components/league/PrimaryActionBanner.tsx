@@ -10,6 +10,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { nextPrimaryAction, type HubTab, type PrimaryActionId } from "@shared/domain/primaryAction";
 import { pickActiveMatch } from "@shared/domain/matchLifecycle";
 import { pickStatsMatch } from "@shared/domain/stats";
+import { teamsAreComplete } from "@shared/domain/teams";
 import type { League, Lineup, Match, Player, StatReport, User } from "@shared/schema";
 
 interface Participant {
@@ -31,6 +32,7 @@ interface PrimaryActionBannerProps {
   onTabChange: (tab: HubTab) => void;
   onOpenAddPlayer: () => void;
   onOpenCreateMatch: () => void;
+  onOpenMatchDetails?: () => void;
 }
 
 export default function PrimaryActionBanner({
@@ -41,6 +43,7 @@ export default function PrimaryActionBanner({
   onTabChange,
   onOpenAddPlayer,
   onOpenCreateMatch,
+  onOpenMatchDetails,
 }: PrimaryActionBannerProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -93,6 +96,12 @@ export default function PrimaryActionBanner({
       (participant) => participant.userId === user?.id && participant.status === "accepted",
     ),
     hasSavedLineup: Boolean(lineup?.playerIds?.length),
+    teamsAssigned: teamsAreComplete(
+      activeMatch?.matchTeams,
+      participants
+        .filter((participant) => participant.status === "accepted")
+        .map((participant) => participant.playerId),
+    ),
     statsMatchStatus: statsMatch?.status,
     userPlayedStatsMatch: playedStatsMatch,
     userSubmittedStats: Boolean(
@@ -144,6 +153,12 @@ export default function PrimaryActionBanner({
         return;
       case "create_match":
         onOpenCreateMatch();
+        onTabChange("lineup");
+        return;
+      case "assign_teams":
+      case "start_match":
+      case "end_match":
+        onOpenMatchDetails?.();
         onTabChange("lineup");
         return;
       default:

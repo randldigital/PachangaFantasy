@@ -12,7 +12,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
+import { describeApiError } from "@/lib/apiError";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Trash2 } from "lucide-react";
@@ -24,6 +26,7 @@ interface DeleteLeagueButtonProps {
 }
 
 export default function DeleteLeagueButton({ league, isLeagueCreator }: DeleteLeagueButtonProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -31,23 +34,22 @@ export default function DeleteLeagueButton({ league, isLeagueCreator }: DeleteLe
 
   const deleteLeagueMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('DELETE', `/api/leagues/${league.id}`);
+      const response = await apiRequest("DELETE", `/api/leagues/${league.id}`);
       return response.json();
     },
     onSuccess: () => {
       toast({
-        title: "League deleted",
-        description: "The league and all its data have been successfully deleted.",
+        title: t("league.deleted"),
+        description: t("league.deletedDescription"),
       });
-      // Invalidate queries and redirect to overview
       queryClient.invalidateQueries({ queryKey: ["/api/leagues"] });
       setLocation("/overview");
       setOpen(false);
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: t("common.error"),
+        description: describeApiError(error, t),
         variant: "destructive",
       });
     },
@@ -62,26 +64,24 @@ export default function DeleteLeagueButton({ league, isLeagueCreator }: DeleteLe
       <AlertDialogTrigger asChild>
         <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
           <Trash2 className="h-4 w-4 mr-1" />
-          Delete League
+          <span className="hidden sm:inline">{t("league.delete")}</span>
         </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent>
+      <AlertDialogContent className="bg-slate-800 border-slate-700 text-white">
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete League?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to delete this league? This will permanently remove all matches, 
-            players, tier lists, lineups, and stats associated with this league. This action 
-            cannot be undone.
+          <AlertDialogTitle>{t("league.deleteTitle")}</AlertDialogTitle>
+          <AlertDialogDescription className="text-slate-300">
+            {t("league.deleteDescription")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={() => deleteLeagueMutation.mutate()}
             disabled={deleteLeagueMutation.isPending}
             className="bg-red-600 hover:bg-red-700"
           >
-            {deleteLeagueMutation.isPending ? "Deleting..." : "Delete League"}
+            {deleteLeagueMutation.isPending ? t("league.deleting") : t("league.delete")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

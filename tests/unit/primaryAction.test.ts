@@ -8,6 +8,7 @@ const base: PrimaryActionInput = {
   userIsPlayer: true,
   userJoinedActiveMatch: false,
   hasSavedLineup: false,
+  teamsAssigned: false,
   userPlayedStatsMatch: false,
   userSubmittedStats: false,
   statsCanScore: false,
@@ -43,6 +44,16 @@ describe("nextPrimaryAction", () => {
         activeMatchStatus: "open",
         userJoinedActiveMatch: true,
         hasSavedLineup: true,
+      }).id,
+    ).toBe("assign_teams");
+    expect(
+      nextPrimaryAction({
+        ...base,
+        isAdmin: true,
+        activeMatchStatus: "open",
+        userJoinedActiveMatch: true,
+        hasSavedLineup: true,
+        teamsAssigned: true,
       }).id,
     ).toBe("start_match");
     expect(

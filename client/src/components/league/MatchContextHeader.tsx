@@ -21,6 +21,7 @@ import {
   isJoinableStatus,
   normalizeMatchStatus,
 } from "@shared/domain/matchLifecycle";
+import { teamsAreComplete } from "@shared/domain/teams";
 import type { Match, League, User, Player } from "@shared/schema";
 
 interface MatchContextHeaderProps {
@@ -31,6 +32,8 @@ interface MatchContextHeaderProps {
   onMatchAction?: () => void;
   createMatchOpen?: boolean;
   onCreateMatchOpenChange?: (open: boolean) => void;
+  matchDetailsOpen?: boolean;
+  onMatchDetailsOpenChange?: (open: boolean) => void;
 }
 
 interface ParticipantWithUser {
@@ -51,6 +54,8 @@ export default function MatchContextHeader({
   onMatchAction,
   createMatchOpen,
   onCreateMatchOpenChange,
+  matchDetailsOpen,
+  onMatchDetailsOpenChange,
 }: MatchContextHeaderProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -58,7 +63,9 @@ export default function MatchContextHeader({
   const [internalCreateMatch, setInternalCreateMatch] = useState(false);
   const showCreateMatch = createMatchOpen ?? internalCreateMatch;
   const setShowCreateMatch = onCreateMatchOpenChange ?? setInternalCreateMatch;
-  const [showMatchDetails, setShowMatchDetails] = useState(false);
+  const [internalMatchDetails, setInternalMatchDetails] = useState(false);
+  const showMatchDetails = matchDetailsOpen ?? internalMatchDetails;
+  const setShowMatchDetails = onMatchDetailsOpenChange ?? setInternalMatchDetails;
   const [showAddPlayers, setShowAddPlayers] = useState(false);
 
   // Check if user has joined the match
@@ -71,6 +78,13 @@ export default function MatchContextHeader({
   const userHasJoined = participants.some(p => p.userId === user?.id && p.status === 'accepted');
   const acceptedParticipants = participants.filter(p => p.status === 'accepted');
   const joiningOpen = isJoinableStatus(match?.status);
+  const teamsReady = Boolean(
+    match &&
+      teamsAreComplete(
+        match.matchTeams,
+        acceptedParticipants.map((participant) => participant.playerId),
+      ),
+  );
 
   const joinMatchMutation = useMutation({
     mutationFn: async (matchId: number) => {
@@ -197,13 +211,17 @@ export default function MatchContextHeader({
                         )}
                         {canStartMatch(match.status) && (
                           <Button
-                            onClick={() => startMatchMutation.mutate(match.id)}
+                            onClick={() =>
+                              teamsReady
+                                ? startMatchMutation.mutate(match.id)
+                                : setShowMatchDetails(true)
+                            }
                             disabled={startMatchMutation.isPending}
                             size="sm"
                             className="bg-blue-600 hover:bg-blue-700 text-white"
                           >
                             <Play className="w-4 h-4 mr-2" />
-                            {t("match.startMatch")}
+                            {teamsReady ? t("match.startMatch") : t("match.setTeams")}
                           </Button>
                         )}
                         <EndMatchButton 
@@ -248,13 +266,17 @@ export default function MatchContextHeader({
                         )}
                         {canStartMatch(match.status) && (
                           <Button
-                            onClick={() => startMatchMutation.mutate(match.id)}
+                            onClick={() =>
+                              teamsReady
+                                ? startMatchMutation.mutate(match.id)
+                                : setShowMatchDetails(true)
+                            }
                             disabled={startMatchMutation.isPending}
                             size="sm"
                             className="bg-blue-600 hover:bg-blue-700 text-white"
                           >
                             <Play className="w-4 h-4 mr-2" />
-                            {t("match.startMatch")}
+                            {teamsReady ? t("match.startMatch") : t("match.setTeams")}
                           </Button>
                         )}
                         <EndMatchButton 

@@ -34,11 +34,18 @@ export function registerScoringRoutes(app: Express) {
       const status = statsRepo.matchStatsStatus(access.match, participants, reports);
 
       if (!status.canScore) {
+        const code = !status.complete
+          ? "STATS_INCOMPLETE"
+          : !status.assistsOk
+            ? "STATS_ASSISTS_EXCEED"
+            : "STATS_INCONSISTENT";
         return res.status(400).json({
-          message: status.complete
-            ? "Goal totals are inconsistent. Correct the statistics or acknowledge the difference."
-            : "Every participant must submit statistics before scoring",
-          code: status.complete ? "STATS_INCONSISTENT" : "STATS_INCOMPLETE",
+          message: !status.complete
+            ? "Every participant must submit statistics before scoring"
+            : !status.assistsOk
+              ? "Assists cannot exceed the match goal total"
+              : "Goal totals are inconsistent. Correct the statistics or acknowledge the difference.",
+          code,
           ...status,
         });
       }

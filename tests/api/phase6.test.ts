@@ -71,7 +71,7 @@ describe("phase 6 scoring and leaderboards", () => {
     await request(app)
       .post(`/api/matches/${match.id}/end`)
       .set("Authorization", `Bearer ${owner.token}`)
-      .send({ finalScore: 5 });
+      .send({ teamAGoals: 5, teamBGoals: 0 });
 
     const statsByUserId: Record<number, { goals: number; assists: number }> = {
       [owner.user.id]: { goals: 2, assists: 1 },
@@ -166,7 +166,7 @@ describe("phase 6 scoring and leaderboards", () => {
     await request(app)
       .post(`/api/matches/${match.id}/end`)
       .set("Authorization", `Bearer ${owner.token}`)
-      .send({ finalScore: 0 });
+      .send({ teamAGoals: 0, teamBGoals: 0 });
 
     for (const user of users) {
       await request(app)

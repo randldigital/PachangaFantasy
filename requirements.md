@@ -24,10 +24,10 @@ These close Appendix A. They are product rules, not recommendations. Revisit the
 | **P0.4** | A member's valuation is complete when every current league player has a tier. The administrator may close with any number of submissions (warn if few). Valuation may **reopen at any time**; new values apply only to matches that are still Open. |
 | **P0.5** | Lineups and joining **lock when the administrator starts the match**. Ending the match is too late — results are already known. Scheduled kick-off time is not the lock. |
 | **P0.6** | A player **may edit their own statistics** until the match is scored. After scoring, statistics are immutable. |
-| **P0.7** | **External players are in scope.** The administrator submits their statistics. Statistics are keyed to the Player, not the User. |
+| **P0.7** | **External players are in scope.** The administrator may submit statistics for **any participant**, including externals and absent registered players. Statistics are keyed to the Player, not the User. |
 | **P0.8** | **No participant cap.** A match may have any number of players. The UI must not invent a limit of 10. |
 | **P0.9** | At most **one match in Open or Started** per league. A previous match may still be awaiting stats or validation while the next is created. |
-| **P0.10** | **Automatic team balancing is not a product feature.** Remove it, including the `ready` status it creates. Pachanga does not assign real-world teams. |
+| **P0.10** | **Automatic team balancing is not a product feature.** Remove it, including the `ready` status it creates. The administrator **must** divide every participant into Team A or Team B before starting. There is no automatic balancing, no `ready` status, and no team-win scoring bonus. |
 | **P0.11** | Display names need not be globally unique. Player names must be unique within a league (case-insensitive). On collision, auto-created player names become `Name`, then `Name (2)`, `Name (3)`, and so on. |
 
 ### How to read the status markers
@@ -263,8 +263,9 @@ The League Administrator exists to *support the game*, not to configure a platfo
 | Close Player Valuation and trigger Market Value calculation | **[Implemented]** |
 | Create matches | **[Implemented]** |
 | Register players in a match | **[Implemented]** |
-| Start a match (locks lineups and joining) | **[Implemented]** |
-| Mark a match as finished and record the total goal count | **[Implemented]** |
+| Divide participants into Team A and Team B before starting | **[Implemented]** |
+| Start a match (locks lineups, joining and teams) | **[Implemented]** |
+| Mark a match as finished and record both teams' goals | **[Implemented]** |
 | Review which participants have submitted statistics | **[Implemented]** |
 | Resolve or acknowledge inconsistent statistics | **[Implemented]** |
 | Trigger final scoring | **[Implemented]** |
@@ -488,16 +489,16 @@ Calling both "completed" is the single most confusing thing the application can 
 
 **Started / Lineups locked**
 
-- The administrator has started the match (P0.5).
+- The administrator has started the match (P0.5). Teams must already be assigned.
 - Joining is closed.
-- Lineups are locked and immutable.
+- Lineups and teams are locked and immutable.
 - The real football match may be in progress or about to start.
 - Statistics cannot yet be submitted.
 
 **Finished / Awaiting Statistics**
 
 - The real football match has been played.
-- The administrator has marked it as finished and recorded the total goal count.
+- The administrator has marked it as finished and recorded Team A goals and Team B goals. The persisted total (`finalScore`) is their sum.
 - Participants submit their goals and assists.
 - Lineups are locked (Section 13.4).
 - Fantasy points are not final and must not be presented as if they were.
@@ -505,7 +506,7 @@ Calling both "completed" is the single most confusing thing the application can 
 **Ready for Validation**
 
 - The required statistics have been submitted, or the administrator has decided that submission is complete.
-- Statistics are checked for consistency against the recorded total goal count (Section 15).
+- Statistics are checked for consistency against the recorded team scores (Section 15).
 - The administrator resolves any inconsistency.
 
 **Scored / Closed**
@@ -518,12 +519,12 @@ Calling both "completed" is the single most confusing thing the application can 
 
 ### 11.2 Mapping to what exists
 
-> **[Implemented]** Persisted statuses are `open`, `started`, `completed` (football finished / awaiting stats) and `scored`. Legacy `ready` is treated as `started` and migrated away. Automatic team balancing is removed.
+> **[Implemented]** Persisted statuses are `open`, `started`, `completed` (football finished / awaiting stats) and `scored`. Legacy `ready` is treated as `started` and migrated away. Automatic team balancing is removed. Manual two-team assignment is required before start.
 >
-> - **Started** locks lineups and joining.
-> - **Finished** (`completed`) is football over, statistics still open.
+> - **Started** locks lineups, joining and teams.
+> - **Finished** (`completed`) is football over, statistics still open. Both team scores are stored; `finalScore` is their sum.
 > - **Scored** is fantasy points final. It does not reuse the Finished word.
-> - **Validated** is a derived statistics state (complete + consistent, or acknowledged), not a persisted match status.
+> - **Validated** is a derived statistics state (complete + goals match the result + assists do not exceed it, or goals acknowledged with assists still within the total), not a persisted match status.
 
 ### 11.3 Match creation
 
@@ -544,6 +545,19 @@ The administrator creates the next match from within the league context, in a si
 The interface must make the **current or next actionable Match obvious** without navigation. **[Implemented]** — the league view leads with the active match and the action it currently expects.
 
 **Decision (P0.9):** a league may have at most **one match in Open or Started**. A previous match may still be awaiting statistics, validation, or already scored. That matches real use: last week's stats are still coming in while Sunday's lineup is being built. Creating a second Open match must be rejected with a clear message. **[Implemented]**
+
+### 11.4 Dividing players into two teams
+
+Before the match can start, the administrator must assign every accepted participant to **Team A** or **Team B**. **[Implemented]**
+
+Rules:
+
+- Both teams must have at least one player.
+- A player cannot be on both teams.
+- Every accepted participant must be on exactly one team.
+- Teams may be edited while the match is Open. They lock when the match starts.
+- Starting without a complete assignment is rejected (`TEAMS_REQUIRED` / `TEAMS_EMPTY` / `TEAMS_OVERLAP` / `TEAMS_NOT_PARTITION`).
+- Assignment is **manual**. There is no automatic balancing and no `ready` status (P0.10).
 
 ---
 
@@ -655,23 +669,20 @@ The administrator must explicitly indicate that the real football match has ende
 
 The Match then leaves the lineup and participation phase and enters the statistics phase. Participants must be told, clearly and immediately, that they are now expected to submit their statistics.
 
-### 14.2 The total goal count
+### 14.2 The match result
 
-When finishing a match, the administrator is asked for the **total number of goals scored in the match**. This behaviour is preserved. **[Implemented]**
+When finishing a match, the administrator enters **Team A goals** and **Team B goals**. **[Implemented]**
 
-**Its purpose is validation.** It is the one number the whole group observed and agrees on, and it exists so that the sum of individually submitted goals can be checked against it (Section 15.2).
-
-Three things must not be confused:
+**Its purpose is validation.** The group observed both sides' totals. The stored match total (`finalScore`) is their sum, and is used so that submitted player goals and assists can be checked against the result (Section 15.2).
 
 | Concept | Present in Pachanga? |
 |---|---|
-| **Total number of goals in the match** | Yes — recorded by the administrator at finalisation |
-| **Individual goal statistics** | Yes — submitted per player |
-| **Final match score (Team A vs Team B)** | **No** |
+| **Team A goals and Team B goals** | Yes — recorded by the administrator at finalisation |
+| **Total number of goals in the match** | Yes — persisted as `finalScore` = Team A + Team B |
+| **Individual goal and assist statistics** | Yes — submitted per player |
+| **Team-win scoring bonus** | **No** — teams exist for the pitch and for validation, not for extra fantasy points |
 
-> Pachanga does **not** record a Team A versus Team B result. The application has no reliable concept of which side won. Nothing in the interface or the requirements may imply otherwise.
-
-> **[Implemented]** The total goal count is persisted on the match at finalisation (`finalScore`). Validation is no longer called during end-match; it can use the stored total after statistics exist.
+> **[Implemented]** Both team scores and `finalScore` are persisted at finalisation. Validation runs after statistics exist, not during end-match.
 
 ### 14.3 Final scoring
 
@@ -709,7 +720,7 @@ Submission rules:
 - A Player may submit statistics only for a Match they participated in. **[Implemented]**
 - A Player may submit statistics only after the Match has been marked finished. **[Implemented]**
 - A Player must not be able to create duplicate statistic records for the same Match. **[Implemented]** — a second submit updates the same Player+Match row.
-- A Player **may edit their own statistics until the match is scored** (P0.6). After scoring, statistics are immutable. The League Administrator may edit an external player's statistics on the same terms. **[Implemented]**
+- A Player **may edit their own statistics until the match is scored** (P0.6). After scoring, statistics are immutable. The League Administrator may submit or edit statistics for **any participant** on the same terms, including absent registered players and externals (P0.7). **[Implemented]**
 
 ### 15.2 Validation
 
@@ -721,9 +732,9 @@ The system compares the sum of all submitted Player goals against the total goal
 
 *Example:* if the administrator recorded that the Match had **7** total goals and the submitted Player goals sum to **6**, the statistics are inconsistent and final scoring must not silently proceed.
 
-**Assists are not validated.** There is no externally known total for assists, so no equivalent constraint exists and none may be invented.
+**Assists must not exceed the match total.** The sum of submitted assists must be less than or equal to the recorded goal total (Team A + Team B). An assist cannot exist without a goal.
 
-> **[Implemented]** The comparison uses the stored `finalScore`. Assists are not part of the check. Scoring is blocked until the totals match or the administrator acknowledges the difference.
+> **[Implemented]** Goal comparison uses the stored `finalScore` (the sum of both team scores). Assists are checked the same way (`reportedAssists <= finalScore`). Scoring is blocked until goals match (or the administrator acknowledges a goal difference) **and** assists do not exceed the total. Assists over the total cannot be acknowledged away.
 
 ### 15.3 What must be shown
 
@@ -733,8 +744,8 @@ The interface must clearly distinguish four states, for the administrator and fo
 |---|---|
 | **Pending** | This participant has not submitted yet. |
 | **Submitted** | This participant has submitted. |
-| **Inconsistent** | Submissions are complete but the goal totals do not agree. |
-| **Validated** | Statistics are complete, consistent, and scoring may proceed. |
+| **Inconsistent** | Submissions are complete but goals do not match the result, or assists exceed the result. |
+| **Validated** | Statistics are complete, goals match, assists do not exceed the result, and scoring may proceed. |
 
 > **[Implemented]** Pending and submitted are shown per participant. Inconsistent and validated are shown for the match. Scoring stays blocked while pending or unacknowledged-inconsistent.
 
@@ -747,7 +758,7 @@ When the goal totals do not agree, the administrator must be able to:
 - ask participants to correct their submissions,
 - or explicitly acknowledge the discrepancy and proceed to scoring anyway.
 
-The last option matters. This is a group of friends, and sometimes nobody can remember who got the deflection. The system must not deadlock the whole loop over one goal, but it also must not pretend the numbers agreed when they did not. **[Implemented]**
+The last option matters for **goal** totals. This is a group of friends, and sometimes nobody can remember who got the deflection. The system must not deadlock the whole loop over one goal, but it also must not pretend the numbers agreed when they did not. **Assists that exceed the match total cannot be acknowledged** — they must be corrected. **[Implemented]**
 
 **No approval workflows.** There is no peer verification, no confirm/dispute cycle and no multi-step sign-off. This was explicitly removed from the product and must not be reintroduced.
 
@@ -779,11 +790,9 @@ Therefore, a Player who scores 2 goals receives:
 
 **No team-win bonus.**
 
-> The historical rule `if team_won: points += 1` is **not part of the current scoring requirements** and must be removed.
+> The historical rule `if team_won: points += 1` is **not part of the current scoring requirements**.
 >
-> Pachanga has no properly implemented concept of teams, team membership and results. Automatic team balancing exists, but it only ever runs when exactly ten participants have joined, so most matches have no teams at all. Worse, the implemented bonus is defective: it compares team membership (recorded as player identities) against statistics (recorded as user identities), so the two sets can never match and the bonus effectively never applies — or applies to the wrong person when identifiers happen to coincide.
->
-> A win bonus may be reconsidered as a future scoring extension (Section 23) **if and only if** a proper team and result model is implemented first.
+> Matches now have a real two-team assignment and a two-team result, used to start the match and to validate statistics. That does **not** add a win bonus to Player Points. A win bonus may be reconsidered as a future scoring extension (Section 23) only by updating this document.
 
 ### 16.2 Manager scoring
 
@@ -923,7 +932,7 @@ Additional rules that follow from the sections above:
 | 23 | Statistics are only submitted for Matches marked as finished. | **[Implemented]** |
 | 24 | Only the administrator may trigger final scoring. | **[Implemented]** |
 | 25 | Running final scoring twice produces the same result as running it once. | **[Implemented]** |
-| 26 | Pachanga does not record a Team A versus Team B result. | **[Implemented]** |
+| 26 | The administrator records Team A and Team B goals at finalisation. Their sum is the match total used for validation. There is no team-win scoring bonus. | **[Implemented]** |
 | 27 | Scoring values (3 / 2 / ×2) are fixed product defaults and are not configurable per league. | **[Implemented]** |
 
 ---
@@ -1063,9 +1072,10 @@ The following features constitute the current core product. Everything not in th
 | Fantasy lineup of exactly five players | **[Implemented]** |
 | Budget restriction | **[Implemented]** |
 | Captain ×2 for Manager scoring | **[Implemented]** |
-| Match finalisation with total goal count | **[Implemented]** — total persisted at end-match |
-| Goals and assists submission | **[Implemented]** |
-| Statistics validation | **[Implemented]** |
+| Match finalisation with both team scores | **[Implemented]** — Team A, Team B, and `finalScore` persisted at end-match |
+| Manual two-team assignment before start | **[Implemented]** |
+| Goals and assists submission | **[Implemented]** — admin may submit for any participant |
+| Statistics validation | **[Implemented]** — goals must match the result; assists must not exceed it |
 | Player scoring | **[Implemented]** — goals×3 + assists×2; win bonus removed |
 | Manager scoring | **[Implemented]** |
 | Player Leaderboard | **[Implemented]** |
@@ -1096,7 +1106,7 @@ They are recorded so they are not lost, not because they are committed. **A futu
 | **Card rarity or multiplier systems** | Would change scoring and must not be introduced without revisiting Section 16. |
 | **Additional scoring mechanics** | Including a team-win bonus, which requires a real team and result model first (Section 16.1). |
 | **Richer social features** | Comments, reactions, profiles. |
-| **Team assignment as a product feature** | **Withdrawn (P0.10).** Automatic team balancing and the `ready` match status were removed. Pachanga does not assign real-world teams. |
+| **Automatic team balancing** | **Withdrawn (P0.10).** The `ready` match status and automatic balancing were removed. **Manual** two-team assignment before start is required (Section 11.4). |
 | **Real-time updates** | Explicitly rejected. All data is entered after the match; ordinary requests and cache invalidation are sufficient. |
 | **Public leagues** | Explicitly rejected. Pachanga is private by design. |
 | **Notifications** | Not specified. Would need a clear trigger model before being considered. |

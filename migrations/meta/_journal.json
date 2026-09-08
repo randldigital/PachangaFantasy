@@ -50,6 +50,13 @@
       "when": 1788874000000,
       "tag": "0006_lineups_player_ids_array",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788875000000,
+      "tag": "0007_match_team_scores",
+      "breakpoints": true
     }
   ]
 }

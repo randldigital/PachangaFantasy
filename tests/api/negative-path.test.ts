@@ -73,7 +73,7 @@ describe("negative paths", () => {
     await request(app)
       .post(`/api/matches/${match.id}/end`)
       .set(auth(owner.token))
-      .send({ finalScore: 3 });
+      .send({ teamAGoals: 3, teamBGoals: 0 });
 
     const first = await request(app)
       .post(`/api/matches/${match.id}/stats`)

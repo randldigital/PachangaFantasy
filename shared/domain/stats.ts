@@ -32,12 +32,14 @@ export type StatsStatus = {
   submittedPlayerIds: number[];
   expectedTotal: number | null;
   reportedTotal: number;
+  reportedAssists: number;
+  assistsOk: boolean;
   difference: number | null;
 };
 
 export function statsSubmissionState(input: StatsStatusInput): StatsStatus {
   const participantSet = new Set(input.participantPlayerIds);
-  const reportsByPlayer = new Map<number, { playerId: number; goals?: number | null }>();
+  const reportsByPlayer = new Map<number, { playerId: number; goals?: number | null; assists?: number | null }>();
   for (const report of input.reports) {
     if (participantSet.has(report.playerId)) {
       reportsByPlayer.set(report.playerId, report);
@@ -49,6 +51,10 @@ export function statsSubmissionState(input: StatsStatusInput): StatsStatus {
   const complete = input.participantPlayerIds.length > 0 && pendingPlayerIds.length === 0;
 
   const reportedGoals = submittedPlayerIds.map((id) => reportsByPlayer.get(id)?.goals || 0);
+  const reportedAssists = submittedPlayerIds.reduce(
+    (sum, id) => sum + (reportsByPlayer.get(id)?.assists || 0),
+    0,
+  );
   const expectedTotal = input.expectedGoals;
   const check =
     expectedTotal === null
@@ -60,7 +66,9 @@ export function statsSubmissionState(input: StatsStatusInput): StatsStatus {
       : validateGoalTotal(reportedGoals, expectedTotal);
 
   const reportedTotal = check.reportedTotal;
-  const consistent = complete && expectedTotal !== null && check.isValid;
+  const assistsOk = expectedTotal === null ? false : reportedAssists <= expectedTotal;
+  const goalsMatch = complete && expectedTotal !== null && check.isValid;
+  const consistent = goalsMatch && assistsOk;
   const difference = expectedTotal === null ? null : check.difference;
 
   let state: MatchStatsState = "pending";
@@ -74,7 +82,7 @@ export function statsSubmissionState(input: StatsStatusInput): StatsStatus {
 
   return {
     state,
-    canScore: complete && (consistent || input.acknowledged),
+    canScore: complete && assistsOk && (goalsMatch || input.acknowledged),
     complete,
     consistent,
     acknowledged: input.acknowledged,
@@ -82,6 +90,8 @@ export function statsSubmissionState(input: StatsStatusInput): StatsStatus {
     submittedPlayerIds,
     expectedTotal,
     reportedTotal,
+    reportedAssists,
+    assistsOk,
     difference,
   };
 }

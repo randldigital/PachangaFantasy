@@ -121,7 +121,7 @@ describe("phase 4 lineup integrity", () => {
     const tooSoon = await request(app)
       .post(`/api/matches/${matchResponse.body.id}/end`)
       .set("Authorization", `Bearer ${owner.token}`)
-      .send({ finalScore: 4 });
+      .send({ teamAGoals: 4, teamBGoals: 0 });
     expect(tooSoon.status).toBe(400);
     expect(tooSoon.body.code).toBe("MATCH_NOT_ENDABLE");
   });

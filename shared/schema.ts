@@ -62,6 +62,8 @@ export const matches = pgTable("matches", {
   status: text("status").$type<"open" | "started" | "completed" | "scored">().default("open"),
   matchTeams: json("match_teams").$type<{ teamA: number[], teamB: number[] }>(),
   finalScore: integer("final_score"),
+  teamAGoals: integer("team_a_goals"),
+  teamBGoals: integer("team_b_goals"),
   statsAcknowledged: boolean("stats_acknowledged").notNull().default(false),
   createdBy: integer("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
@@ -173,6 +175,8 @@ export const insertMatchSchema = createInsertSchema(matches).omit({
   createdBy: true,
   createdAt: true,
   finalScore: true,
+  teamAGoals: true,
+  teamBGoals: true,
 }).extend({
   date: z.string().min(1, "Date is required").refine((str) => {
     const date = new Date(str);
@@ -198,7 +202,13 @@ export const insertStatReportSchema = createInsertSchema(statReports).omit({
 });
 
 export const endMatchSchema = z.object({
-  finalScore: z.coerce.number().int().min(0),
+  teamAGoals: z.coerce.number().int().min(0),
+  teamBGoals: z.coerce.number().int().min(0),
+});
+
+export const saveTeamsSchema = z.object({
+  teamA: z.array(z.number().int()).min(1),
+  teamB: z.array(z.number().int()).min(1),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

@@ -31,26 +31,33 @@ interface EndMatchButtonProps {
 export default function EndMatchButton({ match, leagueId, isLeagueCreator }: EndMatchButtonProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [finalScore, setFinalScore] = useState("");
+  const [teamAGoals, setTeamAGoals] = useState("");
+  const [teamBGoals, setTeamBGoals] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const endMatchMutation = useMutation({
     mutationFn: async () => {
-      const scoreValue = parseInt(finalScore, 10);
-      if (Number.isNaN(scoreValue) || scoreValue < 0) {
+      const scoreA = parseInt(teamAGoals, 10);
+      const scoreB = parseInt(teamBGoals, 10);
+      if (Number.isNaN(scoreA) || scoreA < 0 || Number.isNaN(scoreB) || scoreB < 0) {
         throw new Error(t("match.finalScoreInvalid"));
       }
 
       const endResponse = await apiRequest("POST", `/api/matches/${match.id}/end`, {
-        finalScore: scoreValue,
+        teamAGoals: scoreA,
+        teamBGoals: scoreB,
       });
       return endResponse.json();
     },
     onSuccess: async () => {
       toast({
         title: t("match.ended"),
-        description: t("match.endedDescription", { score: finalScore }),
+        description: t("match.endedDescription", {
+          scoreA: teamAGoals,
+          scoreB: teamBGoals,
+          total: Number(teamAGoals) + Number(teamBGoals),
+        }),
       });
 
       await Promise.all([
@@ -63,7 +70,8 @@ export default function EndMatchButton({ match, leagueId, isLeagueCreator }: End
       ]);
 
       setOpen(false);
-      setFinalScore("");
+      setTeamAGoals("");
+      setTeamBGoals("");
     },
     onError: (error: Error) => {
       toast({
@@ -120,27 +128,45 @@ export default function EndMatchButton({ match, leagueId, isLeagueCreator }: End
         </AlertDialogHeader>
 
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="finalScore">{t("match.finalScore")}</Label>
-            <Input
-              id="finalScore"
-              type="number"
-              min="0"
-              value={finalScore}
-              onChange={(e) => setFinalScore(e.target.value)}
-              className="w-full bg-slate-900 border-slate-600 text-white"
-            />
-            {!finalScore.trim() && (
-              <p className="text-xs text-slate-400">{t("match.finalScoreInvalid")}</p>
-            )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="teamAGoals">{t("match.teamAGoals")}</Label>
+              <Input
+                id="teamAGoals"
+                type="number"
+                min="0"
+                value={teamAGoals}
+                onChange={(e) => setTeamAGoals(e.target.value)}
+                className="w-full bg-slate-900 border-slate-600 text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="teamBGoals">{t("match.teamBGoals")}</Label>
+              <Input
+                id="teamBGoals"
+                type="number"
+                min="0"
+                value={teamBGoals}
+                onChange={(e) => setTeamBGoals(e.target.value)}
+                className="w-full bg-slate-900 border-slate-600 text-white"
+              />
+            </div>
           </div>
+          <p className="text-xs text-slate-400">{t("match.finalScoreInvalid")}</p>
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => setFinalScore("")}>{t("common.cancel")}</AlertDialogCancel>
+          <AlertDialogCancel
+            onClick={() => {
+              setTeamAGoals("");
+              setTeamBGoals("");
+            }}
+          >
+            {t("common.cancel")}
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={() => endMatchMutation.mutate()}
-            disabled={endMatchMutation.isPending || !finalScore.trim()}
+            disabled={endMatchMutation.isPending || teamAGoals.trim() === "" || teamBGoals.trim() === ""}
             className="bg-orange-600 hover:bg-orange-700"
           >
             {endMatchMutation.isPending ? t("match.ending") : t("match.end")}

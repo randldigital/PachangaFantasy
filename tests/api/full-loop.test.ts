@@ -74,7 +74,7 @@ describe("full loop", () => {
     const ended = await request(app)
       .post(`/api/matches/${match.id}/end`)
       .set(auth(owner.token))
-      .send({ finalScore: 2 });
+      .send({ teamAGoals: 2, teamBGoals: 0 });
     expect(ended.status).toBe(200);
 
     const statsByUserId: Record<number, { goals: number; assists: number }> = {

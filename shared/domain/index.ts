@@ -4,3 +4,5 @@ export * from "./lineup";
 export * from "./matchLifecycle";
 export * from "./players";
 export * from "./primaryAction";
+export * from "./stats";
+export * from "./teams";

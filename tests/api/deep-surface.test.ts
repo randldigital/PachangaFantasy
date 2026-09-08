@@ -12,11 +12,11 @@
  *   Overview list                     GET  /api/leagues
  *   Overview Join League              POST /api/leagues/:inviteCode/join
  *   LeagueHub load                    GET  /api/leagues/:id
- *   DeleteLeagueButton (component)    DELETE /api/leagues/:id
+ *   DeleteLeagueButton                DELETE /api/leagues/:id
  *   Agregar jugadores                 POST /api/players/:leagueId
  *   LeagueHub roster                  GET  /api/players/:leagueId
  *   Add myself / repair banner        POST /api/leagues/:leagueId/add-me-as-player
- *   AddMyselfAsPlayerButton check     GET  /api/leagues/:leagueId/check-user-player
+ *   Check user player                 GET  /api/leagues/:leagueId/check-user-player
  *   Abrir valoración                  POST /api/tierlist/:leagueId/open
  *   Guardar / enviar valoración       POST /api/tierlist/:leagueId
  *   Valoración propia                 GET  /api/tierlist/:leagueId
@@ -27,6 +27,7 @@
  *   Ver partido                       GET  /api/matches/:id
  *   Borrar partido                    DELETE /api/matches/:id
  *   Empezar partido                   POST /api/matches/:id/start
+ *   Asignar equipos                   POST /api/matches/:id/teams
  *   Terminar partido                  POST /api/matches/:id/end
  *   Unirse al partido                 POST /api/matches/:id/join
  *   Añadir jugadores al partido       POST /api/matches/:id/add-players
@@ -36,7 +37,7 @@
  *   Enviar estadísticas               POST /api/matches/:matchId/stats
  *   Listado de stats                  GET  /api/matches/:matchId/stats
  *   Estado de stats                   GET  /api/matches/:matchId/stats-status
- *   AdminGoalValidation (component)   POST /api/matches/:matchId/validate-goals
+ *   Validar goles                     POST /api/matches/:matchId/validate-goals
  *   Reconocer stats                   POST /api/matches/:matchId/acknowledge-stats
  *   Calcular puntuación               POST /api/matches/:matchId/calculate-scores
  *   Clasificación jugadores           GET  /api/leagues/:leagueId/rankings
@@ -44,8 +45,9 @@
  *
  * Client-only (no API, not asserted here): language switch, logout, tab clicks.
  *
- * Dead / shadowed routes are kept as commented `it` blocks so they can be
- * turned back on after a fix.
+ * Removed 8 Sep 2026: POST /api/leagues/:id/join. Joining is by invite code only
+ * (`POST /api/leagues/:inviteCode/join`). The numeric-id route was never used
+ * by the UI and was shadowed by the invite-code path.
  */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
@@ -159,24 +161,6 @@ describe("deep surface catalog", () => {
     expect(joined.body.player.userId).toBe(joiner.user.id);
     void owner;
   });
-
-  /*
-   * Not functional: Express matches POST /api/leagues/:inviteCode/join first,
-   * so a numeric league id is looked up as an invite code and returns 404
-   * INVALID_INVITE_CODE. Observed 8 Sep 2026. Re-enable after the routes are
-   * disambiguated. No UI button currently calls this path (Join League uses
-   * the invite code).
-   *
-  it("POST /api/leagues/:id/join", async () => {
-    const { league } = await createLeagueWithMembers(app, 1);
-    const joiner = (await registerUser(app, 91)).body;
-    const joined = await request(app)
-      .post(`/api/leagues/${league.id}/join`)
-      .set(auth(joiner.token));
-    ok(joined, "POST /api/leagues/:id/join");
-    expect(joined.body.league.id).toBe(league.id);
-  });
-  */
 
   it("POST /api/players/:leagueId  GET /api/players/:leagueId", async () => {
     const { owner, league } = await createLeagueWithMembers(app, 1);
@@ -304,6 +288,33 @@ describe("deep surface catalog", () => {
     void ids;
   });
 
+  it("POST /api/matches/:id/teams then start", async () => {
+    const { owner, users, league } = await valuedLeague(2);
+    const match = (await createOpenMatch(app, owner.token, league.id)).body;
+    await joinAllMatches(app, match.id, users);
+
+    const blocked = await request(app)
+      .post(`/api/matches/${match.id}/start`)
+      .set(auth(owner.token));
+    expect(blocked.status).toBe(400);
+    expect(blocked.body.code).toBe("TEAMS_REQUIRED");
+
+    const roster = await listPlayers(app, owner.token, league.id);
+    const ids = roster.map((player) => player.id);
+    const saved = await request(app)
+      .post(`/api/matches/${match.id}/teams`)
+      .set(auth(owner.token))
+      .send({ teamA: [ids[0]], teamB: [ids[1]] });
+    ok(saved, "POST /api/matches/:id/teams");
+    expect(saved.body.match.matchTeams.teamA).toEqual([ids[0]]);
+    expect(saved.body.match.matchTeams.teamB).toEqual([ids[1]]);
+
+    ok(
+      await request(app).post(`/api/matches/${match.id}/start`).set(auth(owner.token)),
+      "POST /api/matches/:id/start after teams",
+    );
+  });
+
   it("GET+POST /api/matches/:matchId/lineup", async () => {
     const { owner, users, league, ids } = await valuedLeague(5);
     const match = (await createOpenMatch(app, owner.token, league.id)).body;
@@ -347,7 +358,7 @@ describe("deep surface catalog", () => {
     const ended = await request(app)
       .post(`/api/matches/${match.id}/end`)
       .set(auth(owner.token))
-      .send({ finalScore: 2 });
+      .send({ teamAGoals: 2, teamBGoals: 0 });
     ok(ended, "POST /api/matches/:id/end");
     expect(ended.body.match.finalScore).toBe(2);
 
@@ -382,8 +393,7 @@ describe("deep surface catalog", () => {
 
     const validated = await request(app)
       .post(`/api/matches/${match.id}/validate-goals`)
-      .set(auth(owner.token))
-      .send({ finalScore: 2 });
+      .set(auth(owner.token));
     ok(validated, "POST /api/matches/:matchId/validate-goals");
     expect(validated.body.isValid).toBe(true);
 
@@ -413,7 +423,7 @@ describe("deep surface catalog", () => {
     await request(app)
       .post(`/api/matches/${match.id}/end`)
       .set(auth(owner.token))
-      .send({ finalScore: 3 });
+      .send({ teamAGoals: 3, teamBGoals: 0 });
 
     await request(app)
       .post(`/api/matches/${match.id}/stats`)

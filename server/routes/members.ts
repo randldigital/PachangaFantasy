@@ -70,24 +70,4 @@ export function registerMemberRoutes(app: Express) {
       }
     }
   });
-
-  app.post("/api/leagues/:id/join", requireAuth, async (req: AuthRequest, res: Response) => {
-    try {
-      const leagueId = parseInt(req.params.id);
-      const league = await leagueRepo.getLeague(leagueId);
-
-      if (!league) {
-        return res.status(404).json({ message: "League not found" });
-      }
-
-      await joinLeague(req, res, league);
-    } catch (error) {
-      logger.error("Join league error", error);
-      if (error instanceof Error) {
-        res.status(500).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: "Failed to join league" });
-      }
-    }
-  });
 }

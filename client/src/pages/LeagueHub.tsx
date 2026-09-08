@@ -19,6 +19,7 @@ import TierListSection from "@/components/league/TierListSection";
 import StatsSection from "@/components/league/StatsSection";
 import PrimaryActionBanner from "@/components/league/PrimaryActionBanner";
 import AddPlayerForm from "@/components/league/AddPlayerForm";
+import DeleteLeagueButton from "@/components/league/DeleteLeagueButton";
 import { pickActiveMatch } from "@shared/domain/matchLifecycle";
 import { pickStatsMatch } from "@shared/domain/stats";
 import type { HubTab } from "@shared/domain/primaryAction";
@@ -31,6 +32,7 @@ export default function LeagueHub() {
   const [activeTab, setActiveTab] = useState<HubTab>("lineup");
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [showCreateMatch, setShowCreateMatch] = useState(false);
+  const [showMatchDetails, setShowMatchDetails] = useState(false);
   const leagueId = parseInt(id!);
 
   const { data: league, isLoading: leagueLoading } = useQuery<League>({
@@ -101,6 +103,7 @@ export default function LeagueHub() {
 
             <div className="flex items-center space-x-3 shrink-0">
               {isAdmin && (
+                <>
                 <Button
                   size="sm"
                   variant="outline"
@@ -110,6 +113,8 @@ export default function LeagueHub() {
                   <UserPlus className="w-4 h-4 mr-2" />
                   <span className="hidden sm:inline">{t("league.addPlayers")}</span>
                 </Button>
+                <DeleteLeagueButton league={league} isLeagueCreator={isAdmin} />
+                </>
               )}
               <Badge variant="secondary" className="bg-slate-700 text-white">
                 {league.inviteCode}
@@ -131,6 +136,7 @@ export default function LeagueHub() {
         onTabChange={setActiveTab}
         onOpenAddPlayer={() => setShowAddPlayer(true)}
         onOpenCreateMatch={() => setShowCreateMatch(true)}
+        onOpenMatchDetails={() => setShowMatchDetails(true)}
       />
 
       <MatchContextHeader
@@ -140,6 +146,8 @@ export default function LeagueHub() {
         players={players || []}
         createMatchOpen={showCreateMatch}
         onCreateMatchOpenChange={setShowCreateMatch}
+        matchDetailsOpen={showMatchDetails}
+        onMatchDetailsOpenChange={setShowMatchDetails}
       />
 
       <div className="container mx-auto px-4 py-6 pb-20 lg:pb-6">

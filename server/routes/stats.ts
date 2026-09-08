@@ -64,12 +64,9 @@ export function registerStatsRoutes(app: Express) {
 
       const isAdmin = isLeagueAdmin(access.league, access.user.id);
       const isOwnPlayer = targetPlayer.userId === access.user.id;
-      const isAccountless = targetPlayer.userId == null;
-      if (!isOwnPlayer && !(isAdmin && isAccountless)) {
+      if (!isOwnPlayer && !isAdmin) {
         return res.status(403).json({
-          message: isAdmin
-            ? "Administrators can only submit statistics for players without an account"
-            : "You can only submit your own statistics",
+          message: "You can only submit your own statistics",
           code: "STATS_NOT_PARTICIPANT",
         });
       }
@@ -210,6 +207,14 @@ export function registerStatsRoutes(app: Express) {
         return res.status(400).json({
           message: "Goal totals already match; acknowledgement is not needed",
           code: "STATS_ALREADY_VALID",
+          ...status,
+        });
+      }
+
+      if (!status.assistsOk) {
+        return res.status(400).json({
+          message: "Assists cannot exceed the match goal total. Correct the statistics before scoring.",
+          code: "STATS_ASSISTS_EXCEED",
           ...status,
         });
       }

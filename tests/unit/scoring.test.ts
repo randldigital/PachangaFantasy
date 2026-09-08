@@ -53,8 +53,8 @@ describe("statsSubmissionState", () => {
     const status = statsSubmissionState({
       participantPlayerIds: players,
       reports: [
-        { playerId: 1, goals: 2, assists: 9 },
-        { playerId: 2, goals: 1, assists: 4 },
+        { playerId: 1, goals: 2, assists: 1 },
+        { playerId: 2, goals: 1, assists: 0 },
       ],
       expectedGoals: 3,
       acknowledged: false,
@@ -65,7 +65,7 @@ describe("statsSubmissionState", () => {
     expect(status.reportedTotal).toBe(3);
   });
 
-  it("ignores assists when checking consistency", () => {
+  it("rejects assists that exceed the match goal total", () => {
     const status = statsSubmissionState({
       participantPlayerIds: players,
       reports: [
@@ -75,7 +75,9 @@ describe("statsSubmissionState", () => {
       expectedGoals: 2,
       acknowledged: false,
     });
-    expect(status.state).toBe("validated");
+    expect(status.state).toBe("inconsistent");
+    expect(status.assistsOk).toBe(false);
+    expect(status.canScore).toBe(false);
   });
 
   it("is inconsistent when complete submissions disagree, until acknowledged", () => {

@@ -140,6 +140,10 @@ export default function AdminStatsOverview({
             <span className="text-slate-400">{t("stats.reportedGoals")}</span>
             <span className="text-white font-medium">{status.reportedTotal}</span>
           </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-slate-400">{t("stats.reportedAssists")}</span>
+            <span className="text-white font-medium">{status.reportedAssists}</span>
+          </div>
           {status.complete && !status.consistent && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-slate-400">{t("stats.difference")}</span>
@@ -165,6 +169,9 @@ export default function AdminStatsOverview({
                     {accountless && (
                       <span className="ml-2 text-xs text-slate-400">{t("stats.external")}</span>
                     )}
+                    {!accountless && pending && (
+                      <span className="ml-2 text-xs text-slate-400">{t("stats.absentHint")}</span>
+                    )}
                   </p>
                   {report && (
                     <p className="text-xs text-slate-400">
@@ -186,7 +193,7 @@ export default function AdminStatsOverview({
                   )}
                 </Badge>
               </div>
-              {isLeagueCreator && accountless && !scored && (
+              {isLeagueCreator && !scored && (
                 <SubmitMyStats
                   match={match}
                   playerId={participant.playerId}
@@ -232,7 +239,19 @@ export default function AdminStatsOverview({
           </Alert>
         )}
 
-        {status.state === "inconsistent" && !scored && (
+        {status.state === "inconsistent" && !status.assistsOk && (
+          <Alert className="border-amber-600 bg-amber-900/20">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {t("stats.assistsExceedDetail", {
+                assists: status.reportedAssists,
+                expected: status.expectedTotal ?? 0,
+              })}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {status.state === "inconsistent" && status.assistsOk && !scored && (
           <Button
             variant="outline"
             onClick={() => acknowledgeMutation.mutate()}
@@ -262,7 +281,11 @@ export default function AdminStatsOverview({
           </Button>
           {!status.canScore && !scored && (
             <p className="text-xs text-slate-400 mt-2 text-center">
-              {status.complete ? t("stats.scoreBlockedInconsistent") : t("stats.scoreBlockedIncomplete")}
+              {!status.complete
+                ? t("stats.scoreBlockedIncomplete")
+                : !status.assistsOk
+                  ? t("stats.scoreBlockedAssists")
+                  : t("stats.scoreBlockedInconsistent")}
             </p>
           )}
         </div>

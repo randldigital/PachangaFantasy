@@ -46,7 +46,7 @@
 | P0.7 | Keep external players; admin submits their stats; stats keyed to Player | Phase 5 |
 | P0.8 | No participant cap | Phase 4 |
 | P0.9 | At most one Open or Started match; awaiting-stats matches may coexist | Phase 4 |
-| P0.10 | Remove automatic team balancing and `ready` | Phase 4 |
+| P0.10 | Remove automatic team balancing and `ready`; admin assigns two teams before start | Phase 4 / later refinement |
 | P0.11 | Global display names may clash; league player names unique; suffix ` (2)`, ` (3)`, … | Phase 2 |
 
 P0.7 was confirmed with the product owner. The other ten were decided from the simplicity principle and recorded as rules, not recommendations.
@@ -228,7 +228,7 @@ Ten of fifteen pages have no route. Working, finished features — statistics su
 - [x] **P4.4** Return specific, machine-readable failure reasons so the client can name the exact broken rule. *(§21)*
 - [x] **P4.5** Add administrator **Start match**. It locks lineups and joining. Remove the accidental `open`-only save restriction caused by team balancing. *(§13.4, P0.5)*
 - [x] **P4.6** Separate user-facing states: Open, Started, Finished/awaiting stats, Validated, Scored. "Football finished" and "fantasy scored" must never share a word. *(§11.1, §11.2)*
-- [x] **P4.7** **Remove automatic team balancing** and the `ready` status. Do not assign real-world teams. *(§23, P0.10)*
+- [x] **P4.7** **Remove automatic team balancing** and the `ready` status. Manual two-team assignment before start is required. No team-win bonus. *(§11.4, §14.2, §23, P0.10)*
 - [x] **P4.8** **Remove the participant cap of 10** from the UI and any leftover server logic. *(§12.3, P0.8)*
 - [x] **P4.9** Reject creating a second match while one is already Open or Started. Awaiting-stats matches may coexist. *(§11.3, P0.9)*
 - [x] **P4.10** Make the lineup interface state-aware: show *why* saving is blocked instead of silently disabling the control. *(§13.5, §21)*

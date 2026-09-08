@@ -1,5 +1,5 @@
 import type { Express, Response } from "express";
-import { endMatchSchema, insertMatchSchema } from "@shared/schema";
+import { endMatchSchema, insertMatchSchema, saveTeamsSchema } from "@shared/schema";
 import { logger } from "../logger";
 import { isLeagueAdmin, requireAuth, requireUser } from "../middleware/auth";
 import { loadLeagueMember, loadMatchMember, rejectUnlessAdmin } from "../middleware/access";
@@ -13,6 +13,7 @@ import {
   hasActiveMatch,
   isJoinableStatus,
 } from "@shared/domain/matchLifecycle";
+import { teamsAreComplete, validateMatchTeams } from "@shared/domain/teams";
 import type { AuthRequest } from "../types";
 
 export function registerMatchRoutes(app: Express) {
@@ -140,6 +141,23 @@ export function registerMatchRoutes(app: Express) {
         });
       }
 
+      const participants = await matchRepo.getMatchParticipants(matchId);
+      const participantIds = participants
+        .filter((participant) => participant.status === "accepted")
+        .map((participant) => participant.playerId);
+      const teamViolations = validateMatchTeams({
+        participantIds,
+        teamA: access.match.matchTeams?.teamA,
+        teamB: access.match.matchTeams?.teamB,
+      });
+      if (teamViolations.length > 0) {
+        return res.status(400).json({
+          message: teamViolations[0].message,
+          code: teamViolations[0].code,
+          errors: teamViolations,
+        });
+      }
+
       const updatedMatch = await matchRepo.updateMatch(matchId, { status: "started" });
       logger.info("Match started", {
         match: matchId,
@@ -175,18 +193,22 @@ export function registerMatchRoutes(app: Express) {
 
       const parsed = endMatchSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: "Final score is required", errors: parsed.error.issues });
+        return res.status(400).json({ message: "Both team scores are required", errors: parsed.error.issues });
       }
 
       const updatedMatch = await matchRepo.updateMatch(matchId, {
         status: "completed",
-        finalScore: parsed.data.finalScore,
+        teamAGoals: parsed.data.teamAGoals,
+        teamBGoals: parsed.data.teamBGoals,
+        finalScore: parsed.data.teamAGoals + parsed.data.teamBGoals,
       });
       logger.info("Match ended", {
         match: matchId,
         league: access.league.id,
         creator: access.user.username,
-        finalScore: parsed.data.finalScore,
+        teamAGoals: parsed.data.teamAGoals,
+        teamBGoals: parsed.data.teamBGoals,
+        finalScore: parsed.data.teamAGoals + parsed.data.teamBGoals,
       });
       res.json({
         message: "Match ended successfully. Participants can now submit stats.",
@@ -279,6 +301,59 @@ export function registerMatchRoutes(app: Express) {
       });
     } catch (error) {
       logger.error("Error adding players to match", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/matches/:id/teams", requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const access = await loadMatchMember(req, res, matchId);
+      if (!access) return;
+
+      if (rejectUnlessAdmin(res, access.league, access.user.id, "Only league creator can assign teams")) {
+        return;
+      }
+
+      if (!isJoinableStatus(access.match.status)) {
+        return res.status(400).json({
+          message: "Teams lock when the match starts",
+          code: "TEAMS_LOCKED",
+        });
+      }
+
+      const parsed = saveTeamsSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.issues });
+      }
+
+      const participants = await matchRepo.getMatchParticipants(matchId);
+      const participantIds = participants
+        .filter((participant) => participant.status === "accepted")
+        .map((participant) => participant.playerId);
+      const violations = validateMatchTeams({
+        participantIds,
+        teamA: parsed.data.teamA,
+        teamB: parsed.data.teamB,
+      });
+      if (violations.length > 0) {
+        return res.status(400).json({
+          message: violations[0].message,
+          code: violations[0].code,
+          errors: violations,
+        });
+      }
+
+      const updated = await matchRepo.updateMatch(matchId, {
+        matchTeams: { teamA: parsed.data.teamA, teamB: parsed.data.teamB },
+      });
+      res.json({
+        message: "Teams saved",
+        match: updated,
+        complete: teamsAreComplete(updated?.matchTeams, participantIds),
+      });
+    } catch (error) {
+      logger.error("Error assigning teams", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

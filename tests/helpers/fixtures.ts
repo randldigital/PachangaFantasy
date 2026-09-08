@@ -54,9 +54,35 @@ export async function createOpenMatch(app: Express, ownerToken: string, leagueId
 }
 
 export async function startMatch(app: Express, ownerToken: string, matchId: number) {
+  const participants = await request(app)
+    .get(`/api/matches/${matchId}/participants`)
+    .set(auth(ownerToken));
+  const ids = ((participants.body as { playerId: number; status: string }[]) || [])
+    .filter((participant) => participant.status === "accepted")
+    .map((participant) => participant.playerId);
+  if (ids.length >= 2) {
+    const mid = Math.ceil(ids.length / 2);
+    await request(app)
+      .post(`/api/matches/${matchId}/teams`)
+      .set(auth(ownerToken))
+      .send({ teamA: ids.slice(0, mid), teamB: ids.slice(mid) });
+  }
   return request(app)
     .post(`/api/matches/${matchId}/start`)
     .set("Authorization", `Bearer ${ownerToken}`);
+}
+
+export async function endMatch(
+  app: Express,
+  ownerToken: string,
+  matchId: number,
+  teamAGoals: number,
+  teamBGoals = 0,
+) {
+  return request(app)
+    .post(`/api/matches/${matchId}/end`)
+    .set(auth(ownerToken))
+    .send({ teamAGoals, teamBGoals });
 }
 
 export function auth(token: string) {

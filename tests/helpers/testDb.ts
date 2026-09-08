@@ -93,6 +93,8 @@ export async function resetTestSchema() {
       status text DEFAULT 'open',
       match_teams json,
       final_score integer,
+      team_a_goals integer,
+      team_b_goals integer,
       stats_acknowledged boolean NOT NULL DEFAULT false,
       created_by integer NOT NULL,
       created_at timestamp DEFAULT now()
@@ -153,6 +155,8 @@ export async function resetTestSchema() {
   await client.unsafe(`ALTER TABLE tier_lists ADD COLUMN IF NOT EXISTS player_tiers jsonb NOT NULL DEFAULT '[]'::jsonb`);
   await client.unsafe(`ALTER TABLE tier_lists DROP COLUMN IF EXISTS player_order`);
   await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS stats_acknowledged boolean NOT NULL DEFAULT false`);
+  await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS team_a_goals integer`);
+  await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS team_b_goals integer`);
   await client.unsafe(`ALTER TABLE stat_reports ADD COLUMN IF NOT EXISTS player_id integer`);
   await client.unsafe(`
     DO $lineup$

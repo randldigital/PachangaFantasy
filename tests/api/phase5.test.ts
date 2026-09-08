@@ -12,13 +12,14 @@ async function finishMatch(
   app: ReturnType<typeof createApp>,
   token: string,
   matchId: number,
-  finalScore: number,
+  teamAGoals: number,
+  teamBGoals = 0,
 ) {
   await startMatch(app, token, matchId);
   return request(app)
     .post(`/api/matches/${matchId}/end`)
     .set("Authorization", `Bearer ${token}`)
-    .send({ finalScore });
+    .send({ teamAGoals, teamBGoals });
 }
 
 describe("phase 5 statistics and validation", () => {
@@ -88,6 +89,14 @@ describe("phase 5 statistics and validation", () => {
     await request(app)
       .post(`/api/matches/${match.id}/join`)
       .set("Authorization", `Bearer ${owner.token}`);
+    const guest = await request(app)
+      .post(`/api/players/${league.id}`)
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({ name: "Vecino", isExternal: true });
+    await request(app)
+      .post(`/api/matches/${match.id}/add-players`)
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({ playerIds: [guest.body.id] });
     await finishMatch(app, owner.token, match.id, 1);
 
     const first = await request(app)
@@ -96,13 +105,18 @@ describe("phase 5 statistics and validation", () => {
       .send({ goals: 0, assists: 0 });
     expect(first.status).toBe(200);
 
+    await request(app)
+      .post(`/api/matches/${match.id}/stats`)
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({ playerId: guest.body.id, goals: 0, assists: 0 });
+
     const edited = await request(app)
       .post(`/api/matches/${match.id}/stats`)
       .set("Authorization", `Bearer ${owner.token}`)
-      .send({ goals: 1, assists: 2 });
+      .send({ goals: 1, assists: 1 });
     expect(edited.status).toBe(200);
     expect(edited.body.goals).toBe(1);
-    expect(edited.body.assists).toBe(2);
+    expect(edited.body.assists).toBe(1);
 
     const scored = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)
@@ -144,7 +158,7 @@ describe("phase 5 statistics and validation", () => {
     await request(app)
       .post(`/api/matches/${match.id}/stats`)
       .set("Authorization", `Bearer ${users[1].token}`)
-      .send({ goals: 2, assists: 5 });
+      .send({ goals: 2, assists: 0 });
 
     const inconsistent = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)
