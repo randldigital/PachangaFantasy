@@ -3,12 +3,21 @@ import {
   applyMarketValueChange,
   expectedContribution,
   computeMatchMarketValues,
+  mapPeerRating,
   nextScoringBaseline,
   opponentDifficulty,
   offensiveComponent,
   resultComponent,
   vmPositionX,
 } from "@shared/domain/marketValue";
+
+describe("mapPeerRating", () => {
+  it("maps 0.0–10.0 scores onto 0–1", () => {
+    expect(mapPeerRating(0)).toBe(0);
+    expect(mapPeerRating(5)).toBe(0.5);
+    expect(mapPeerRating(10)).toBe(1);
+  });
+});
 
 describe("expectedContribution", () => {
   it("matches the table endpoints D=0 and S≈33%", () => {
@@ -105,8 +114,8 @@ describe("computeMatchMarketValues", () => {
       ],
       mvpVotes: [{ voterPlayerId: 2, mvpPlayerId: 1 }],
       peerRatings: [
-        { raterPlayerId: 2, rateePlayerId: 1, score: 5 },
-        { raterPlayerId: 1, rateePlayerId: 2, score: 3 },
+        { raterPlayerId: 2, rateePlayerId: 1, score: 10 },
+        { raterPlayerId: 1, rateePlayerId: 2, score: 5 },
       ],
     };
     const first = computeMatchMarketValues(input);

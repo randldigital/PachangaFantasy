@@ -8,7 +8,9 @@ import {
   createOpenMatch,
   startMatch,
   submitAllRatings,
+  expectedPlayerMatchRating,
 } from "../helpers/fixtures";
+import { managerMatchPoints } from "@shared/domain/scoring";
 import { db } from "../../server/db";
 import { lineups, statReports } from "@shared/schema";
 
@@ -101,18 +103,31 @@ describe("phase 6 scoring and leaderboards", () => {
     const ownerPlayerRow = scored.body.playerPoints.find(
       (row: { playerId: number }) => row.playerId === eightPointPlayer,
     );
-    expect(ownerPlayerRow.points).toBe(8);
+    const pointsByPlayer = Object.fromEntries(
+      scored.body.playerPoints.map((row: { playerId: number; points: number }) => [row.playerId, row.points]),
+    );
+    expect(ownerPlayerRow.points).toBe(
+      await expectedPlayerMatchRating(match.id, eightPointPlayer, { goals: 2, assists: 1 }),
+    );
 
     const ownerManager = scored.body.managerPoints.find(
       (row: { userId: number }) => row.userId === owner.user.id,
     );
-    expect(ownerManager.points).toBe(27);
+    expect(ownerManager.points).toBe(
+      managerMatchPoints({ playerIds: ids, captainId: eightPointPlayer, playerPointsById: pointsByPlayer }),
+    );
     expect(ownerManager.lineupStatus).toBe("ok");
 
     const secondManager = scored.body.managerPoints.find(
       (row: { userId: number }) => row.userId === users[1].user.id,
     );
-    expect(secondManager.points).toBe(19);
+    expect(secondManager.points).toBe(
+      managerMatchPoints({
+        playerIds: ids,
+        captainId: players.find((player) => player.userId === users[2].user.id)!.id,
+        playerPointsById: pointsByPlayer,
+      }),
+    );
 
     const missing = scored.body.managerPoints.find(
       (row: { userId: number }) => row.userId === users[2].user.id,
@@ -123,7 +138,7 @@ describe("phase 6 scoring and leaderboards", () => {
     const again = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)
       .set("Authorization", `Bearer ${owner.token}`);
-    expect(again.body.managerPoints.find((row: { userId: number }) => row.userId === owner.user.id).points).toBe(27);
+    expect(again.body.managerPoints.find((row: { userId: number }) => row.userId === owner.user.id).points).toBe(ownerManager.points);
 
     await db.update(statReports).set({ goals: 9 }).where(eq(statReports.matchId, match.id));
 
@@ -132,13 +147,13 @@ describe("phase 6 scoring and leaderboards", () => {
       .set("Authorization", `Bearer ${owner.token}`);
     expect(playersBoard.status).toBe(200);
     const ownerBoard = playersBoard.body.find((row: { userId: number }) => row.userId === owner.user.id);
-    expect(ownerBoard.totalPoints).toBe(8);
+    expect(ownerBoard.totalPoints).toBe(ownerPlayerRow.points);
     expect(ownerBoard.goals).toBe(2);
 
     const managersBoard = await request(app)
       .get(`/api/leagues/${league.id}/manager-rankings`)
       .set("Authorization", `Bearer ${owner.token}`);
-    expect(managersBoard.body.find((row: { userId: number }) => row.userId === owner.user.id).totalPoints).toBe(27);
+    expect(managersBoard.body.find((row: { userId: number }) => row.userId === owner.user.id).totalPoints).toBe(ownerManager.points);
     expect(managersBoard.body.find((row: { userId: number }) => row.userId === users[2].user.id).totalPoints).toBe(0);
   });
 

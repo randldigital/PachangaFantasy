@@ -130,7 +130,7 @@ export async function resetTestSchema() {
       match_id integer NOT NULL,
       goals integer DEFAULT 0 NOT NULL,
       assists integer DEFAULT 0 NOT NULL,
-      points integer NOT NULL,
+      points double precision NOT NULL,
       created_at timestamp DEFAULT now()
     );
     CREATE TABLE IF NOT EXISTS manager_match_points (
@@ -139,7 +139,7 @@ export async function resetTestSchema() {
       match_id integer NOT NULL,
       player_ids integer[],
       captain_id integer,
-      points integer NOT NULL,
+      points double precision NOT NULL,
       lineup_status text DEFAULT 'ok' NOT NULL,
       created_at timestamp DEFAULT now()
     );
@@ -173,7 +173,7 @@ export async function resetTestSchema() {
       match_id integer NOT NULL,
       rater_player_id integer NOT NULL,
       ratee_player_id integer NOT NULL,
-      score integer NOT NULL,
+      score double precision NOT NULL,
       PRIMARY KEY (match_id, rater_player_id, ratee_player_id)
     );
     CREATE TABLE IF NOT EXISTS player_market_value_history (

@@ -13,6 +13,7 @@ export const queryKeys = {
   matchStats: (id: number) => [`/api/matches/${id}/stats`] as const,
   matchStatsStatus: (id: number) => [`/api/matches/${id}/stats-status`] as const,
   matchRatings: (id: number) => [`/api/matches/${id}/ratings`] as const,
+  matchRecap: (id: number) => [`/api/matches/${id}/recap`] as const,
   leagueManagerRankings: (leagueId: number) => [`/api/leagues/${leagueId}/manager-rankings`] as const,
   userPlayerStatus: (leagueId: number) => ["userPlayerStatus", leagueId] as const,
 };

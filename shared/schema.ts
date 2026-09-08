@@ -106,7 +106,7 @@ export const playerMatchPoints = pgTable("player_match_points", {
   matchId: integer("match_id").notNull().references(() => matches.id),
   goals: integer("goals").notNull().default(0),
   assists: integer("assists").notNull().default(0),
-  points: integer("points").notNull(),
+  points: doublePrecision("points").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   matchPlayerUnique: uniqueIndex("player_match_points_match_player").on(table.matchId, table.playerId),
@@ -118,7 +118,7 @@ export const managerMatchPoints = pgTable("manager_match_points", {
   matchId: integer("match_id").notNull().references(() => matches.id),
   playerIds: integer("player_ids").array(),
   captainId: integer("captain_id"),
-  points: integer("points").notNull(),
+  points: doublePrecision("points").notNull(),
   lineupStatus: text("lineup_status").$type<"ok" | "missing" | "invalid">().notNull().default("ok"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
@@ -154,7 +154,7 @@ export const matchPeerRatings = pgTable("match_peer_ratings", {
   matchId: integer("match_id").notNull().references(() => matches.id),
   raterPlayerId: integer("rater_player_id").notNull().references(() => players.id),
   rateePlayerId: integer("ratee_player_id").notNull().references(() => players.id),
-  score: integer("score").notNull(),
+  score: doublePrecision("score").notNull(),
 }, (table) => ({
   pk: primaryKey({ columns: [table.matchId, table.raterPlayerId, table.rateePlayerId] }),
 }));
@@ -279,7 +279,11 @@ export const submitRatingsSchema = z.object({
   ratings: z.array(
     z.object({
       playerId: z.number().int().positive(),
-      score: z.coerce.number().int().min(1).max(5),
+      score: z.coerce
+        .number()
+        .min(0)
+        .max(10)
+        .transform((value) => Math.round(value * 10) / 10),
     }),
   ),
 });

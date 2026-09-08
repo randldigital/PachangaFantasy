@@ -66,34 +66,17 @@ export function registerPlayerRoutes(app: Express) {
         return res.status(400).json({ message: "You are already a player in this league", player: existingPlayer });
       }
 
-      const players = await playerRepo.getPlayersByLeague(leagueId);
-      const playerWithSameName = players.find(
-        (player) => player.name.toLowerCase() === user.username.toLowerCase() && !player.userId,
-      );
-
-      if (playerWithSameName) {
-        const updatedPlayer = await playerRepo.updatePlayer(playerWithSameName.id, { userId: user.id });
-        logger.info("Repaired existing player record", {
-          league: leagueId,
-          player: playerWithSameName.id,
-          username: user.username,
-        });
-        return res.json(updatedPlayer);
-      }
-
-      const userPlayer = await playerRepo.createPlayer({
-        name: user.username,
+      const { player, claimed } = await playerRepo.claimUnlinkedOrCreatePlayer({
         leagueId,
-        createdBy: user.id,
         userId: user.id,
-      });
-
-      logger.info("User added themselves as player", {
-        league: leagueId,
-        player: userPlayer.id,
         username: user.username,
       });
-      res.json(userPlayer);
+      logger.info(claimed ? "Repaired existing player record" : "User added themselves as player", {
+        league: leagueId,
+        player: player.id,
+        username: user.username,
+      });
+      res.json(player);
     } catch (error) {
       logger.error("Add user as player error", error);
       res.status(500).json({ message: "Failed to add user as player" });

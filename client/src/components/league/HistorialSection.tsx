@@ -1,91 +1,110 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Calendar, Clock, Users, Trophy, ChevronDown, ChevronUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Calendar, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import type { Match } from "@shared/schema";
+import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
+import type { Match, Player } from "@shared/schema";
 import { isFinishedStatus, normalizeMatchStatus } from "@shared/domain/matchLifecycle";
+import MatchRecapPitch, { type MatchRecapPlayer } from "./MatchRecapPitch";
+
+interface MatchRecap {
+  matchId: number;
+  status: string | null;
+  teamAGoals: number | null;
+  teamBGoals: number | null;
+  players: MatchRecapPlayer[];
+}
 
 interface HistorialSectionProps {
   matches: Match[];
+  players: Player[];
   isLoading: boolean;
   onCreateMatch?: () => void;
 }
 
-export default function HistorialSection({ matches, isLoading, onCreateMatch }: HistorialSectionProps) {
+function matchDate(value: Match["date"] | string) {
+  return value instanceof Date ? value : new Date(value);
+}
+
+function MatchDetail({ matchId, open }: { matchId: number; open: boolean }) {
   const { t } = useTranslation();
+  const { data, isLoading } = useQuery<MatchRecap>({
+    queryKey: queryKeys.matchRecap(matchId),
+    queryFn: () => api.get<MatchRecap>(`/api/matches/${matchId}/recap`),
+    enabled: open,
+  });
+
+  if (isLoading) {
+    return <p className="text-slate-400 text-sm py-3">{t("common.loading")}</p>;
+  }
+  if (!data) {
+    return null;
+  }
+
+  return (
+    <MatchRecapPitch
+      teamAGoals={data.teamAGoals}
+      teamBGoals={data.teamBGoals}
+      players={data.players}
+    />
+  );
+}
+
+export default function HistorialSection({
+  matches,
+  players,
+  isLoading,
+  onCreateMatch,
+}: HistorialSectionProps) {
+  const { t, i18n } = useTranslation();
   const [expandedMatches, setExpandedMatches] = useState<Set<number>>(new Set());
 
   const toggleMatch = (matchId: number) => {
-    setExpandedMatches(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(matchId)) {
-        newSet.delete(matchId);
+    setExpandedMatches((prev) => {
+      const next = new Set(prev);
+      if (next.has(matchId)) {
+        next.delete(matchId);
       } else {
-        newSet.add(matchId);
+        next.add(matchId);
       }
-      return newSet;
+      return next;
     });
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
+  const formatDate = (value: Match["date"]) =>
+    matchDate(value).toLocaleDateString(i18n.language, {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     });
-  };
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit'
+  const formatTime = (value: Match["date"]) =>
+    matchDate(value).toLocaleTimeString(i18n.language, {
+      hour: "2-digit",
+      minute: "2-digit",
     });
-  };
 
-  const getStatusColor = (status: string | null) => {
-    switch (normalizeMatchStatus(status)) {
-      case 'scored':
-        return 'bg-purple-600 text-white';
-      case 'completed':
-        return 'bg-green-600 text-white';
-      case 'started':
-        return 'bg-blue-600 text-white';
-      case 'open':
-        return 'bg-emerald-600 text-white';
-      default:
-        return 'bg-slate-600 text-white';
-    }
-  };
-
-  const getStatusText = (status: string | null) => {
-    return t(`match.status.${normalizeMatchStatus(status)}`);
-  };
-
-  const pastMatches = matches.filter(match => isFinishedStatus(match.status)).sort((a, b) => 
-    new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-  
-  const upcomingMatches = matches.filter(match => !isFinishedStatus(match.status)).sort((a, b) => 
-    new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
-
-  const allMatches = [...pastMatches, ...upcomingMatches];
+  const pastMatches = matches
+    .filter((match) => isFinishedStatus(match.status))
+    .sort((a, b) => matchDate(b.date).getTime() - matchDate(a.date).getTime());
 
   if (isLoading) {
     return (
       <Card className="bg-slate-800/50 border-slate-700">
         <CardContent className="p-8 text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto mb-4"></div>
-          <p className="text-white">{t('common.loading')}</p>
+          <p className="text-white">{t("common.loading")}</p>
         </CardContent>
       </Card>
     );
   }
 
-  if (allMatches.length === 0) {
+  if (pastMatches.length === 0) {
     return (
       <Card className="bg-slate-800/50 border-slate-700">
         <CardContent className="p-8 text-center">
@@ -107,138 +126,79 @@ export default function HistorialSection({ matches, isLoading, onCreateMatch }: 
       <CardHeader>
         <CardTitle className="text-white flex items-center">
           <Calendar className="w-5 h-5 mr-2" />
-          {t('historial.title')}
+          {t("historial.title")}
         </CardTitle>
+        <p className="text-slate-400 text-sm">{t("historial.subtitle")}</p>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {allMatches.map((match) => {
+        <div className="space-y-3">
+          {pastMatches.map((match) => {
             const isExpanded = expandedMatches.has(match.id);
-            
+            const scored = normalizeMatchStatus(match.status) === "scored";
+            const a = match.teamAGoals;
+            const b = match.teamBGoals;
+            const names = new Map(players.map((player) => [player.id, player.name]));
+            const mvpHint = match.matchTeams
+              ? [...(match.matchTeams.teamA ?? []), ...(match.matchTeams.teamB ?? [])]
+                  .map((id) => names.get(id))
+                  .filter(Boolean).length
+              : 0;
+
             return (
               <Collapsible key={match.id} open={isExpanded} onOpenChange={() => toggleMatch(match.id)}>
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="w-full p-4 h-auto justify-between hover:bg-slate-700/50 text-left"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-3">
-                        <Calendar className="w-4 h-4 text-slate-400" />
-                        <div>
-                          <div className="text-white font-medium">
-                            {formatDate(match.date.toISOString())}
-                          </div>
-                          <div className="text-slate-400 text-sm flex items-center space-x-2">
+                <div className="rounded-xl border border-slate-700 bg-slate-900/40 overflow-hidden">
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="w-full p-4 h-auto justify-between hover:bg-slate-800/80 text-left rounded-none"
+                    >
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="hidden sm:flex h-12 w-12 rounded-full bg-emerald-500/15 items-center justify-center">
+                          <Calendar className="w-5 h-5 text-emerald-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-white font-medium truncate">{formatDate(match.date)}</div>
+                          <div className="text-slate-400 text-sm flex items-center gap-2">
                             <Clock className="w-3 h-3" />
-                            <span>{formatTime(match.date.toISOString())}</span>
+                            <span>{formatTime(match.date)}</span>
+                            {mvpHint > 0 && (
+                              <span>
+                                · {mvpHint} {t("historial.players")}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
-                      
-                      <Badge className={getStatusColor(match.status)}>
-                        {getStatusText(match.status)}
-                      </Badge>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {a != null && b != null && (
+                          <div className="text-right">
+                            <div className="text-xl font-bold text-white tabular-nums">
+                              {a}
+                              <span className="text-slate-500 mx-1">–</span>
+                              {b}
+                            </div>
+                            <div className="text-[10px] uppercase tracking-wide text-slate-400">
+                              {t("match.teamA")} / {t("match.teamB")}
+                            </div>
+                          </div>
+                        )}
+                        <Badge className={scored ? "bg-violet-600 text-white" : "bg-emerald-600 text-white"}>
+                          {t(`match.status.${normalizeMatchStatus(match.status)}`)}
+                        </Badge>
+                        {isExpanded ? (
+                          <ChevronUp className="w-4 h-4 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-slate-400" />
+                        )}
+                      </div>
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="px-4 pb-4 border-t border-slate-700">
+                      <MatchDetail matchId={match.id} open={isExpanded} />
                     </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <div className="text-right">
-                        <div className="text-white text-sm">
-                          {t('match.budget')}: {match.lineupBudget}
-                        </div>
-                        <div className="text-slate-400 text-xs flex items-center">
-                          <Users className="w-3 h-3 mr-1" />
-                          {/* participants count would go here */}
-                        </div>
-                      </div>
-                      {isExpanded ? (
-                        <ChevronUp className="w-4 h-4 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-slate-400" />
-                      )}
-                    </div>
-                  </Button>
-                </CollapsibleTrigger>
-                
-                <CollapsibleContent className="px-4 pb-4">
-                  <div className="border-t border-slate-700 pt-4 mt-2">
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Team A */}
-                      <div className="space-y-2">
-                        <h4 className="text-white font-medium flex items-center">
-                          <Trophy className="w-4 h-4 mr-2 text-emerald-400" />
-                          {t('match.teamA')}
-                        </h4>
-                        <div className="space-y-1">
-                          {match.matchTeams?.teamA && match.matchTeams.teamA.length > 0 ? (
-                            match.matchTeams.teamA.map((playerId: number) => (
-                              <div key={playerId} className="text-slate-300 text-sm">
-                                {t('match.player')} {playerId}
-                              </div>
-                            ))
-                          ) : (
-                            <div className="text-slate-400 text-sm">
-                              {t('match.noPlayers')}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Team B */}
-                      <div className="space-y-2">
-                        <h4 className="text-white font-medium flex items-center">
-                          <Trophy className="w-4 h-4 mr-2 text-blue-400" />
-                          {t('match.teamB')}
-                        </h4>
-                        <div className="space-y-1">
-                          {match.matchTeams?.teamB && match.matchTeams.teamB.length > 0 ? (
-                            match.matchTeams.teamB.map((playerId: number) => (
-                              <div key={playerId} className="text-slate-300 text-sm">
-                                {t('match.player')} {playerId}
-                              </div>
-                            ))
-                          ) : (
-                            <div className="text-slate-400 text-sm">
-                              {t('match.noPlayers')}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Match Stats */}
-                    {match.status === 'completed' && (
-                      <div className="mt-4 pt-4 border-t border-slate-700">
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                          <div>
-                            <div className="text-emerald-400 font-bold text-lg">
-                              --
-                            </div>
-                            <div className="text-slate-400 text-sm">
-                              {t('match.goals')}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-emerald-400 font-bold text-lg">
-                              --
-                            </div>
-                            <div className="text-slate-400 text-sm">
-                              {t('match.assists')}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-emerald-400 font-bold text-lg">
-                              --
-                            </div>
-                            <div className="text-slate-400 text-sm">
-                              {t('match.mvp')}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CollapsibleContent>
+                  </CollapsibleContent>
+                </div>
               </Collapsible>
             );
           })}

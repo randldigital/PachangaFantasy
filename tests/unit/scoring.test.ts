@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   POINTS_PER_ASSIST,
   POINTS_PER_GOAL,
+  POINTS_PER_MVP,
+  PEER_RATING_NEUTRAL,
   playerPointsFromStats,
+  playerMatchRating,
+  meanPeerScore,
+  mvpPlayerIds,
   validateGoalTotal,
   managerMatchPoints,
   scoreManagerLineup,
@@ -15,6 +20,22 @@ describe("playerPointsFromStats", () => {
     expect(POINTS_PER_ASSIST).toBe(2);
     expect(playerPointsFromStats({ goals: 2, assists: 1 })).toBe(8);
     expect(playerPointsFromStats({ goals: 0, assists: 0 })).toBe(0);
+  });
+});
+
+describe("playerMatchRating", () => {
+  it("adds the 0–10 peer average to goal, assist and MVP extras", () => {
+    expect(POINTS_PER_MVP).toBe(2);
+    expect(meanPeerScore([])).toBe(PEER_RATING_NEUTRAL);
+    expect(meanPeerScore([8, 7])).toBe(7.5);
+    expect(
+      playerMatchRating({ peerAverage: 7.5, goals: 2, assists: 1, isMvp: true }),
+    ).toBe(7.5 + 8 + 2);
+    expect(
+      playerMatchRating({ peerAverage: 5, goals: 0, assists: 0, isMvp: false }),
+    ).toBe(5);
+    expect(mvpPlayerIds([{ mvpPlayerId: 1 }, { mvpPlayerId: 1 }, { mvpPlayerId: 2 }]).has(1)).toBe(true);
+    expect(mvpPlayerIds([{ mvpPlayerId: 1 }, { mvpPlayerId: 1 }, { mvpPlayerId: 2 }]).has(2)).toBe(false);
   });
 });
 

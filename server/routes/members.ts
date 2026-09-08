@@ -24,19 +24,24 @@ async function joinLeague(req: AuthRequest, res: Response, league: NonNullable<A
   });
 
   if (updatedLeague && !existingPlayer) {
-    const userPlayer = await playerRepo.createPlayer({
-      name: user.username,
+    const { player, claimed } = await playerRepo.claimUnlinkedOrCreatePlayer({
       leagueId: league.id,
       userId: user.id,
-      createdBy: user.id,
-    });
-
-    logger.info("User joined league and created as player", {
-      league: updatedLeague.id,
-      player: userPlayer.id,
       username: user.username,
     });
-    return res.json({ league: updatedLeague, player: userPlayer });
+
+    logger.info(
+      claimed
+        ? "User joined league and claimed unlinked player"
+        : "User joined league and created as player",
+      {
+        league: updatedLeague.id,
+        player: player.id,
+        username: user.username,
+        claimed,
+      },
+    );
+    return res.json({ league: updatedLeague, player });
   }
 
   if (updatedLeague && existingPlayer) {

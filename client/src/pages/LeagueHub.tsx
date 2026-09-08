@@ -197,6 +197,7 @@ export default function LeagueHub() {
           <TabsContent value="historial" className="mt-0">
             <HistorialSection
               matches={matches}
+              players={players}
               isLoading={matchesLoading}
               onCreateMatch={isAdmin ? () => setShowCreateMatch(true) : undefined}
             />

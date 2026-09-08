@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { api } from "@/lib/api";
 import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
@@ -52,7 +53,7 @@ export default function MatchRatings({ match, participants }: MatchRatingsProps)
     setMvpPlayerId(data.myBallot?.mvpPlayerId ?? "");
     setScores(
       Object.fromEntries(
-        data.assignments.map((row) => [row.playerId, row.score ?? 3]),
+        data.assignments.map((row) => [row.playerId, row.score ?? 5]),
       ),
     );
   }, [data]);
@@ -63,7 +64,7 @@ export default function MatchRatings({ match, participants }: MatchRatingsProps)
         mvpPlayerId,
         ratings: data?.assignments.map((row) => ({
           playerId: row.playerId,
-          score: scores[row.playerId] ?? 3,
+          score: scores[row.playerId] ?? 5,
         })),
       }),
     onSuccess: async () => {
@@ -153,28 +154,24 @@ export default function MatchRatings({ match, participants }: MatchRatingsProps)
         </div>
         {data.assignments.map((row) => (
           <div key={row.playerId} className="space-y-1">
-            <Label className="text-slate-200">
-              {t(`ratings.${row.kind}`)}: {row.name}
+            <Label className="text-slate-200 flex items-center justify-between">
+              <span>
+                {t(`ratings.${row.kind}`)}: {row.name}
+              </span>
+              <span className="text-emerald-300 tabular-nums">{(scores[row.playerId] ?? 5).toFixed(1)}</span>
             </Label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((value) => (
-                <Button
-                  key={value}
-                  type="button"
-                  size="sm"
-                  variant={scores[row.playerId] === value ? "default" : "outline"}
-                  className={
-                    scores[row.playerId] === value
-                      ? "bg-emerald-600 text-white"
-                      : "border-slate-500 text-slate-200"
-                  }
-                  onClick={() => setScores((current) => ({ ...current, [row.playerId]: value }))}
-                  disabled={match.status !== "completed"}
-                >
-                  {value}
-                </Button>
-              ))}
-            </div>
+            <Slider
+              min={0}
+              max={10}
+              step={0.1}
+              value={[scores[row.playerId] ?? 5]}
+              onValueChange={([value]) =>
+                setScores((current) => ({ ...current, [row.playerId]: Math.round(value * 10) / 10 }))
+              }
+              disabled={match.status !== "completed"}
+              className="py-2"
+            />
+            <p className="text-[11px] text-slate-500">{t("ratings.scaleHint")}</p>
           </div>
         ))}
         {match.status === "completed" && (

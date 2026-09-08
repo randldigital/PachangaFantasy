@@ -18,7 +18,7 @@ import * as playerRepo from "./playerRepo";
 import * as matchRepo from "./matchRepo";
 import * as lineupRepo from "./lineupRepo";
 import * as ratingRepo from "./ratingRepo";
-import { playerPointsFromStats, scoreManagerLineup } from "@shared/domain/scoring";
+import { meanPeerScore, mvpPlayerIds, playerMatchRating, scoreManagerLineup } from "@shared/domain/scoring";
 import {
   computeMatchMarketValues,
   DEFAULT_SCORING_BASELINE,
@@ -77,11 +77,28 @@ export async function scoreMatch(matchId: number): Promise<MatchScoreResult> {
     .filter((participant) => participant.status === "accepted")
     .map((participant) => participant.playerId);
 
+  const [mvpVotes, peerRatings] = await Promise.all([
+    ratingRepo.getMvpVotes(matchId),
+    ratingRepo.getPeerRatings(matchId),
+  ]);
+  const mvps = mvpPlayerIds(mvpVotes);
+  const peerByPlayer = new Map<number, number[]>();
+  for (const rating of peerRatings) {
+    const list = peerByPlayer.get(rating.rateePlayerId) ?? [];
+    list.push(rating.score);
+    peerByPlayer.set(rating.rateePlayerId, list);
+  }
+
   const playerPointsById = new Map<number, number>();
   const playerRows = reports
     .filter((report) => acceptedIds.includes(report.playerId))
     .map((report) => {
-      const points = playerPointsFromStats(report);
+      const points = playerMatchRating({
+        peerAverage: meanPeerScore(peerByPlayer.get(report.playerId) ?? []),
+        goals: report.goals,
+        assists: report.assists,
+        isMvp: mvps.has(report.playerId),
+      });
       playerPointsById.set(report.playerId, points);
       return {
         playerId: report.playerId,
@@ -124,8 +141,6 @@ export async function scoreMatch(matchId: number): Promise<MatchScoreResult> {
 
   const vmRows = await ratingRepo.snapshotMatchPlayerVm(matchId);
   const preMatchVm = Object.fromEntries(vmRows.map((row) => [row.playerId, row.marketValue]));
-  const mvpVotes = await ratingRepo.getMvpVotes(matchId);
-  const peerRatings = await ratingRepo.getPeerRatings(matchId);
   const baseline = league?.scoringBaseline ?? DEFAULT_SCORING_BASELINE;
   const teamA = match.matchTeams?.teamA ?? [];
   const teamB = match.matchTeams?.teamB ?? [];
@@ -230,6 +245,109 @@ export async function scoreMatch(matchId: number): Promise<MatchScoreResult> {
   });
 }
 
+export type MatchRecapPlayer = {
+  playerId: number;
+  name: string;
+  team: "A" | "B" | null;
+  goals: number;
+  assists: number;
+  points: number | null;
+  mvpVotes: number;
+  isMvp: boolean;
+  peerAverage: number | null;
+  vmBefore: number | null;
+  vmAfter: number | null;
+  delta: number | null;
+};
+
+export type MatchRecap = {
+  matchId: number;
+  status: string | null;
+  date: Date | string;
+  teamAGoals: number | null;
+  teamBGoals: number | null;
+  players: MatchRecapPlayer[];
+};
+
+export async function getMatchRecap(matchId: number): Promise<MatchRecap | null> {
+  const match = await matchRepo.getMatch(matchId);
+  if (!match) {
+    return null;
+  }
+
+  const [participants, roster, reports, pointRows, history, votes, peerRatings] = await Promise.all([
+    matchRepo.getMatchParticipants(matchId),
+    playerRepo.getPlayersByLeague(match.leagueId),
+    statsRepo.getStatReportsForMatch(matchId),
+    getPlayerPointsForMatch(matchId),
+    ratingRepo.getMarketValueHistory(matchId),
+    ratingRepo.getMvpVotes(matchId),
+    ratingRepo.getPeerRatings(matchId),
+  ]);
+
+  const names = new Map(roster.map((player) => [player.id, player.name]));
+  const teamA = new Set(match.matchTeams?.teamA ?? []);
+  const teamB = new Set(match.matchTeams?.teamB ?? []);
+  const accepted = participants.filter((participant) => participant.status === "accepted");
+  const voteCounts = new Map<number, number>();
+  for (const vote of votes) {
+    voteCounts.set(vote.mvpPlayerId, (voteCounts.get(vote.mvpPlayerId) ?? 0) + 1);
+  }
+  const historyByPlayer = new Map(history.map((row) => [row.playerId, row]));
+  const pointsByPlayer = new Map(pointRows.map((row) => [row.playerId, row]));
+  const reportsByPlayer = new Map(reports.map((row) => [row.playerId, row]));
+  const peerByPlayer = new Map<number, number[]>();
+  for (const rating of peerRatings) {
+    const list = peerByPlayer.get(rating.rateePlayerId) ?? [];
+    list.push(rating.score);
+    peerByPlayer.set(rating.rateePlayerId, list);
+  }
+
+  const maxVotes = voteCounts.size > 0 ? Math.max(...voteCounts.values()) : 0;
+
+  const players: MatchRecapPlayer[] = accepted.map((participant) => {
+    const historyRow = historyByPlayer.get(participant.playerId);
+    const pointRow = pointsByPlayer.get(participant.playerId);
+    const report = reportsByPlayer.get(participant.playerId);
+    const received = peerByPlayer.get(participant.playerId) ?? [];
+    const mvpVotes = historyRow?.mvpVotes ?? voteCounts.get(participant.playerId) ?? 0;
+    const peerAverage =
+      historyRow?.peerAverage ??
+      (received.length === 0 ? null : received.reduce((sum, value) => sum + value, 0) / received.length);
+    const team = teamA.has(participant.playerId) ? "A" : teamB.has(participant.playerId) ? "B" : null;
+    return {
+      playerId: participant.playerId,
+      name: names.get(participant.playerId) ?? `#${participant.playerId}`,
+      team,
+      goals: pointRow?.goals ?? report?.goals ?? 0,
+      assists: pointRow?.assists ?? report?.assists ?? 0,
+      points: pointRow?.points ?? null,
+      mvpVotes,
+      isMvp: maxVotes > 0 && mvpVotes === maxVotes,
+      peerAverage,
+      vmBefore: historyRow?.vmBefore ?? null,
+      vmAfter: historyRow?.vmAfter ?? null,
+      delta: historyRow?.delta ?? null,
+    };
+  });
+
+  players.sort((a, b) => {
+    if (a.isMvp !== b.isMvp) {
+      return a.isMvp ? -1 : 1;
+    }
+    return (b.points ?? 0) - (a.points ?? 0) || a.name.localeCompare(b.name);
+  });
+
+  return {
+    matchId,
+    status: match.status,
+    date: match.date,
+    teamAGoals: match.teamAGoals,
+    teamBGoals: match.teamBGoals,
+    players,
+  };
+}
+
 export async function getPlayerLeaderboard(leagueId: number): Promise<{
   playerId: number;
   name: string;
@@ -239,6 +357,8 @@ export async function getPlayerLeaderboard(leagueId: number): Promise<{
   goals: number;
   assists: number;
   matchesPlayed: number;
+  mvps: number;
+  victories: number;
 }[]> {
   const leaguePlayers = await playerRepo.getPlayersByLeague(leagueId);
   if (leaguePlayers.length === 0) {
@@ -271,6 +391,48 @@ export async function getPlayerLeaderboard(leagueId: number): Promise<{
     ]),
   );
 
+  const leagueMatches = await matchRepo.getMatchesByLeague(leagueId);
+  const scoredMatches = leagueMatches.filter((match) => match.status === "scored");
+  const scoredIds = scoredMatches.map((match) => match.id);
+  const historyRows =
+    scoredIds.length > 0
+      ? await db
+          .select()
+          .from(playerMarketValueHistory)
+          .where(inArray(playerMarketValueHistory.matchId, scoredIds))
+      : [];
+  const historyByMatch = new Map<number, PlayerMarketValueHistory[]>();
+  for (const row of historyRows) {
+    const list = historyByMatch.get(row.matchId) ?? [];
+    list.push(row);
+    historyByMatch.set(row.matchId, list);
+  }
+
+  const mvpCounts = new Map<number, number>();
+  const victoryCounts = new Map<number, number>();
+  for (const match of scoredMatches) {
+    const rows = historyByMatch.get(match.id) ?? [];
+    const maxVotes = rows.reduce((max, row) => Math.max(max, row.mvpVotes ?? 0), 0);
+    if (maxVotes > 0) {
+      for (const row of rows) {
+        if (row.mvpVotes === maxVotes) {
+          mvpCounts.set(row.playerId, (mvpCounts.get(row.playerId) ?? 0) + 1);
+        }
+      }
+    }
+    const teamAGoals = match.teamAGoals ?? 0;
+    const teamBGoals = match.teamBGoals ?? 0;
+    const winners =
+      teamAGoals > teamBGoals
+        ? match.matchTeams?.teamA ?? []
+        : teamBGoals > teamAGoals
+          ? match.matchTeams?.teamB ?? []
+          : [];
+    for (const playerId of winners) {
+      victoryCounts.set(playerId, (victoryCounts.get(playerId) ?? 0) + 1);
+    }
+  }
+
   return leaguePlayers
     .map((player) => {
       const row = byPlayer.get(player.id);
@@ -283,6 +445,8 @@ export async function getPlayerLeaderboard(leagueId: number): Promise<{
         goals: row?.goals ?? 0,
         assists: row?.assists ?? 0,
         matchesPlayed: row?.matchesPlayed ?? 0,
+        mvps: mvpCounts.get(player.id) ?? 0,
+        victories: victoryCounts.get(player.id) ?? 0,
       };
     })
     .sort((a, b) => b.totalPoints - a.totalPoints || a.name.localeCompare(b.name));

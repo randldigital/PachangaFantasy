@@ -6,6 +6,7 @@ import {
   auth,
   createLeagueWithMembers,
   createOpenMatch,
+  expectedPlayerMatchRating,
   joinAllMatches,
   listPlayers,
   startMatch,
@@ -99,8 +100,12 @@ describe("post-match dynamic Market Value", () => {
     const otherPoints = scored.body.playerPoints.find(
       (row: { playerId: number }) => row.playerId === otherPlayer.id,
     );
-    expect(ownerPoints.points).toBe(2 * 3 + 1 * 2);
-    expect(otherPoints.points).toBe(0);
+    expect(ownerPoints.points).toBe(
+      await expectedPlayerMatchRating(match.id, ownerPlayer.id, { goals: 2, assists: 1 }),
+    );
+    expect(otherPoints.points).toBe(
+      await expectedPlayerMatchRating(match.id, otherPlayer.id, { goals: 0, assists: 0 }),
+    );
 
     const history = scored.body.marketValues as {
       playerId: number;
@@ -153,6 +158,30 @@ describe("post-match dynamic Market Value", () => {
       expect(row.vmAfter).toBe(expected!.change.vmAfter);
       expect(row.performanceScore).toBeCloseTo(expected!.performanceScore, 10);
     }
+
+    const recap = await request(app).get(`/api/matches/${match.id}/recap`).set(auth(owner.token));
+    expect(recap.status).toBe(200);
+    expect(recap.body.teamAGoals).toBe(2);
+    expect(recap.body.players).toHaveLength(2);
+    const ownerRecap = recap.body.players.find((row: { playerId: number }) => row.playerId === ownerPlayer.id);
+    expect(ownerRecap.goals).toBe(2);
+    expect(ownerRecap.assists).toBe(1);
+    expect(ownerRecap.peerAverage).not.toBeNull();
+    expect(ownerRecap.vmAfter).toBe(history.find((row) => row.playerId === ownerPlayer.id)?.vmAfter);
+
+    const board = await request(app).get(`/api/leagues/${league.id}/rankings`).set(auth(owner.token));
+    expect(board.status).toBe(200);
+    const ownerBoard = board.body.find((row: { playerId: number }) => row.playerId === ownerPlayer.id);
+    const otherBoard = board.body.find((row: { playerId: number }) => row.playerId === otherPlayer.id);
+    const ownerWon =
+      (matchDetail.body.matchTeams.teamA.includes(ownerPlayer.id) && matchDetail.body.teamAGoals > matchDetail.body.teamBGoals) ||
+      (matchDetail.body.matchTeams.teamB.includes(ownerPlayer.id) && matchDetail.body.teamBGoals > matchDetail.body.teamAGoals);
+    expect(ownerBoard.goals).toBe(2);
+    expect(ownerBoard.assists).toBe(1);
+    expect(ownerBoard.matchesPlayed).toBe(1);
+    expect(ownerBoard.victories).toBe(ownerWon ? 1 : 0);
+    expect(otherBoard.victories).toBe(ownerWon ? 0 : 1);
+    expect(ownerBoard.mvps + otherBoard.mvps).toBeGreaterThanOrEqual(1);
   });
 
   it("lets guests be rated but not vote", async () => {

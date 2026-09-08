@@ -7,6 +7,7 @@ import * as leagueRepo from "../repos/leagueRepo";
 import * as matchRepo from "../repos/matchRepo";
 import * as playerRepo from "../repos/playerRepo";
 import * as ratingRepo from "../repos/ratingRepo";
+import * as scoreRepo from "../repos/scoreRepo";
 import * as userRepo from "../repos/userRepo";
 import {
   canEndMatch,
@@ -98,6 +99,22 @@ export function registerMatchRoutes(app: Express) {
       res.json({ ...access.match, participants });
     } catch (error) {
       logger.error("Error fetching match", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/matches/:id/recap", requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const access = await loadMatchMember(req, res, matchId);
+      if (!access) return;
+      const recap = await scoreRepo.getMatchRecap(matchId);
+      if (!recap) {
+        return res.status(404).json({ message: "Match not found" });
+      }
+      res.json(recap);
+    } catch (error) {
+      logger.error("Error fetching match recap", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

@@ -29,7 +29,7 @@ These close Appendix A. They are product rules, not recommendations. Revisit the
 | **P0.9** | At most **one match in Open or Started** per league. A previous match may still be awaiting stats or validation while the next is created. |
 | **P0.10** | **Automatic team balancing is not a product feature.** Remove it, including the `ready` status it creates. The administrator **must** divide every participant into Team A or Team B before starting. There is no automatic balancing, no `ready` status, and no team-win scoring bonus. |
 | **P0.11** | Display names need not be globally unique. Player names must be unique within a league (case-insensitive). On collision, auto-created player names become `Name`, then `Name (2)`, `Name (3)`, and so on. |
-| **P0.12** | After statistics are valid, every logged-in participant must vote Player of the Match and rate assigned peers. Scoring then updates each participant's Market Value from that match's performance. The S/A/B/C/D tier list remains **initial VM only**. Player Points stay `goals × 3 + assists × 2` and must not be changed by this pass. |
+| **P0.12** | After statistics are valid, every logged-in participant must vote Player of the Match and rate assigned peers from **0.0 to 10.0**. Player Match Points are `peer average + goals × 3 + assists × 2 + MVP bonus (2)`. Scoring then updates each participant's Market Value from that match's performance. The S/A/B/C/D tier list remains **initial VM only**. |
 
 ### How to read the status markers
 
@@ -472,12 +472,12 @@ Reopening valuation still overwrites Market Value from the current tiers (an adm
 
 #### After each scored match (performance)
 
-Scoring writes Player and Manager point snapshots first, then Market Value history, then `players.marketValue`, then the league scoring baseline, in one transaction. Point formulas are unchanged: Player Points remain `goals × 3 + assists × 2`.
+Scoring writes Player and Manager point snapshots first, then Market Value history, then `players.marketValue`, then the league scoring baseline, in one transaction. Player Match Points are the peer average plus extras (goals, assists, MVP).
 
 **Voters** are accepted participants **with a user account**. Guests do not vote. Scoring waits until every voter has submitted a ballot (`RATINGS_INCOMPLETE`). Each ballot is:
 
 - one **Player of the Match** (any other accepted participant; no self-vote);
-- integer **1–5** scores for the assigned teammate and rival (mapped to 0–1 as `(score − 1) / 4`).
+- integer **0.0–10.0** (one decimal) scores for the assigned teammate and rival (mapped to 0–1 as `score / 10`).
 
 Assignments are generated once when the match is ended (seeded by match id) so they are stable. Each participant, including guests, is targeted for **two incoming** ratings. Extra outgoing slots are given to voters who currently have the fewest. If a voter is alone on a team, they rate two rivals. Remaining peer-score gaps at compute time use **0.50** (neutral). Missing **ballots** still block scoring.
 
@@ -488,7 +488,7 @@ Assignments are generated once when the match is ended (seeded by match id) so t
 **PerformanceScore** = `0.40×mvp + 0.25×peer + 0.25×offensive + 0.10×result`
 
 - **MVP (40%):** unique max-vote winner(s) get 1.0; everyone else gets `votes / totalVotes`.
-- **Peer (25%):** mean of received 1–5 scores, mapped to 0–1. No ratings → 0.50.
+- **Peer (25%):** mean of received 0.0–10.0 scores, mapped to 0–1 as `score / 10`. No ratings → 0.50.
 - **Offensive (25%):** share of team weighted output (`goals + 0.8 × assists`), scaled by team goals vs the league baseline and opponent average VM (±10%). Neutral 0.5 when meeting expected contribution.
 - **Result (10%):** win/draw/loss adjusted by pre-match team average VM difference.
 
@@ -823,17 +823,17 @@ This section is the heart of the specification. **Player scoring and Manager sco
 Player Points measure real football performance.
 
 ```
-Player Points = (Goals × 3) + (Assists × 2)
+Player Points = peer average (0.0–10.0) + (Goals × 3) + (Assists × 2) + (2 if Player of the Match)
 ```
 
-**[Implemented]** — this is the current rule and should be preserved. The post-match Market Value update (Section 10.2) must not change stored Player Match Points.
+**[Implemented]** The peer average is the mean of 0.0–10.0 votes received in that match (neutral **5.0** if nobody rated the player). Tied Player of the Match winners each receive the +2 bonus. The post-match Market Value update (Section 10.2) is a separate calculation and does not replace this snapshot.
 
 **Player scoring must NOT include the Captain multiplier.** Captaincy is a fantasy concept that exists only inside a Manager's lineup and has no meaning on the pitch.
 
-Therefore, a Player who scores 2 goals receives:
+Therefore, a Player who scores 2 goals and receives a 6.0 peer average (and is not MVP) receives:
 
 ```
-2 × 3 = 6 Player Points
+6.0 + (2 × 3) = 12.0 Player Points
 ```
 
 — regardless of whether zero, one or twelve Managers selected that Player as their Captain.
@@ -904,17 +904,19 @@ Primary, always:
 - Player
 - Total Points
 
-Optional, only where it does not clutter the screen:
+Optional, and sortable in the Player Leaderboard:
 
 - Goals
 - Assists
 - Matches played
+- Player of the Match awards
+- Team wins (the side that scored more goals in a scored match)
 
 **The Player Leaderboard must never include Captain multipliers.** Captaincy is invisible to this leaderboard.
 
 ### 17.4 Current state
 
-> **[Implemented]** The Player Leaderboard is keyed by Player, includes zero-point players and externals, and never applies a captain multiplier.
+> **[Implemented]** The Player Leaderboard is keyed by Player, includes zero-point players and externals, and never applies a captain multiplier. Members can reorder it by points, goals, assists, Player of the Match awards, wins, or matches played.
 
 ---
 
@@ -957,7 +959,7 @@ This section is the authoritative checklist. It is written so that it can be tur
 | 3 | The league creator is the league administrator. | **[Implemented]** |
 | 4 | A league member always corresponds to a real Player in that league. | **[Implemented]** |
 | 5 | Player Valuation determines **initial** Market Value. | **[Implemented]** |
-| 6 | Market Value is different from Player Points. After a match is scored, Market Value updates from that match's performance; Player Points stay `goals × 3 + assists × 2`. | **[Implemented]** |
+| 6 | Market Value is different from Player Points. After a match is scored, Market Value updates from that match's performance; Player Points are peer average plus goal, assist and MVP extras. | **[Implemented]** |
 | 7 | Only the administrator creates Matches. | **[Implemented]** |
 | 8 | Players join, or are added by the administrator, to Matches. | **[Implemented]** |
 | 9 | Only Match participants can be selected in that Match's lineup. | **[Implemented]** |
@@ -1288,7 +1290,7 @@ Before merging any change, a developer should be able to answer every question b
 
 - [ ] Does the feature support the core Pachanga loop?
 - [ ] Does it preserve the distinction between Player and Manager?
-- [ ] Does it preserve the distinction between Market Value and Player Points (points stay `goals × 3 + assists × 2` even when VM updates from performance)?
+- [ ] Does it preserve the distinction between Market Value and Player Points (points are peer average plus extras, VM still uses the performance formula)?
 - [ ] Does it preserve the distinction between the Player Leaderboard and the Manager Leaderboard?
 - [ ] Could this be left out entirely without weakening the loop?
 

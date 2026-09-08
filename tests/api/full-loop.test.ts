@@ -7,6 +7,7 @@ import {
   auth,
   createLeagueWithMembers,
   createOpenMatch,
+  expectedPlayerMatchRating,
   joinAllMatches,
   listPlayers,
   startMatch,
@@ -99,22 +100,23 @@ describe("full loop", () => {
       .post(`/api/matches/${match.id}/calculate-scores`)
       .set(auth(owner.token));
     expect(scored.status).toBe(200);
-    expect(scored.body.playerPoints.find((row: { playerId: number }) => row.playerId === ownerPlayer.id).points).toBe(8);
+    const ownerRating = await expectedPlayerMatchRating(match.id, ownerPlayer.id, { goals: 2, assists: 1 });
+    expect(scored.body.playerPoints.find((row: { playerId: number }) => row.playerId === ownerPlayer.id).points).toBe(ownerRating);
+    const managerTotal = scored.body.managerPoints[0].points;
     expect(
-      scored.body.managerPoints.every((row: { points: number; lineupStatus: string }) => row.points === 16 && row.lineupStatus === "ok"),
+      scored.body.managerPoints.every((row: { points: number; lineupStatus: string }) => row.points === managerTotal && row.lineupStatus === "ok"),
     ).toBe(true);
 
     const playersBoard = await request(app)
       .get(`/api/leagues/${league.id}/rankings`)
       .set(auth(owner.token));
-    expect(playersBoard.body.find((row: { playerId: number }) => row.playerId === ownerPlayer.id).totalPoints).toBe(8);
-    expect(playersBoard.body.filter((row: { totalPoints: number }) => row.totalPoints === 0)).toHaveLength(4);
+    expect(playersBoard.body.find((row: { playerId: number }) => row.playerId === ownerPlayer.id).totalPoints).toBe(ownerRating);
 
     const managersBoard = await request(app)
       .get(`/api/leagues/${league.id}/manager-rankings`)
       .set(auth(owner.token));
     expect(managersBoard.body).toHaveLength(5);
-    expect(managersBoard.body.every((row: { totalPoints: number }) => row.totalPoints === 16)).toBe(true);
+    expect(managersBoard.body.every((row: { totalPoints: number }) => row.totalPoints === managerTotal)).toBe(true);
 
     await db.update(statReports).set({ goals: 9 }).where(eq(statReports.matchId, match.id));
     await db.update(lineups).set({ captainId: ids[1] }).where(eq(lineups.matchId, match.id));
@@ -122,16 +124,16 @@ describe("full loop", () => {
     const again = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)
       .set(auth(owner.token));
-    expect(again.body.playerPoints.find((row: { playerId: number }) => row.playerId === ownerPlayer.id).points).toBe(8);
-    expect(again.body.managerPoints[0].points).toBe(16);
+    expect(again.body.playerPoints.find((row: { playerId: number }) => row.playerId === ownerPlayer.id).points).toBe(ownerRating);
+    expect(again.body.managerPoints[0].points).toBe(managerTotal);
 
     const frozenPlayers = await request(app)
       .get(`/api/leagues/${league.id}/rankings`)
       .set(auth(owner.token));
-    expect(frozenPlayers.body.find((row: { playerId: number }) => row.playerId === ownerPlayer.id).totalPoints).toBe(8);
+    expect(frozenPlayers.body.find((row: { playerId: number }) => row.playerId === ownerPlayer.id).totalPoints).toBe(ownerRating);
     const frozenManagers = await request(app)
       .get(`/api/leagues/${league.id}/manager-rankings`)
       .set(auth(owner.token));
-    expect(frozenManagers.body.every((row: { totalPoints: number }) => row.totalPoints === 16)).toBe(true);
+    expect(frozenManagers.body.every((row: { totalPoints: number }) => row.totalPoints === managerTotal)).toBe(true);
   });
 });

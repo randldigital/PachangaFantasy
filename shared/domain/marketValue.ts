@@ -80,7 +80,7 @@ export function offensiveComponent(adjusted: number, expected: number): number {
 }
 
 export function mapPeerRating(score: number): number {
-  return clamp((score - 1) / 4, 0, 1);
+  return clamp(score / 10, 0, 1);
 }
 
 export function peerComponent(scores: number[]): number {

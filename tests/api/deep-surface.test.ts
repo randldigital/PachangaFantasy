@@ -42,6 +42,7 @@
  *   Votar MVP y compañeros            GET  /api/matches/:matchId/ratings
  *   Enviar votos                      POST /api/matches/:matchId/ratings
  *   Calcular puntuación               POST /api/matches/:matchId/calculate-scores
+ *   Recap del partido                 GET  /api/matches/:id/recap
  *   Clasificación jugadores           GET  /api/leagues/:leagueId/rankings
  *   Clasificación managers            GET  /api/leagues/:leagueId/manager-rankings
  *
@@ -417,6 +418,12 @@ describe("deep surface catalog", () => {
       .post(`/api/matches/${match.id}/calculate-scores`)
       .set(auth(owner.token));
     ok(scored, "POST /api/matches/:matchId/calculate-scores");
+
+    const recap = await request(app)
+      .get(`/api/matches/${match.id}/recap`)
+      .set(auth(owner.token));
+    ok(recap, "GET /api/matches/:id/recap");
+    expect(recap.body.players.length).toBeGreaterThanOrEqual(5);
 
     const playersBoard = await request(app)
       .get(`/api/leagues/${league.id}/rankings`)

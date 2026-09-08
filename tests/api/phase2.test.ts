@@ -8,6 +8,7 @@ import {
   registerUser,
   startMatch,
   submitAllRatings,
+  expectedPlayerMatchRating,
 } from "../helpers/fixtures";
 
 describe("phase 2 regressions", () => {
@@ -238,13 +239,18 @@ describe("phase 2 regressions", () => {
       .set("Authorization", `Bearer ${owner.token}`);
     expect(first.status).toBe(200);
     expect(first.body.playerPoints).toHaveLength(2);
-    expect(first.body.playerPoints.find((row: { points: number }) => row.points === 8).points).toBe(8);
+    const scoredOwner = first.body.playerPoints.find(
+      (row: { playerId: number; points: number }) => row.points === Math.max(...first.body.playerPoints.map((item: { points: number }) => item.points)),
+    );
+    expect(scoredOwner.points).toBe(
+      await expectedPlayerMatchRating(match.id, scoredOwner.playerId, { goals: 2, assists: 1 }),
+    );
 
     const second = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)
       .set("Authorization", `Bearer ${owner.token}`);
     expect(second.body.playerPoints).toHaveLength(2);
-    expect(second.body.playerPoints.find((row: { points: number }) => row.points === 8).points).toBe(8);
+    expect(second.body.playerPoints.find((row: { playerId: number }) => row.playerId === scoredOwner.playerId).points).toBe(scoredOwner.points);
 
     const rankings = await request(app)
       .get(`/api/leagues/${league.id}/rankings`)
@@ -253,7 +259,7 @@ describe("phase 2 regressions", () => {
     expect(rankings.body.length).toBeGreaterThanOrEqual(2);
     const ownerRow = rankings.body.find((row: { userId: number }) => row.userId === owner.user.id);
     const memberRow = rankings.body.find((row: { userId: number }) => row.userId === users[1].user.id);
-    expect(ownerRow.totalPoints).toBe(8);
+    expect(ownerRow.totalPoints).toBe(scoredOwner.points);
     expect(memberRow.totalPoints).toBe(0);
   });
 

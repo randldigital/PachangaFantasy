@@ -1,5 +1,7 @@
 import type { Express } from "express";
 import request from "supertest";
+import * as ratingRepo from "../../server/repos/ratingRepo";
+import { meanPeerScore, mvpPlayerIds, playerMatchRating } from "@shared/domain/scoring";
 
 export async function registerUser(
   app: Express,
@@ -116,7 +118,7 @@ export async function submitAllRatings(
       .set(auth(user.token))
       .send({
         mvpPlayerId,
-        ratings: assignments.map((row) => ({ playerId: row.playerId, score: 3 })),
+        ratings: assignments.map((row) => ({ playerId: row.playerId, score: 5 })),
       });
     if (submitted.status !== 200) {
       throw new Error(`ratings failed: ${submitted.status} ${JSON.stringify(submitted.body)}`);
@@ -144,4 +146,23 @@ export async function listPlayers(app: Express, token: string, leagueId: number)
     .get(`/api/players/${leagueId}`)
     .set(auth(token));
   return response.body as { id: number; userId: number | null; name: string; marketValue?: number | null }[];
+}
+
+export async function expectedPlayerMatchRating(
+  matchId: number,
+  playerId: number,
+  stats: { goals?: number | null; assists?: number | null },
+): Promise<number> {
+  const [votes, peerRatings] = await Promise.all([
+    ratingRepo.getMvpVotes(matchId),
+    ratingRepo.getPeerRatings(matchId),
+  ]);
+  return playerMatchRating({
+    peerAverage: meanPeerScore(
+      peerRatings.filter((row) => row.rateePlayerId === playerId).map((row) => row.score),
+    ),
+    goals: stats.goals,
+    assists: stats.assists,
+    isMvp: mvpPlayerIds(votes).has(playerId),
+  });
 }

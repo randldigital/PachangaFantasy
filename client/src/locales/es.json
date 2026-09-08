@@ -399,13 +399,24 @@
     "totalPoints": "Puntos Totales",
     "average": "Promedio",
     "goals": "Goles",
-    "assists": "Asistencias"
+    "assists": "Asistencias",
+    "mvps": "MVPs",
+    "victories": "Victorias"
   },
   "historial": {
     "title": "Historial de Partidos",
+    "subtitle": "Abre un partido para ver goles, asistencias, MVP, la nota total y el Valor de Mercado de entonces.",
     "noMatches": "No hay partidos",
-    "noMatchesDescription": "Los partidos aparecerán aquí cuando se jueguen",
-    "createCta": "Crear un partido"
+    "noMatchesDescription": "Los partidos terminados aparecerán aquí",
+    "createCta": "Crear un partido",
+    "goals": "Goles",
+    "assists": "Asistencias",
+    "mvp": "MVP",
+    "mvpVotes": "Votos MVP",
+    "meanScore": "Nota media",
+    "ratingThen": "Valor de Mercado",
+    "players": "jugadores",
+    "noTeam": "Sin equipo"
   },
   "tierlist": {
     "title": "Valoración de jugadores",
@@ -448,6 +459,7 @@
     "submit": "Enviar votos",
     "update": "Actualizar votos",
     "submitted": "Votos enviados",
+    "scaleHint": "De 0,0 a 10,0, un decimal",
     "progress": "{{submitted}} de {{total}} jugadores registrados han votado",
     "waiting": "Esperando a que voten los jugadores registrados ({{submitted}} de {{total}})."
   },

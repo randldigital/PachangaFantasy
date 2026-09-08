@@ -402,13 +402,24 @@
     "totalPoints": "Total Points",
     "average": "Average",
     "goals": "Goals",
-    "assists": "Assists"
+    "assists": "Assists",
+    "mvps": "MVPs",
+    "victories": "Wins"
   },
   "historial": {
     "title": "Match History",
+    "subtitle": "Open a match to see goals, assists, MVP, total rating and Market Value at the time.",
     "noMatches": "No matches",
-    "noMatchesDescription": "Matches will appear here as they are played",
-    "createCta": "Create a match"
+    "noMatchesDescription": "Finished matches will appear here",
+    "createCta": "Create a match",
+    "goals": "Goals",
+    "assists": "Assists",
+    "mvp": "MVP",
+    "mvpVotes": "MVP votes",
+    "meanScore": "Mean rating",
+    "ratingThen": "Market Value",
+    "players": "players",
+    "noTeam": "No team"
   },
   "tierlist": {
     "title": "Player Valuation",
@@ -451,6 +462,7 @@
     "submit": "Submit votes",
     "update": "Update votes",
     "submitted": "Votes submitted",
+    "scaleHint": "0.0 to 10.0, one decimal",
     "progress": "{{submitted}} of {{total}} registered players have voted",
     "waiting": "Waiting for registered players to vote ({{submitted}} of {{total}})."
   },

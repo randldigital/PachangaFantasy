@@ -71,6 +71,37 @@ export async function checkUserAsPlayer(
   return player || undefined;
 }
 
+export async function claimUnlinkedOrCreatePlayer(input: {
+  leagueId: number;
+  userId: number;
+  username: string;
+}): Promise<{ player: Player; claimed: boolean }> {
+  const existing = await checkUserAsPlayer(input.userId, input.leagueId);
+  if (existing) {
+    return { player: existing, claimed: false };
+  }
+
+  const roster = await getPlayersByLeague(input.leagueId);
+  const unlinked = roster.find(
+    (player) => player.name.toLowerCase() === input.username.toLowerCase() && !player.userId,
+  );
+  if (unlinked) {
+    const claimed = await updatePlayer(unlinked.id, { userId: input.userId, isExternal: false });
+    if (!claimed) {
+      throw new Error("Failed to claim unlinked player");
+    }
+    return { player: claimed, claimed: true };
+  }
+
+  const created = await createPlayer({
+    name: input.username,
+    leagueId: input.leagueId,
+    userId: input.userId,
+    createdBy: input.userId,
+  });
+  return { player: created, claimed: false };
+}
+
 export async function deletePlayersByLeague(leagueId: number): Promise<void> {
   await db.delete(players).where(eq(players.leagueId, leagueId));
 }
