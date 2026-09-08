@@ -1,27 +1,36 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { Calendar, Clock, Users, Plus, UserPlus, Eye, Loader2, Settings } from "lucide-react";
+import { Calendar, Clock, Users, Plus, UserPlus, Eye, Loader2, Settings, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { api } from "@/lib/api";
+import { describeApiError } from "@/lib/apiError";
+import { queryKeys } from "@/lib/queryKeys";
 import CreateMatchForm from "@/components/league/CreateMatchForm";
 import TeamAssignmentPreview from "@/components/league/TeamAssignmentPreview";
 import AddPlayersToMatchModal from "@/components/league/AddPlayersToMatchModal";
 import DeleteMatchButton from "@/components/league/DeleteMatchButton";
 import EndMatchButton from "@/components/league/EndMatchButton";
+import {
+  canStartMatch,
+  isFinishedStatus,
+  isJoinableStatus,
+  normalizeMatchStatus,
+} from "@shared/domain/matchLifecycle";
 import type { Match, League, User, Player } from "@shared/schema";
 
 interface MatchContextHeaderProps {
   match?: Match;
   league: League;
   user?: User;
-  matches: Match[];
   players: Player[];
   onMatchAction?: () => void;
+  createMatchOpen?: boolean;
+  onCreateMatchOpenChange?: (open: boolean) => void;
 }
 
 interface ParticipantWithUser {
@@ -38,57 +47,69 @@ export default function MatchContextHeader({
   match, 
   league, 
   user, 
-  matches,
   players,
-  onMatchAction 
+  onMatchAction,
+  createMatchOpen,
+  onCreateMatchOpenChange,
 }: MatchContextHeaderProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [showCreateMatch, setShowCreateMatch] = useState(false);
+  const [internalCreateMatch, setInternalCreateMatch] = useState(false);
+  const showCreateMatch = createMatchOpen ?? internalCreateMatch;
+  const setShowCreateMatch = onCreateMatchOpenChange ?? setInternalCreateMatch;
   const [showMatchDetails, setShowMatchDetails] = useState(false);
   const [showAddPlayers, setShowAddPlayers] = useState(false);
 
   // Check if user has joined the match
   const { data: participants = [], isLoading: participantsLoading } = useQuery<ParticipantWithUser[]>({
-    queryKey: [`/api/matches/${match?.id}/participants`],
-    queryFn: async () => {
-      if (!match) return [];
-      const response = await fetch(`/api/matches/${match.id}/participants`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch participants');
-      return response.json();
-    },
+    queryKey: queryKeys.matchParticipants(match?.id || 0),
+    queryFn: () => api.get<ParticipantWithUser[]>(`/api/matches/${match!.id}/participants`),
     enabled: !!match
   });
 
   const userHasJoined = participants.some(p => p.userId === user?.id && p.status === 'accepted');
   const acceptedParticipants = participants.filter(p => p.status === 'accepted');
-  const isMatchFull = acceptedParticipants.length >= 10;
+  const joiningOpen = isJoinableStatus(match?.status);
 
   const joinMatchMutation = useMutation({
     mutationFn: async (matchId: number) => {
-      return apiRequest('POST', `/api/matches/${matchId}/join`, {});
+      return api.post(`/api/matches/${matchId}/join`, {});
     },
     onSuccess: () => {
       toast({
         title: t('match.joined'),
         description: t('match.joinedDescription'),
       });
-      queryClient.invalidateQueries({ queryKey: [`/api/leagues/${league.id}/matches`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/matches/${match?.id}/participants`] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(league.id) });
+      if (match) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.matchParticipants(match.id) });
+      }
       onMatchAction?.();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: t('common.error'),
-        description: error.message || t('match.joinError'),
+        description: describeApiError(error, t),
         variant: 'destructive',
       });
     }
+  });
+
+  const startMatchMutation = useMutation({
+    mutationFn: async (matchId: number) => api.post(`/api/matches/${matchId}/start`),
+    onSuccess: async () => {
+      toast({ title: t("match.started") });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(league.id) });
+      onMatchAction?.();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("common.error"),
+        description: describeApiError(error, t),
+        variant: "destructive",
+      });
+    },
   });
 
   const handleJoinMatch = () => {
@@ -97,18 +118,20 @@ export default function MatchContextHeader({
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
+  const formatDate = (value: Date | string) => {
+    const date = value instanceof Date ? value : new Date(value);
+    return date.toLocaleDateString("es-ES", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     });
   };
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit'
+  const formatTime = (value: Date | string) => {
+    const date = value instanceof Date ? value : new Date(value);
+    return date.toLocaleTimeString("es-ES", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -116,7 +139,7 @@ export default function MatchContextHeader({
     return (
       <>
         <Card className={`mx-4 my-4 ${
-          match.status === 'completed' 
+          isFinishedStatus(match.status)
             ? 'bg-gradient-to-r from-green-500/20 to-emerald-600/20 border-green-500/50' 
             : 'bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 border-emerald-500/30'
         }`}>
@@ -134,14 +157,13 @@ export default function MatchContextHeader({
                 <Badge 
                   variant="secondary" 
                   className={`${
-                    match.status === 'completed' ? 'bg-green-600 animate-pulse' :
-                    match.status === 'ready' ? 'bg-blue-600' :
+                    match.status === 'scored' ? 'bg-purple-600' :
+                    match.status === 'completed' ? 'bg-green-600' :
+                    normalizeMatchStatus(match.status) === 'started' ? 'bg-blue-600' :
                     'bg-emerald-600'
                   } text-white font-medium`}
                 >
-                  {match.status === 'completed' ? '✅ COMPLETED' : 
-                   match.status === 'ready' ? '🎯 READY' : 
-                   '⏳ OPEN'}
+                  {t(`match.status.${normalizeMatchStatus(match.status)}`)}
                 </Badge>
               </div>
               
@@ -152,16 +174,17 @@ export default function MatchContextHeader({
                     {participantsLoading ? (
                       <Loader2 className="w-3 h-3 animate-spin" />
                     ) : (
-                      `${acceptedParticipants.length}/10`
+                      `${acceptedParticipants.length}`
                     )}
                   </span>
                 </div>
                 
-                {userHasJoined ? (
+                    {userHasJoined ? (
                   <div className="flex items-center gap-2">
                     {/* League Creator: Management Buttons */}
                     {user?.id === league.createdBy && (
                       <>
+                        {joiningOpen && (
                         <Button
                           onClick={() => setShowAddPlayers(true)}
                           size="sm"
@@ -171,6 +194,18 @@ export default function MatchContextHeader({
                           <Settings className="w-4 h-4 mr-2" />
                           {t('match.addPlayers')}
                         </Button>
+                        )}
+                        {canStartMatch(match.status) && (
+                          <Button
+                            onClick={() => startMatchMutation.mutate(match.id)}
+                            disabled={startMatchMutation.isPending}
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <Play className="w-4 h-4 mr-2" />
+                            {t("match.startMatch")}
+                          </Button>
+                        )}
                         <EndMatchButton 
                           match={match} 
                           leagueId={league.id} 
@@ -200,6 +235,7 @@ export default function MatchContextHeader({
                     {/* League Creator: Management Buttons (even when not joined) */}
                     {user?.id === league.createdBy && (
                       <>
+                        {joiningOpen && (
                         <Button
                           onClick={() => setShowAddPlayers(true)}
                           size="sm"
@@ -209,6 +245,18 @@ export default function MatchContextHeader({
                           <Settings className="w-4 h-4 mr-2" />
                           {t('match.addPlayers')}
                         </Button>
+                        )}
+                        {canStartMatch(match.status) && (
+                          <Button
+                            onClick={() => startMatchMutation.mutate(match.id)}
+                            disabled={startMatchMutation.isPending}
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <Play className="w-4 h-4 mr-2" />
+                            {t("match.startMatch")}
+                          </Button>
+                        )}
                         <EndMatchButton 
                           match={match} 
                           leagueId={league.id} 
@@ -223,9 +271,10 @@ export default function MatchContextHeader({
                       </>
                     )}
                     
+                    {!isFinishedStatus(match.status) && (
                     <Button
                       onClick={handleJoinMatch}
-                      disabled={joinMatchMutation.isPending || isMatchFull}
+                      disabled={joinMatchMutation.isPending || !joiningOpen}
                       size="sm"
                       className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
                     >
@@ -236,11 +285,12 @@ export default function MatchContextHeader({
                       )}
                       {joinMatchMutation.isPending 
                         ? t('common.joining') 
-                        : isMatchFull 
-                          ? t('match.full') 
-                          : t('match.join')
+                        : joiningOpen 
+                          ? t('match.join')
+                          : t('match.joiningLocked')
                       }
                     </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -273,55 +323,78 @@ export default function MatchContextHeader({
           players={players}
           participants={participants}
         />
+
+        <Dialog open={showCreateMatch} onOpenChange={setShowCreateMatch}>
+          <DialogContent className="bg-slate-800 border-slate-700">
+            <DialogHeader>
+              <DialogTitle className="text-white">{t("match.createMatch")}</DialogTitle>
+            </DialogHeader>
+            <CreateMatchForm
+              leagueId={league.id}
+              onSuccess={() => {
+                setShowCreateMatch(false);
+                onMatchAction?.();
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       </>
     );
   }
 
-  // No active match - show create match call-to-action
+  const createMatchDialog = (
+    <Dialog open={showCreateMatch} onOpenChange={setShowCreateMatch}>
+      <DialogContent className="bg-slate-800 border-slate-700">
+        <DialogHeader>
+          <DialogTitle className="text-white">{t("match.createMatch")}</DialogTitle>
+        </DialogHeader>
+        <CreateMatchForm
+          leagueId={league.id}
+          onSuccess={() => {
+            setShowCreateMatch(false);
+            onMatchAction?.();
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+
   if (league.createdBy === user?.id) {
     return (
-      <Card className="mx-4 my-4 bg-slate-800/50 border-slate-700">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-white font-medium">{t('match.noActiveMatch')}</h3>
-              <p className="text-slate-400 text-sm">{t('match.createMatchDescription')}</p>
+      <>
+        <Card className="mx-4 my-4 bg-slate-800/50 border-slate-700">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-white font-medium">{t("match.noActiveMatch")}</h3>
+                <p className="text-slate-400 text-sm">{t("match.createMatchDescription")}</p>
+              </div>
+              <Button
+                onClick={() => setShowCreateMatch(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {t("match.createMatch")}
+              </Button>
             </div>
-            
-            <Dialog open={showCreateMatch} onOpenChange={setShowCreateMatch}>
-              <DialogTrigger asChild>
-                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                  <Plus className="w-4 h-4 mr-2" />
-                  {t('match.createMatch')}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-slate-800 border-slate-700">
-                <DialogHeader>
-                  <DialogTitle className="text-white">{t('match.createMatch')}</DialogTitle>
-                </DialogHeader>
-                <CreateMatchForm 
-                  leagueId={league.id}
-                  onSuccess={() => {
-                    setShowCreateMatch(false);
-                    onMatchAction?.();
-                  }}
-                />
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+        {createMatchDialog}
+      </>
     );
   }
 
   return (
-    <Card className="mx-4 my-4 bg-slate-800/50 border-slate-700">
-      <CardContent className="p-4">
-        <div className="text-center">
-          <h3 className="text-white font-medium mb-2">{t('match.noActiveMatch')}</h3>
-          <p className="text-slate-400 text-sm">{t('match.waitingForMatch')}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <>
+      <Card className="mx-4 my-4 bg-slate-800/50 border-slate-700">
+        <CardContent className="p-4">
+          <div className="text-center">
+            <h3 className="text-white font-medium mb-2">{t("match.noActiveMatch")}</h3>
+            <p className="text-slate-400 text-sm">{t("match.waitingForMatch")}</p>
+          </div>
+        </CardContent>
+      </Card>
+      {createMatchDialog}
+    </>
   );
 }

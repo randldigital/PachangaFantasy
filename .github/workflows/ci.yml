@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: pachanga_user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: pachanga
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pachanga_user -d pachanga"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://pachanga_user:password@localhost:5432/pachanga
+      JWT_SECRET: ci-jwt-secret-not-for-production
+      NODE_ENV: test
+      TEST_SCHEMA: pachanga_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:e2e
+      - run: npm run build
+      - name: Production client bundle exists
+        run: test -f dist/public/index.html

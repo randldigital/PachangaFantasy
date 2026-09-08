@@ -34,7 +34,7 @@ export default function EnhancedLeaderboard({ leagueId, className = "" }: Enhanc
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Trophy className="h-5 w-5 text-yellow-400" />
-            League Leaderboard
+            Player Leaderboard
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -61,7 +61,7 @@ export default function EnhancedLeaderboard({ leagueId, className = "" }: Enhanc
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Trophy className="h-5 w-5 text-yellow-400" />
-            League Leaderboard
+            Player Leaderboard
           </CardTitle>
         </CardHeader>
         <CardContent className="text-center py-8">
@@ -107,7 +107,7 @@ export default function EnhancedLeaderboard({ leagueId, className = "" }: Enhanc
         <CardTitle className="text-white flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-yellow-400" />
-            League Leaderboard
+            Player Leaderboard
           </div>
           <Badge variant="outline" className="text-yellow-400 border-yellow-400">
             {rankings.length} Players

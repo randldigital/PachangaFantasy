@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { describeApiError } from "@/lib/apiError";
+import { queryKeys } from "@/lib/queryKeys";
 import type { Player, Match } from "@shared/schema";
 
 interface ParticipantWithUser {
@@ -55,9 +57,10 @@ export default function AddPlayersToMatchModal({
 
   const addPlayersMutation = useMutation({
     mutationFn: async (playerIds: number[]) => {
-      return apiRequest('POST', `/api/matches/${match.id}/add-players`, {
+      const response = await apiRequest('POST', `/api/matches/${match.id}/add-players`, {
         playerIds
       });
+      return response.json();
     },
     onSuccess: (data) => {
       toast({
@@ -66,8 +69,8 @@ export default function AddPlayersToMatchModal({
       });
       
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: [`/api/matches/${match.id}/participants`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/leagues/${match.leagueId}/matches`] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.matchParticipants(match.id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(match.leagueId) });
       
       setSelectedPlayerIds([]);
       onClose();
@@ -75,7 +78,7 @@ export default function AddPlayersToMatchModal({
     onError: (error: any) => {
       toast({
         title: t('common.error'),
-        description: error.message || t('match.addPlayersError'),
+        description: describeApiError(error, t) || t('match.addPlayersError'),
         variant: 'destructive',
       });
     }
@@ -156,7 +159,6 @@ export default function AddPlayersToMatchModal({
                     </Avatar>
                     <div className="flex-1">
                       <p className="text-white text-sm font-medium">{player.name}</p>
-                      <p className="text-slate-400 text-xs">{player.position}</p>
                     </div>
                     <Badge variant="outline" className="text-xs border-emerald-500/50 text-emerald-400">
                       ${player.marketValue}
@@ -187,7 +189,6 @@ export default function AddPlayersToMatchModal({
                     </Avatar>
                     <div className="flex-1">
                       <p className="text-white text-sm font-medium">{player.name}</p>
-                      <p className="text-slate-400 text-xs">{player.position}</p>
                     </div>
                     <Badge variant="outline" className="text-xs border-slate-500 text-slate-400">
                       {t('match.joined')}

@@ -25,7 +25,6 @@ export default function Register() {
       username: '',
       email: '',
       password: '',
-      role: 'player',
     },
   });
 
@@ -40,7 +39,7 @@ export default function Register() {
     } catch (error) {
       toast({
         title: t('common.error'),
-        description: 'Registration failed',
+        description: t("auth.registerFailed"),
         variant: 'destructive',
       });
       setIsLoading(false);
@@ -121,7 +120,7 @@ export default function Register() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-accent-blue to-accent-purple text-white font-semibold py-3 px-6 rounded-xl hover:shadow-lg hover:shadow-accent-blue/25 transform hover:scale-105 transition-all duration-300 focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-primary"
+                className="w-full bg-accent-blue text-white font-semibold py-3 px-6 rounded-xl focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-primary"
               >
                 {isLoading ? t('common.loading') : t('auth.registerButton')}
               </Button>

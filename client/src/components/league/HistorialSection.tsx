@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { Match } from "@shared/schema";
+import { isFinishedStatus, normalizeMatchStatus } from "@shared/domain/matchLifecycle";
 
 interface HistorialSectionProps {
   matches: Match[];
   isLoading: boolean;
+  onCreateMatch?: () => void;
 }
 
-export default function HistorialSection({ matches, isLoading }: HistorialSectionProps) {
+export default function HistorialSection({ matches, isLoading, onCreateMatch }: HistorialSectionProps) {
   const { t } = useTranslation();
   const [expandedMatches, setExpandedMatches] = useState<Set<number>>(new Set());
 
@@ -43,31 +45,30 @@ export default function HistorialSection({ matches, isLoading }: HistorialSectio
     });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
+  const getStatusColor = (status: string | null) => {
+    switch (normalizeMatchStatus(status)) {
+      case 'scored':
+        return 'bg-purple-600 text-white';
       case 'completed':
         return 'bg-green-600 text-white';
-      case 'in_progress':
-        return 'bg-yellow-600 text-white';
-      case 'upcoming':
+      case 'started':
         return 'bg-blue-600 text-white';
-      case 'cancelled':
-        return 'bg-red-600 text-white';
+      case 'open':
+        return 'bg-emerald-600 text-white';
       default:
         return 'bg-slate-600 text-white';
     }
   };
 
-  const getStatusText = (status: string) => {
-    return t(`match.status.${status}`);
+  const getStatusText = (status: string | null) => {
+    return t(`match.status.${normalizeMatchStatus(status)}`);
   };
 
-  // Filter and sort matches (past matches first, then upcoming)
-  const pastMatches = matches.filter(match => match.status === 'completed').sort((a, b) => 
+  const pastMatches = matches.filter(match => isFinishedStatus(match.status)).sort((a, b) => 
     new Date(b.date).getTime() - new Date(a.date).getTime()
   );
   
-  const upcomingMatches = matches.filter(match => match.status !== 'completed').sort((a, b) => 
+  const upcomingMatches = matches.filter(match => !isFinishedStatus(match.status)).sort((a, b) => 
     new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 
@@ -89,8 +90,13 @@ export default function HistorialSection({ matches, isLoading }: HistorialSectio
       <Card className="bg-slate-800/50 border-slate-700">
         <CardContent className="p-8 text-center">
           <Calendar className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-          <h3 className="text-white font-medium mb-2">{t('historial.noMatches')}</h3>
-          <p className="text-slate-400">{t('historial.noMatchesDescription')}</p>
+          <h3 className="text-white font-medium mb-2">{t("historial.noMatches")}</h3>
+          <p className="text-slate-400 mb-4">{t("historial.noMatchesDescription")}</p>
+          {onCreateMatch && (
+            <Button onClick={onCreateMatch} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              {t("historial.createCta")}
+            </Button>
+          )}
         </CardContent>
       </Card>
     );
@@ -121,11 +127,11 @@ export default function HistorialSection({ matches, isLoading }: HistorialSectio
                         <Calendar className="w-4 h-4 text-slate-400" />
                         <div>
                           <div className="text-white font-medium">
-                            {formatDate(match.date)}
+                            {formatDate(match.date.toISOString())}
                           </div>
                           <div className="text-slate-400 text-sm flex items-center space-x-2">
                             <Clock className="w-3 h-3" />
-                            <span>{formatTime(match.date)}</span>
+                            <span>{formatTime(match.date.toISOString())}</span>
                           </div>
                         </div>
                       </div>
@@ -164,8 +170,8 @@ export default function HistorialSection({ matches, isLoading }: HistorialSectio
                           {t('match.teamA')}
                         </h4>
                         <div className="space-y-1">
-                          {match.teamA && match.teamA.length > 0 ? (
-                            match.teamA.map((playerId) => (
+                          {match.matchTeams?.teamA && match.matchTeams.teamA.length > 0 ? (
+                            match.matchTeams.teamA.map((playerId: number) => (
                               <div key={playerId} className="text-slate-300 text-sm">
                                 {t('match.player')} {playerId}
                               </div>
@@ -185,8 +191,8 @@ export default function HistorialSection({ matches, isLoading }: HistorialSectio
                           {t('match.teamB')}
                         </h4>
                         <div className="space-y-1">
-                          {match.teamB && match.teamB.length > 0 ? (
-                            match.teamB.map((playerId) => (
+                          {match.matchTeams?.teamB && match.matchTeams.teamB.length > 0 ? (
+                            match.matchTeams.teamB.map((playerId: number) => (
                               <div key={playerId} className="text-slate-300 text-sm">
                                 {t('match.player')} {playerId}
                               </div>

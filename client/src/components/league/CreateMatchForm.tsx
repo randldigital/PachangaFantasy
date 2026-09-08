@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { InsertMatch } from "@shared/schema";
+import { describeApiError } from "@/lib/apiError";
+import { queryKeys } from "@/lib/queryKeys";
 
 interface CreateMatchFormProps {
   leagueId: number;
@@ -24,7 +25,7 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
   });
 
   const createMatchMutation = useMutation({
-    mutationFn: async (data: InsertMatch) => {
+    mutationFn: async (data: { leagueId: number; date: string; lineupBudget: number }) => {
       const response = await apiRequest('POST', '/api/matches', data);
       return response.json();
     },
@@ -33,13 +34,13 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
         title: t('match.created'),
         description: t('match.createdDescription'),
       });
-      queryClient.invalidateQueries({ queryKey: [`/api/leagues/${leagueId}/matches`] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(leagueId) });
       onSuccess?.();
     },
     onError: (error: any) => {
       toast({
         title: t('common.error'),
-        description: error.message || t('match.createError'),
+        description: describeApiError(error, t) || t('match.createError'),
         variant: 'destructive',
       });
     }
@@ -113,10 +114,14 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
       <Button
         type="submit"
         disabled={createMatchMutation.isPending || !formData.date || !formData.time}
-        className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
+        title={!formData.date || !formData.time ? t("match.dateTimeRequired") : undefined}
+        className="w-full bg-emerald-600 hover:bg-emerald-700"
       >
         {createMatchMutation.isPending ? t('common.creating') : t('match.createMatch')}
       </Button>
+      {(!formData.date || !formData.time) && (
+        <p className="text-xs text-slate-400 text-center">{t("match.dateTimeRequired")}</p>
+      )}
     </form>
   );
 }

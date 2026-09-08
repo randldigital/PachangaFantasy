@@ -14,7 +14,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
+import { describeApiError } from "@/lib/apiError";
+import { queryKeys } from "@/lib/queryKeys";
 import { useToast } from "@/hooks/use-toast";
 import { CircleStop, Target, Trophy } from "lucide-react";
 import type { Match } from "@shared/schema";
@@ -26,77 +29,75 @@ interface EndMatchButtonProps {
 }
 
 export default function EndMatchButton({ match, leagueId, isLeagueCreator }: EndMatchButtonProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [finalScore, setFinalScore] = useState<string>("");
+  const [finalScore, setFinalScore] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const endMatchMutation = useMutation({
     mutationFn: async () => {
-      const scoreValue = parseInt(finalScore);
-      if (isNaN(scoreValue) || scoreValue < 0) {
-        throw new Error("Please enter a valid final score (0 or greater)");
+      const scoreValue = parseInt(finalScore, 10);
+      if (Number.isNaN(scoreValue) || scoreValue < 0) {
+        throw new Error(t("match.finalScoreInvalid"));
       }
-      
-      // End match with final score
-      const endResponse = await apiRequest('POST', `/api/matches/${match.id}/end`);
-      const endData = await endResponse.json();
-      
-      // Validate goals with final score
-      const validateResponse = await apiRequest('POST', `/api/matches/${match.id}/validate-goals`, {
-        finalScore: scoreValue
+
+      const endResponse = await apiRequest("POST", `/api/matches/${match.id}/end`, {
+        finalScore: scoreValue,
       });
-      
-      return { endData, validateData: await validateResponse.json() };
+      return endResponse.json();
     },
-    onSuccess: async (data) => {
+    onSuccess: async () => {
       toast({
-        title: "🏆 Match Completed Successfully!",
-        description: `Final score: ${finalScore} goals recorded. Players can now submit their individual stats.`,
-        duration: 6000,
+        title: t("match.ended"),
+        description: t("match.endedDescription", { score: finalScore }),
       });
-      
-      // Comprehensive query invalidation for immediate UI updates across all views
+
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId, "matches"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id, "stats"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/matches", match.id, "participants"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/leagues", leagueId] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(leagueId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.match(match.id) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.matchStats(match.id) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.matchStatsStatus(match.id) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.matchParticipants(match.id) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.league(leagueId) }),
       ]);
-      
-      // Force refetch for immediate updates across all components
-      await Promise.all([
-        queryClient.refetchQueries({ queryKey: ["/api/matches", match.id] }),
-        queryClient.refetchQueries({ queryKey: ["/api/leagues", leagueId, "matches"] }),
-        queryClient.refetchQueries({ queryKey: ["/api/leagues", leagueId] }),
-      ]);
-      
+
       setOpen(false);
       setFinalScore("");
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: t("common.error"),
+        description: describeApiError(error, t),
         variant: "destructive",
       });
     },
   });
 
-  // Show different UI based on match status
   if (!isLeagueCreator) {
     return null;
   }
 
-  // If match is completed, show completion badge instead of button
-  if (match.status === 'completed') {
+  if (match.status === "scored") {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1 bg-purple-600/20 border border-purple-500/50 rounded-md">
+        <Trophy className="h-4 w-4 text-purple-400" />
+        <span className="text-sm text-purple-400 font-medium">{t("match.status.scored")}</span>
+      </div>
+    );
+  }
+
+  if (match.status === "completed") {
     return (
       <div className="flex items-center gap-2 px-3 py-1 bg-green-600/20 border border-green-500/50 rounded-md">
         <Trophy className="h-4 w-4 text-green-400" />
-        <span className="text-sm text-green-400 font-medium">Match Completed</span>
+        <span className="text-sm text-green-400 font-medium">{t("match.status.completed")}</span>
       </div>
     );
+  }
+
+  if (match.status !== "started") {
+    return null;
   }
 
   return (
@@ -104,44 +105,45 @@ export default function EndMatchButton({ match, leagueId, isLeagueCreator }: End
       <AlertDialogTrigger asChild>
         <Button variant="outline" size="sm" className="text-orange-600 hover:text-orange-700">
           <CircleStop className="h-4 w-4 mr-1" />
-          End Match
+          {t("match.end")}
         </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent className="sm:max-w-md">
+      <AlertDialogContent className="sm:max-w-md bg-slate-800 border-slate-700 text-white">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <Target className="h-5 w-5 text-orange-500" />
-            End Match & Enter Final Score
+            {t("match.endTitle")}
           </AlertDialogTitle>
-          <AlertDialogDescription>
-            Enter the total number of goals scored in this match. This will end the match and 
-            allow participants to submit their individual stats.
+          <AlertDialogDescription className="text-slate-300">
+            {t("match.endDescription")}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        
+
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="finalScore">Total Goals Scored</Label>
+            <Label htmlFor="finalScore">{t("match.finalScore")}</Label>
             <Input
               id="finalScore"
               type="number"
               min="0"
-              placeholder="Enter total goals (e.g., 8)"
               value={finalScore}
               onChange={(e) => setFinalScore(e.target.value)}
-              className="w-full"
+              className="w-full bg-slate-900 border-slate-600 text-white"
             />
+            {!finalScore.trim() && (
+              <p className="text-xs text-slate-400">{t("match.finalScoreInvalid")}</p>
+            )}
           </div>
         </div>
-        
+
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => setFinalScore("")}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={() => setFinalScore("")}>{t("common.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={() => endMatchMutation.mutate()}
             disabled={endMatchMutation.isPending || !finalScore.trim()}
             className="bg-orange-600 hover:bg-orange-700"
           >
-            {endMatchMutation.isPending ? "Ending Match..." : "End Match"}
+            {endMatchMutation.isPending ? t("match.ending") : t("match.end")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

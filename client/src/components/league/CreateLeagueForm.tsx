@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { describeApiError } from "@/lib/apiError";
+import { queryKeys } from "@/lib/queryKeys";
 import type { InsertLeague } from "@shared/schema";
 
 interface CreateLeagueFormProps {
@@ -32,13 +34,13 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
         title: t('league.created'),
         description: t('league.createdDescription'),
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/leagues'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagues });
       onSuccess?.();
     },
     onError: (error: any) => {
       toast({
         title: t('common.error'),
-        description: error.message || t('league.createError'),
+        description: describeApiError(error, t) || t("league.createError"),
         variant: 'destructive',
       });
     }
@@ -51,7 +53,7 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
     if (!formData.name.trim()) {
       toast({
         title: t('common.error'),
-        description: 'League name is required',
+        description: t("league.nameRequired"),
         variant: 'destructive',
       });
       return;
@@ -60,7 +62,7 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
     if (formData.name.length > 25) {
       toast({
         title: t('common.error'),
-        description: 'League name must be 25 characters or less',
+        description: t("league.nameTooLong"),
         variant: 'destructive',
       });
       return;
@@ -69,7 +71,7 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
     if (formData.description.length > 200) {
       toast({
         title: t('common.error'),
-        description: 'Description must be 200 characters or less',
+        description: t("league.descriptionTooLong"),
         variant: 'destructive',
       });
       return;
@@ -100,7 +102,7 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
         />
         {formData.name.length > 20 && (
           <p className="text-sm text-orange-400">
-            {25 - formData.name.length} characters remaining
+            {t("common.charsRemaining", { count: 25 - formData.name.length })}
           </p>
         )}
       </div>
@@ -120,7 +122,7 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
         />
         {formData.description.length > 180 && (
           <p className="text-sm text-orange-400">
-            {200 - formData.description.length} characters remaining
+            {t("common.charsRemaining", { count: 200 - formData.description.length })}
           </p>
         )}
       </div>
@@ -128,7 +130,7 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
       <Button
         type="submit"
         disabled={createLeagueMutation.isPending || !formData.name.trim()}
-        className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
+        className="w-full bg-emerald-600 hover:bg-emerald-700"
       >
         {createLeagueMutation.isPending ? t('common.creating') : t('league.createLeague')}
       </Button>

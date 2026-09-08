@@ -1,23 +1,24 @@
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { z } from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
-import { UserPlus, Users } from 'lucide-react';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
+import { describeApiError } from "@/lib/apiError";
+import { queryKeys } from "@/lib/queryKeys";
+import { UserPlus, Users } from "lucide-react";
 
-const playerEmojis = ['⚽', '🏃', '🛡️', '🎯', '🥅', '⚡', '🔥', '💎', '👑', '🌟'];
+const playerEmojis = ["⚽", "🏃", "🛡️", "🎯", "🥅", "⚡", "🔥", "💎", "👑", "🌟"];
 
 const addPlayerSchema = z.object({
-  name: z.string().min(1, "Name is required").max(30, "Name must be 30 characters or less"),
-  emoji: z.string().default('⚽'),
+  name: z.string().min(1).max(30),
+  emoji: z.string().default("⚽"),
   isExternal: z.boolean().default(true),
 });
 
@@ -30,72 +31,72 @@ interface AddPlayerFormProps {
 }
 
 export default function AddPlayerForm({ leagueId, isOpen, onClose }: AddPlayerFormProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const numericLeagueId = parseInt(leagueId, 10);
 
   const form = useForm<AddPlayerFormData>({
     resolver: zodResolver(addPlayerSchema),
     defaultValues: {
-      name: '',
-      emoji: '⚽',
+      name: "",
+      emoji: "⚽",
       isExternal: true,
     },
   });
 
   const addPlayerMutation = useMutation({
     mutationFn: async (data: AddPlayerFormData) => {
-      const response = await apiRequest('POST', `/api/players/${leagueId}`, {
+      return api.post<{ name: string }>(`/api/players/${numericLeagueId}`, {
         name: data.name,
         emoji: data.emoji,
-        position: 'forward', // Default position for external players
         isExternal: data.isExternal,
       });
-      return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/players', leagueId] });
-      queryClient.refetchQueries({ queryKey: ['/api/players', leagueId] });
+    onSuccess: (player) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.leaguePlayers(numericLeagueId) });
       toast({
-        title: "Player added successfully!",
-        description: "The new player has been added to your league roster.",
+        title: t("league.playerAdded"),
+        description: t("league.playerAddedDescription", { name: player.name }),
       });
       form.reset();
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
-        title: "Error adding player",
-        description: error.message || "Failed to add player. Please try again.",
+        title: t("league.addPlayerError"),
+        description: describeApiError(error, t),
         variant: "destructive",
       });
     },
   });
 
-  const onSubmit = (data: AddPlayerFormData) => {
-    addPlayerMutation.mutate(data);
-  };
-
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <DialogContent className="sm:max-w-md bg-slate-800 border-slate-700">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
             <UserPlus className="h-5 w-5 text-blue-400" />
-            Add External Player
+            {t("league.addExternalPlayer")}
           </DialogTitle>
         </DialogHeader>
-        
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit((data) => addPlayerMutation.mutate(data))} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-slate-200">Player Name</FormLabel>
+                  <FormLabel className="text-slate-200">{t("league.playerName")}</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Enter player name"
+                      placeholder={t("league.playerName")}
                       {...field}
                       className="bg-slate-700 border-slate-600 text-white"
                     />
@@ -110,11 +111,11 @@ export default function AddPlayerForm({ leagueId, isOpen, onClose }: AddPlayerFo
               name="emoji"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-slate-200">Avatar Emoji</FormLabel>
+                  <FormLabel className="text-slate-200">{t("league.playerEmoji")}</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                        <SelectValue placeholder="Choose an emoji" />
+                        <SelectValue />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-slate-700 border-slate-600">
@@ -134,27 +135,25 @@ export default function AddPlayerForm({ leagueId, isOpen, onClose }: AddPlayerFo
             <div className="bg-slate-700/50 p-3 rounded-lg border border-slate-600">
               <div className="flex items-center gap-2 text-slate-300">
                 <Users className="h-4 w-4" />
-                <span className="text-sm">
-                  This player will be added to your league roster and can be selected in match lineups.
-                </span>
+                <span className="text-sm">{t("league.addExternalHint")}</span>
               </div>
             </div>
 
             <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={onClose}
                 className="border-slate-600 text-slate-300 hover:bg-slate-700"
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button
                 type="submit"
                 disabled={addPlayerMutation.isPending}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                {addPlayerMutation.isPending ? "Adding..." : "Add Player"}
+                {addPlayerMutation.isPending ? t("common.adding") : t("league.addPlayer")}
               </Button>
             </DialogFooter>
           </form>

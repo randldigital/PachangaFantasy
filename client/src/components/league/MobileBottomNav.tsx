@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Target, Trophy, History, List } from "lucide-react";
+import { Target, Trophy, History, List, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface MobileBottomNavProps {
@@ -15,6 +15,7 @@ export default function MobileBottomNav({ activeTab, setActiveTab }: MobileBotto
     { id: 'clasificacion', icon: Trophy, label: t('league.tabs.clasificacion') },
     { id: 'historial', icon: History, label: t('league.tabs.historial') },
     { id: 'tierlist', icon: List, label: t('league.tabs.tierlist') },
+    { id: 'stats', icon: BarChart3, label: t('league.tabs.stats') },
   ];
 
   return (

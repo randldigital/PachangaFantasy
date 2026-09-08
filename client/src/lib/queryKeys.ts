@@ -1,0 +1,17 @@
+export const queryKeys = {
+  me: ["/api/auth/me"] as const,
+  leagues: ["/api/leagues"] as const,
+  league: (id: number) => [`/api/leagues/${id}`] as const,
+  leagueMatches: (leagueId: number) => [`/api/leagues/${leagueId}/matches`] as const,
+  leaguePlayers: (leagueId: number) => [`/api/players/${leagueId}`] as const,
+  leagueRankings: (leagueId: number) => [`/api/leagues/${leagueId}/rankings`] as const,
+  tierList: (leagueId: number) => [`/api/tierlist/${leagueId}`] as const,
+  tierListsAll: (leagueId: number) => [`/api/tierlist/${leagueId}/all`] as const,
+  match: (id: number) => [`/api/matches/${id}`] as const,
+  matchParticipants: (id: number) => [`/api/matches/${id}/participants`] as const,
+  matchLineup: (id: number) => [`/api/matches/${id}/lineup`] as const,
+  matchStats: (id: number) => [`/api/matches/${id}/stats`] as const,
+  matchStatsStatus: (id: number) => [`/api/matches/${id}/stats-status`] as const,
+  leagueManagerRankings: (leagueId: number) => [`/api/leagues/${leagueId}/manager-rankings`] as const,
+  userPlayerStatus: (leagueId: number) => ["userPlayerStatus", leagueId] as const,
+};

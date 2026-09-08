@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { describeApiError } from "@/lib/apiError";
+import { queryKeys } from "@/lib/queryKeys";
 
 interface JoinLeagueFormProps {
   onSuccess?: () => void;
@@ -26,13 +28,13 @@ export default function JoinLeagueForm({ onSuccess }: JoinLeagueFormProps) {
         title: t('league.joined'),
         description: t('league.joinedDescription'),
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/leagues'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagues });
       onSuccess?.();
     },
     onError: (error: any) => {
       toast({
         title: t('common.error'),
-        description: error.message || t('league.joinError'),
+        description: describeApiError(error, t) || t('league.joinError'),
         variant: 'destructive',
       });
     }
@@ -65,7 +67,7 @@ export default function JoinLeagueForm({ onSuccess }: JoinLeagueFormProps) {
       <Button
         type="submit"
         disabled={joinLeagueMutation.isPending || !inviteCode.trim()}
-        className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
+        className="w-full bg-emerald-600 hover:bg-emerald-700"
       >
         {joinLeagueMutation.isPending ? t('common.joining') : t('league.joinLeague')}
       </Button>

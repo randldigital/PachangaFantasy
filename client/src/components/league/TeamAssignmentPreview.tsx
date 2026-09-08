@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Users, Clock, Settings } from "lucide-react";
+import { Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Settings } from "lucide-react";
+import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 import AddPlayersToMatchModal from "./AddPlayersToMatchModal";
+import { isJoinableStatus } from "@shared/domain/matchLifecycle";
 import type { Match, User, Player } from "@shared/schema";
 
 interface ParticipantWithUser {
@@ -16,14 +20,13 @@ interface ParticipantWithUser {
   playerName: string;
   userId?: number;
   username?: string;
-  userRole?: string;
 }
 
 interface TeamAssignmentPreviewProps {
   match: Match;
   user?: User;
   players?: Player[];
-  league?: any;
+  league?: { createdBy: number };
 }
 
 export default function TeamAssignmentPreview({ match, user, players = [], league }: TeamAssignmentPreviewProps) {
@@ -31,34 +34,14 @@ export default function TeamAssignmentPreview({ match, user, players = [], leagu
   const [showAddPlayers, setShowAddPlayers] = useState(false);
 
   const { data: participants = [], isLoading } = useQuery<ParticipantWithUser[]>({
-    queryKey: [`/api/matches/${match.id}/participants`],
-    queryFn: async () => {
-      const response = await fetch(`/api/matches/${match.id}/participants`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch participants');
-      return response.json();
-    }
+    queryKey: queryKeys.matchParticipants(match.id),
+    queryFn: () => api.get<ParticipantWithUser[]>(`/api/matches/${match.id}/participants`),
   });
 
-  const acceptedParticipants = participants.filter(p => p.status === 'accepted');
-  
-  // Simple round-robin assignment for preview (odd/even index)
-  const teamA = acceptedParticipants.filter((_, index) => index % 2 === 0);
-  const teamB = acceptedParticipants.filter((_, index) => index % 2 === 1);
+  const acceptedParticipants = participants.filter((participant) => participant.status === "accepted");
+  const canAdd = Boolean(user && league && user.id === league.createdBy && isJoinableStatus(match.status));
 
-  const getInitials = (username: string) => {
-    return username.substring(0, 2).toUpperCase();
-  };
-
-  const isMatchSoon = () => {
-    const matchDate = new Date(match.date);
-    const now = new Date();
-    const timeDiff = matchDate.getTime() - now.getTime();
-    return timeDiff > 0 && timeDiff <= 24 * 60 * 60 * 1000; // Within 24 hours
-  };
+  const getInitials = (username: string) => username.substring(0, 2).toUpperCase();
 
   if (isLoading) {
     return (
@@ -66,15 +49,9 @@ export default function TeamAssignmentPreview({ match, user, players = [], leagu
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Users className="w-5 h-5" />
-            <div className="h-5 w-32 bg-slate-600 animate-pulse rounded"></div>
+            <div className="h-5 w-32 bg-slate-600 animate-pulse rounded" />
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="h-32 bg-slate-600 animate-pulse rounded"></div>
-            <div className="h-32 bg-slate-600 animate-pulse rounded"></div>
-          </div>
-        </CardContent>
       </Card>
     );
   }
@@ -85,150 +62,51 @@ export default function TeamAssignmentPreview({ match, user, players = [], leagu
         <div className="flex items-center justify-between">
           <CardTitle className="text-white flex items-center gap-2">
             <Users className="w-5 h-5 text-emerald-400" />
-            {t('match.teamAssignment')} ({acceptedParticipants.length}/10)
+            {t("match.participants")} ({acceptedParticipants.length})
           </CardTitle>
-          
-          <div className="flex items-center gap-2">
-            {/* League Creator: Add Players Button */}
-            {user && league && user.id === league.createdBy && (
-              <Button
-                onClick={() => setShowAddPlayers(true)}
-                size="sm"
-                variant="outline"
-                className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                {t('match.addPlayers')}
-              </Button>
-            )}
-            
-            {/* Debug: Show current user role */}
-            {process.env.NODE_ENV === 'development' && (
-              <Badge variant="outline" className="text-xs border-gray-500 text-gray-400">
-                Role: {user?.role || 'none'}
-              </Badge>
-            )}
-            
-            {isMatchSoon() && (
-              <Badge variant="outline" className="border-orange-500 text-orange-400">
-                <Clock className="w-3 h-3 mr-1" />
-                {t('match.startingSoon')}
-              </Badge>
-            )}
-          </div>
+          {canAdd && (
+            <Button
+              onClick={() => setShowAddPlayers(true)}
+              size="sm"
+              variant="outline"
+              className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              {t("match.addPlayers")}
+            </Button>
+          )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-2">
         {acceptedParticipants.length === 0 ? (
           <div className="text-center py-8 text-slate-400">
             <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>{t('match.noParticipants')}</p>
-            <p className="text-sm mt-1">{t('match.beFirstToJoin')}</p>
+            <p>{t("match.noParticipants")}</p>
+            <p className="text-sm mt-1">{t("match.beFirstToJoin")}</p>
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Team A */}
-              <Card className="bg-blue-500/10 border-blue-500/30">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-blue-400 text-sm font-medium flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                    {t('match.teamA')} ({teamA.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {teamA.map((participant, index) => {
-                    const displayName = participant.username || participant.playerName || 'Unknown Player';
-                    return (
-                      <div key={participant.playerId || index} className="flex items-center gap-3 p-2 rounded-lg bg-blue-500/5">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback className="bg-blue-600 text-white text-xs">
-                            {getInitials(displayName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="text-white text-sm font-medium">{displayName}</p>
-                          <div className="flex gap-1 mt-1">
-                            {participant.userId && league && participant.userId === league.createdBy && (
-                              <Badge variant="outline" className="text-xs border-blue-500/50 text-blue-400">
-                                Creator
-                              </Badge>
-                            )}
-                            {!participant.userId && (
-                              <Badge variant="outline" className="text-xs border-slate-500/50 text-slate-400">
-                                Player
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {teamA.length < 5 && (
-                    <div className="text-center py-2 text-slate-500 text-sm border-2 border-dashed border-slate-600 rounded-lg">
-                      {t('match.awaitingPlayers', { count: 5 - teamA.length })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Team B */}
-              <Card className="bg-red-500/10 border-red-500/30">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-red-400 text-sm font-medium flex items-center gap-2">
-                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                    {t('match.teamB')} ({teamB.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {teamB.map((participant, index) => {
-                    const displayName = participant.username || participant.playerName || 'Unknown Player';
-                    return (
-                      <div key={participant.playerId || index} className="flex items-center gap-3 p-2 rounded-lg bg-red-500/5">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback className="bg-red-600 text-white text-xs">
-                            {getInitials(displayName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="text-white text-sm font-medium">{displayName}</p>
-                          <div className="flex gap-1 mt-1">
-                            {participant.userId && league && participant.userId === league.createdBy && (
-                              <Badge variant="outline" className="text-xs border-red-500/50 text-red-400">
-                                Creator
-                              </Badge>
-                            )}
-                            {!participant.userId && (
-                              <Badge variant="outline" className="text-xs border-slate-500/50 text-slate-400">
-                                Player
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {teamB.length < 5 && (
-                    <div className="text-center py-2 text-slate-500 text-sm border-2 border-dashed border-slate-600 rounded-lg">
-                      {t('match.awaitingPlayers', { count: 5 - teamB.length })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {acceptedParticipants.length >= 10 && (
-              <div className="text-center">
-                <Badge className="bg-emerald-600 text-white">
-                  {t('match.readyToStart')}
-                </Badge>
+          acceptedParticipants.map((participant) => {
+            const displayName = participant.username || participant.playerName || "Unknown Player";
+            return (
+              <div key={participant.playerId} className="flex items-center gap-3 p-2 rounded-lg bg-slate-700/40">
+                <Avatar className="w-8 h-8">
+                  <AvatarFallback className="bg-emerald-600 text-white text-xs">
+                    {getInitials(displayName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <p className="text-white text-sm font-medium">{displayName}</p>
+                </div>
+                {!participant.userId && (
+                  <Badge variant="outline" className="text-xs border-slate-500/50 text-slate-400">
+                    {t("match.player")}
+                  </Badge>
+                )}
               </div>
-            )}
-          </>
+            );
+          })
         )}
       </CardContent>
-      
-      {/* Add Players Modal */}
       <AddPlayersToMatchModal
         isOpen={showAddPlayers}
         onClose={() => setShowAddPlayers(false)}

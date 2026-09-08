@@ -1,32 +1,25 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import * as schema from "@shared/schema";
+import { env } from "./env";
 
-neonConfig.webSocketConstructor = ws;
-
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+const testSchema = process.env.TEST_SCHEMA || "pachanga_test";
+if (env.NODE_ENV === "test" && !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(testSchema)) {
+  throw new Error(`Unsafe TEST_SCHEMA: ${testSchema}`);
 }
 
-export const pool = new Pool({ 
-  connectionString: process.env.DATABASE_URL,
-  connectionTimeoutMillis: 5000,
-  idleTimeoutMillis: 30000,
-  max: 20
+const client = postgres(env.DATABASE_URL, {
+  max: 20,
+  idle_timeout: 20,
+  connect_timeout: 10,
+  ...(env.NODE_ENV === "test"
+    ? { connection: { options: `-c search_path=${testSchema}` } }
+    : {}),
 });
 
-export const db = drizzle({ client: pool, schema });
+export const db = drizzle(client, { schema });
+export const sqlClient = client;
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  await pool.end();
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  await pool.end();
-  process.exit(0);
-});
+export async function closeDatabase() {
+  await client.end();
+}

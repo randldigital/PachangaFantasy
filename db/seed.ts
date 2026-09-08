@@ -1,111 +1,122 @@
+import "dotenv/config";
+import { eq } from "drizzle-orm";
 import { db } from "../server/db";
-import { users, leagues, players } from "@shared/schema";
-import bcrypt from 'bcrypt';
-import { nanoid } from 'nanoid';
-import { sql } from "drizzle-orm";
+import { users, leagues, players, matches, matchParticipants } from "@shared/schema";
+import bcrypt from "bcrypt";
+import { nanoid } from "nanoid";
+
+const DEMO_EMAIL = "carlos@pachanga.test";
+const DEMO_PASSWORD = "pachanga123";
 
 async function seed() {
-  console.log("🌱 Seeding database...");
-
-  try {
-    // Create admin user
-    const hashedPassword = await bcrypt.hash('admin123', 10);
-    const [adminUser] = await db.insert(users).values({
-      username: 'admin',
-      email: 'admin@pachanga.com',
-      password: hashedPassword,
-      role: 'admin',
-    }).returning();
-
-    console.log("✅ Created admin user");
-
-    // Create sample players
-    const [player1] = await db.insert(users).values({
-      username: 'player1',
-      email: 'player1@pachanga.com',
-      password: await bcrypt.hash('player123', 10),
-      role: 'player',
-    }).returning();
-
-    const [player2] = await db.insert(users).values({
-      username: 'player2',
-      email: 'player2@pachanga.com',
-      password: await bcrypt.hash('player123', 10),
-      role: 'player',
-    }).returning();
-
-    console.log("✅ Created sample players");
-
-    // Create demo league
-    const [league] = await db.insert(leagues).values({
-      name: 'Liga Pachanga Demo',
-      description: 'Demo league for testing the Pachanga Fantasy app',
-      inviteCode: nanoid(6).toUpperCase(),
-      createdBy: adminUser.id,
-      participants: [adminUser.id, player1.id, player2.id],
-      status: 'open',
-    }).returning();
-
-    console.log("✅ Created demo league");
-
-    // Add participants to league_participants table
-    await db.execute(sql`
-      INSERT INTO league_participants (user_id, league_id)
-      VALUES 
-        (${adminUser.id}, ${league.id}),
-        (${player1.id}, ${league.id}),
-        (${player2.id}, ${league.id})
-      ON CONFLICT (user_id, league_id) DO NOTHING;
-    `);
-
-    console.log("✅ Added participants to league");
-
-    // Create sample players for the league
-    const playerNames = [
-      { name: 'Lionel Messi', position: 'Forward', emoji: '🐐' },
-      { name: 'Cristiano Ronaldo', position: 'Forward', emoji: '👑' },
-      { name: 'Neymar Jr', position: 'Forward', emoji: '🇧🇷' },
-      { name: 'Kylian Mbappé', position: 'Forward', emoji: '⚡' },
-      { name: 'Erling Haaland', position: 'Forward', emoji: '🤖' },
-      { name: 'Kevin De Bruyne', position: 'Midfielder', emoji: '🎯' },
-      { name: 'Virgil van Dijk', position: 'Defender', emoji: '🗿' },
-      { name: 'Alisson Becker', position: 'Goalkeeper', emoji: '🧤' },
-    ];
-
-    for (const player of playerNames) {
-      await db.insert(players).values({
-        name: player.name,
-        position: player.position,
-        emoji: player.emoji,
-        leagueId: league.id,
-        marketValue: Math.floor(Math.random() * 50) + 10, // Random value between 10-60
-      });
-    }
-
-    console.log("✅ Created sample players");
-
-    console.log(`
-🎉 Database seeded successfully!
-
-Demo credentials:
-📧 Admin: admin@pachanga.com / admin123
-📧 Player 1: player1@pachanga.com / player123  
-📧 Player 2: player2@pachanga.com / player123
-
-🏆 Demo League: "${league.name}" (Code: ${league.inviteCode})
-    `);
-
-  } catch (error) {
-    console.error("❌ Error seeding database:", error);
-    throw error;
+  const existing = await db.select().from(users).where(eq(users.email, DEMO_EMAIL));
+  if (existing.length > 0) {
+    console.log(`Demo already seeded (${DEMO_EMAIL}). Skipping.`);
+    return;
   }
+
+  console.log("Seeding amateur demo league...");
+
+  const password = await bcrypt.hash(DEMO_PASSWORD, 10);
+
+  const [owner] = await db.insert(users).values({
+    username: "carlos",
+    email: DEMO_EMAIL,
+    password,
+    role: "player",
+  }).returning();
+
+  const members = await db.insert(users).values([
+    { username: "lucia", email: "lucia@pachanga.test", password, role: "player" },
+    { username: "miguel", email: "miguel@pachanga.test", password, role: "player" },
+    { username: "ana", email: "ana@pachanga.test", password, role: "player" },
+  ]).returning();
+
+  const participantIds = [owner.id, ...members.map((member) => member.id)];
+
+  const [league] = await db.insert(leagues).values({
+    name: "Pachanga del Parque",
+    description: "Sunday kickabout with friends",
+    inviteCode: nanoid(6).toUpperCase(),
+    createdBy: owner.id,
+    participants: participantIds,
+    status: "closed",
+  }).returning();
+
+  const registeredPlayers = [
+    { user: owner, name: "Carlos", value: 24 },
+    { user: members[0], name: "Lucia", value: 18 },
+    { user: members[1], name: "Miguel", value: 18 },
+    { user: members[2], name: "Ana", value: 12 },
+  ];
+
+  const createdPlayers = [];
+  for (const entry of registeredPlayers) {
+    const [player] = await db.insert(players).values({
+      name: entry.name,
+      leagueId: league.id,
+      userId: entry.user.id,
+      createdBy: owner.id,
+      emoji: "⚽",
+      marketValue: entry.value,
+    }).returning();
+    createdPlayers.push(player);
+  }
+
+  const [elVecino] = await db.insert(players).values({
+    name: "El Vecino",
+    leagueId: league.id,
+    createdBy: owner.id,
+    isExternal: true,
+    emoji: "🧢",
+    marketValue: 12,
+  }).returning();
+
+  const [primo] = await db.insert(players).values({
+    name: "Primo",
+    leagueId: league.id,
+    createdBy: owner.id,
+    isExternal: true,
+    emoji: "👟",
+    marketValue: 8,
+  }).returning();
+
+  const kickoff = new Date();
+  kickoff.setDate(kickoff.getDate() + 2);
+
+  const [match] = await db.insert(matches).values({
+    leagueId: league.id,
+    date: kickoff,
+    lineupBudget: 100,
+    status: "open",
+    createdBy: owner.id,
+  }).returning();
+
+  for (const player of [...createdPlayers, elVecino, primo]) {
+    await db.insert(matchParticipants).values({
+      matchId: match.id,
+      playerId: player.id,
+      status: "accepted",
+    });
+  }
+
+  console.log(`
+Demo league ready.
+
+Owner:   ${DEMO_EMAIL} / ${DEMO_PASSWORD}
+Members: lucia@, miguel@, ana@pachanga.test / ${DEMO_PASSWORD}
+League:  ${league.name} (invite ${league.inviteCode})
+State:   Valuation closed with Market Values. One Open match, 4 members + 2 guests already joined.
+`);
 }
 
-// Run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   seed()
     .then(() => process.exit(0))
-    .catch(() => process.exit(1));
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
+    });
 }
 
 export { seed };

@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest, getQueryFn } from '@/lib/queryClient';
-import type { User, InsertUser, LoginInput } from '@shared/schema';
+import { getQueryFn } from '@/lib/queryClient';
+import { api } from '@/lib/api';
+import { queryKeys } from '@/lib/queryKeys';
+import type { User, InsertUser } from '@shared/schema';
 
 interface AuthContextType {
   user: User | null;
@@ -13,12 +15,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+type AuthPayload = { user: User; token: string };
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const queryClient = useQueryClient();
 
   const { data: user, isLoading, error } = useQuery<{ user: User } | null>({
-    queryKey: ['/api/auth/me'],
+    queryKey: queryKeys.me,
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: !!token,
     retry: false,
@@ -35,40 +39,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      const response = await apiRequest('POST', '/api/auth/login', { email, password });
-      return response.json();
+      return api.post<AuthPayload>('/api/auth/login', { email, password });
     },
     onSuccess: (data) => {
       console.log('Login successful, setting token');
       localStorage.setItem('token', data.token);
       setToken(data.token);
-      queryClient.setQueryData(['/api/auth/me'], data);
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      queryClient.setQueryData(queryKeys.me, data);
+      queryClient.invalidateQueries({ queryKey: queryKeys.me });
     },
   });
 
   const registerMutation = useMutation({
     mutationFn: async (userData: InsertUser) => {
-      const response = await apiRequest('POST', '/api/auth/register', userData);
-      return response.json();
+      return api.post<AuthPayload>('/api/auth/register', userData);
     },
     onSuccess: (data) => {
       console.log('Register successful, setting token');
       localStorage.setItem('token', data.token);
       setToken(data.token);
-      queryClient.setQueryData(['/api/auth/me'], data);
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      queryClient.setQueryData(queryKeys.me, data);
+      queryClient.invalidateQueries({ queryKey: queryKeys.me });
     },
   });
 
   const login = async (email: string, password: string) => {
-    const result = await loginMutation.mutateAsync({ email, password });
-    return result;
+    await loginMutation.mutateAsync({ email, password });
   };
 
   const register = async (userData: InsertUser) => {
-    const result = await registerMutation.mutateAsync(userData);
-    return result;
+    await registerMutation.mutateAsync(userData);
   };
 
   const logout = () => {

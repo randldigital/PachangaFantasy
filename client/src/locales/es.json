@@ -6,7 +6,8 @@
   "nav": {
     "myLeagues": "Mis Ligas",
     "createLeague": "Crear Liga",
-    "logout": "Cerrar Sesión"
+    "logout": "Cerrar Sesión",
+    "welcome": "Hola, {{name}}"
   },
   "auth": {
     "login": "Iniciar Sesión",
@@ -17,7 +18,9 @@
     "noAccount": "¿No tienes cuenta? Regístrate",
     "hasAccount": "¿Ya tienes cuenta? Inicia sesión",
     "loginButton": "Iniciar Sesión",
-    "registerButton": "Registrarse"
+    "registerButton": "Registrarse",
+    "invalidCredentials": "El correo o la contraseña no son correctos",
+    "registerFailed": "No se pudo crear la cuenta. Prueba con otro correo o nombre."
   },
   "dashboard": {
     "title": "Mi Dashboard",
@@ -33,34 +36,6 @@
     "position": "Mi Posición",
     "manage": "Gestionar Liga",
     "viewResults": "Ver Resultados"
-  },
-  "league": {
-    "create": "Crear Liga",
-    "join": "Unirse a Liga",
-    "name": "Nombre de la Liga",
-    "inviteCode": "Código de Invitación",
-    "createButton": "Crear Liga",
-    "joinButton": "Unirse",
-    "addPlayers": "Agregar Jugadores",
-    "playerName": "Nombre del Jugador",
-    "playerPosition": "Posición",
-    "playerEmoji": "Emoji",
-    "addPlayer": "Agregar Jugador",
-    "startVoting": "Iniciar Votación",
-    "closeVoting": "Cerrar Votación"
-  },
-  "tierlist": {
-    "title": "Crear Tier List",
-    "subtitle": "Arrastra los jugadores para ordenarlos de mejor a peor",
-    "instructions": "Instrucciones",
-    "instructionsText": "Ordena los jugadores arrastrándolos. El jugador en la posición #1 será considerado el mejor, y así sucesivamente.",
-    "availablePlayers": "Jugadores Disponibles",
-    "myRanking": "Mi Ranking",
-    "dragHere": "Arrastra aquí al mejor jugador",
-    "secondBest": "Segundo mejor jugador",
-    "thirdBest": "Tercer mejor jugador",
-    "restPlayers": "Resto de jugadores (arrastra para ordenar)",
-    "submit": "Enviar Mi Tier List"
   },
   "results": {
     "title": "Resultados Finales",
@@ -105,7 +80,9 @@
     "backToOverview": "Volver a Inicio",
     "loggedOut": "Sesión cerrada",
     "loggedOutDescription": "Has cerrado sesión correctamente",
-    "back": "Volver"
+    "back": "Volver",
+    "deleting": "Eliminando...",
+    "charsRemaining": "Quedan {{count}} caracteres"
   },
   "overview": {
     "title": "Mis Ligas",
@@ -130,14 +107,148 @@
     "createError": "Error al crear la liga",
     "joinError": "Error al unirse a la liga",
     "notFound": "Liga no encontrada",
-    "statsComingSoon": "Estadísticas próximamente",
+    "addPlayers": "Agregar jugadores",
+    "playerName": "Nombre del jugador",
+    "playerEmoji": "Emoji",
+    "addPlayer": "Agregar jugador",
+    "startVoting": "Iniciar votación",
+    "closeVoting": "Cerrar votación",
     "tabs": {
       "lineup": "Alineación",
       "clasificacion": "Clasificación",
-      "historial": "Historial", 
-      "tierlist": "Tier List",
+      "historial": "Historial",
+      "tierlist": "Valoración",
       "stats": "Estadísticas"
+    },
+    "status": {
+      "open": "Valoración no abierta",
+      "voting": "Valoración abierta",
+      "closed": "Valores de mercado fijados"
+    },
+    "addExternalPlayer": "Añadir jugador externo",
+    "addExternalHint": "Este jugador entra en la plantilla de la liga y puede alinearse en los partidos.",
+    "playerAdded": "Jugador añadido",
+    "playerAddedDescription": "{{name}} ya está en la plantilla.",
+    "addPlayerError": "No se pudo añadir el jugador",
+    "nameRequired": "El nombre de la liga es obligatorio",
+    "nameTooLong": "El nombre de la liga no puede superar 25 caracteres",
+    "descriptionTooLong": "La descripción no puede superar 200 caracteres"
+  },
+  "nextAction": {
+    "label": "Siguiente paso",
+    "add_myself": {
+      "title": "Añádete como jugador",
+      "description": "Estás en la liga pero aún no figuras en la plantilla.",
+      "cta": "Añadirme"
+    },
+    "add_players": {
+      "title": "Añade jugadores a la liga",
+      "description": "La valoración y los partidos necesitan una plantilla.",
+      "cta": "Añadir un jugador"
+    },
+    "open_valuation": {
+      "title": "Abrir la valoración",
+      "description": "Los miembros clasifican a los jugadores para fijar los valores de mercado.",
+      "cta": "Ir a Valoración"
+    },
+    "submit_valuation": {
+      "title": "Envía tu valoración",
+      "description": "Toca un nivel para cada jugador y envíala.",
+      "cta": "Ir a Valoración"
+    },
+    "wait_for_valuation": {
+      "title": "Esperando la valoración",
+      "description": "El administrador aún no ha abierto la valoración.",
+      "cta": "Ver Valoración"
+    },
+    "create_match": {
+      "title": "Crea un partido",
+      "description": "Los jugadores podrán unirse y formar alineaciones cuando exista uno.",
+      "cta": "Crear partido"
+    },
+    "join_match": {
+      "title": "Únete a este partido",
+      "description": "Tienes que inscribirte antes de elegir alineación.",
+      "cta": "Unirse al partido"
+    },
+    "build_lineup": {
+      "title": "Forma tu alineación",
+      "description": "Elige cinco jugadores, un capitán y no te pases de presupuesto.",
+      "cta": "Ir a Alineación"
+    },
+    "start_match": {
+      "title": "Empieza el partido",
+      "description": "Al empezar se bloquean las inscripciones y las alineaciones.",
+      "cta": "Ver partido"
+    },
+    "wait_for_start": {
+      "title": "Alineación guardada",
+      "description": "Puedes editarla hasta que el administrador empiece el partido.",
+      "cta": "Ver alineación"
+    },
+    "end_match": {
+      "title": "Termina el partido",
+      "description": "Introduce el total de goles para que se puedan enviar estadísticas.",
+      "cta": "Ver partido"
+    },
+    "wait_for_end": {
+      "title": "Partido en juego",
+      "description": "Las estadísticas se abren cuando el administrador termine el partido.",
+      "cta": "Ver partido"
+    },
+    "submit_stats": {
+      "title": "Envía tus estadísticas",
+      "description": "Introduce tus goles y asistencias de este partido.",
+      "cta": "Ir a Estadísticas"
+    },
+    "score_match": {
+      "title": "Calcular puntuaciones",
+      "description": "Cuando todos hayan enviado, se guardan los puntos de jugador y de manager.",
+      "cta": "Ir a Estadísticas"
+    },
+    "wait_for_stats": {
+      "title": "Esperando estadísticas",
+      "description": "La puntuación se calcula cuando todos hayan enviado.",
+      "cta": "Ver Estadísticas"
+    },
+    "wait_for_match": {
+      "title": "Esperando un partido",
+      "description": "El administrador creará el siguiente partido.",
+      "cta": "Ver alineación"
+    },
+    "view_leaderboard": {
+      "title": "Mira las clasificaciones",
+      "description": "La clasificación de jugadores y la de managers son tablas distintas.",
+      "cta": "Ver clasificaciones"
     }
+  },
+  "errors": {
+    "UNAUTHORIZED": "Tienes que iniciar sesión otra vez.",
+    "FORBIDDEN": "No puedes hacer eso.",
+    "NOT_FOUND": "No se ha encontrado.",
+    "VALIDATION_ERROR": "Revisa el formulario e inténtalo de nuevo.",
+    "CONFLICT": "Esa acción choca con el estado actual.",
+    "INTERNAL_ERROR": "Ha fallado el servidor. Inténtalo de nuevo.",
+    "ALREADY_IN_LEAGUE": "Ya eres miembro de esta liga.",
+    "INVALID_INVITE_CODE": "Ese código de invitación no existe. Compruébalo e inténtalo de nuevo.",
+    "LINEUP_LOCKED": "Las alineaciones están bloqueadas porque el partido ha empezado.",
+    "LINEUP_SIZE": "Elige exactamente cinco jugadores.",
+    "LINEUP_UNIQUE": "Cada jugador debe ser único.",
+    "LINEUP_CAPTAIN_REQUIRED": "Elige un capitán.",
+    "LINEUP_CAPTAIN_NOT_IN_LINEUP": "El capitán debe ser uno de los cinco jugadores.",
+    "LINEUP_NOT_PARTICIPANT": "Solo puedes elegir jugadores inscritos en este partido.",
+    "LINEUP_OVER_BUDGET": "Esta alineación supera el presupuesto.",
+    "MATCH_NOT_JOINABLE": "Las inscripciones están cerradas para este partido.",
+    "MATCH_ALREADY_ACTIVE": "Ya hay un partido Abierto o Empezado.",
+    "MATCH_NOT_STARTABLE": "Este partido no se puede empezar.",
+    "MATCH_NOT_ENDABLE": "Este partido aún no se puede terminar.",
+    "STATS_LOCKED": "Las estadísticas están bloqueadas porque el partido ya está puntuado.",
+    "STATS_NOT_EDITABLE": "Las estadísticas se envían cuando el partido ha terminado.",
+    "STATS_NOT_PARTICIPANT": "Ese jugador no participó en este partido.",
+    "STATS_INCOMPLETE": "La puntuación espera a que todos envíen sus estadísticas.",
+    "STATS_INCONSISTENT": "Los goles enviados no coinciden con el total registrado.",
+    "STATS_ALREADY_VALID": "Los totales ya coinciden, no hay nada que aceptar.",
+    "MATCH_NOT_SCOREABLE": "Este partido aún no se puede puntuar."
   },
   "match": {
     "noActiveMatch": "No hay partidos activos",
@@ -154,6 +265,25 @@
     "view": "Ver Partido",
     "details": "Detalles del Partido",
     "full": "Partido Lleno",
+    "joiningLocked": "Las inscripciones están cerradas",
+    "dateTimeRequired": "Elige una fecha y una hora para crear el partido.",
+    "end": "Terminar partido",
+    "endTitle": "Terminar partido e introducir el marcador",
+    "endDescription": "Introduce el total de goles. Después los jugadores podrán enviar sus estadísticas.",
+    "ending": "Terminando partido...",
+    "finalScore": "Total de goles",
+    "finalScoreInvalid": "Introduce un total válido (0 o más).",
+    "ended": "Partido terminado",
+    "endedDescription": "Marcador: {{score}} goles. Ya se pueden enviar estadísticas.",
+    "delete": "Eliminar partido",
+    "deleteTitle": "¿Eliminar este partido?",
+    "deleteDescription": "Se borrarán para siempre las alineaciones, estadísticas y puntuaciones de este partido.",
+    "deleted": "Partido eliminado",
+    "deletedDescription": "El partido se ha eliminado.",
+    "startMatch": "Empezar partido",
+    "started": "Partido empezado. Las alineaciones y las inscripciones están bloqueadas.",
+    "participants": "Participantes",
+    "alreadyActiveMatch": "Ya hay un partido Abierto o Empezado",
     "joined": "Te has unido al partido",
     "joinedDescription": "Ahora puedes crear tu alineación",
     "joinError": "Error al unirse al partido",
@@ -184,16 +314,21 @@
     "status": {
       "upcoming": "Próximo",
       "in_progress": "En Progreso",
-      "completed": "Completado",
+      "completed": "Finalizado",
       "cancelled": "Cancelado",
       "open": "Abierto",
-      "ready": "Listo"
+      "ready": "Empezado",
+      "started": "Empezado",
+      "scored": "Puntuado"
     }
   },
   "lineup": {
     "title": "Mi Alineación",
     "noMatch": "No hay partido activo",
     "noMatchDescription": "Espera a que se cree un partido para formar tu alineación",
+    "noMatchAdminCta": "Crear un partido",
+    "joinFirst": "Únete al partido primero",
+    "joinFirstDescription": "Podrás elegir jugadores cuando te inscribas en este partido.",
     "players": "Jugadores",
     "budget": "Presupuesto",
     "captain": "Capitán",
@@ -204,37 +339,118 @@
     "saveError": "Error al guardar la alineación",
     "maxPlayers": "Máximo de jugadores alcanzado",
     "maxPlayersDescription": "Solo puedes seleccionar 5 jugadores",
-    "availablePlayers": "Jugadores Disponibles"
+    "availablePlayers": "Jugadores Disponibles",
+    "noParticipantsYet": "Los jugadores se pueden elegir cuando se inscriben en este partido",
+    "blockers": {
+      "size": "Elige exactamente 5 jugadores ({{count}} seleccionados)",
+      "unique": "Cada jugador debe ser único",
+      "captain": "Elige un capitán",
+      "captainNotInLineup": "El capitán debe ser uno de los cinco jugadores",
+      "notParticipant": "Solo puedes elegir jugadores inscritos en este partido",
+      "overBudget": "Fuera de presupuesto ({{cost}} / {{budget}})",
+      "locked": "Las alineaciones están bloqueadas porque el partido ha empezado"
+    }
   },
   "clasificacion": {
-    "title": "Clasificación",
+    "title": "Clasificación de jugadores",
+    "managerTitle": "Clasificación de managers",
+    "playerSubtitle": "Rendimiento real. La capitanía no cuenta aquí.",
+    "managerSubtitle": "Alineaciones fantasy. Los puntos del capitán se cuentan dos veces.",
+    "playerDetail": "{{goals}} goles · {{assists}} asistencias · {{matches}} partidos",
     "noData": "No hay datos disponibles",
     "noDataDescription": "Los datos aparecerán después de los primeros partidos",
+    "emptyCta": "Juega un partido primero",
     "you": "Tú",
     "points": "Puntos",
     "matches": "Partidos",
     "players": "Jugadores",
     "totalPoints": "Puntos Totales",
-    "average": "Promedio"
+    "average": "Promedio",
+    "goals": "Goles",
+    "assists": "Asistencias"
   },
   "historial": {
     "title": "Historial de Partidos",
     "noMatches": "No hay partidos",
-    "noMatchesDescription": "Los partidos aparecerán aquí cuando se jueguen"
+    "noMatchesDescription": "Los partidos aparecerán aquí cuando se jueguen",
+    "createCta": "Crear un partido"
   },
   "tierlist": {
-    "title": "Tier List",
-    "dragToRank": "Arrastra para ordenar a los jugadores",
-    "votingClosed": "La votación ha terminado",
-    "reset": "Restablecer",
-    "submit": "Enviar Tier List",
-    "submitted": "Tier List enviada",
-    "submittedDescription": "Tu tier list ha sido enviada exitosamente",
-    "submitError": "Error al enviar tier list",
-    "submissions": "Envíos",
+    "title": "Valoración de jugadores",
+    "submit": "Enviar valoración",
+    "update": "Actualizar valoración",
+    "submitted": "Valoración enviada",
+    "submittedDescription": "Puedes seguir editándola mientras la valoración esté abierta",
+    "submitError": "Error al enviar la valoración",
+    "submissions": "envíos",
+    "submissionsOf": "{{submitted}} de {{total}} enviadas",
     "noPlayers": "No hay jugadores",
     "noPlayersDescription": "Agrega jugadores a la liga primero",
-    "position": "Posición",
-    "marketValue": "Valor de Mercado"
+    "addPlayersCta": "Añadir un jugador",
+    "submitBlocked": "Coloca a todos los jugadores en un nivel (faltan {{count}})",
+    "marketValue": "Valor de Mercado",
+    "placeInTier": "Toca un nivel para cada jugador. Varios pueden compartir nivel.",
+    "notOpen": "El administrador aún no ha abierto la valoración",
+    "votingClosed": "La valoración está cerrada. Los valores de mercado de abajo están guardados en el servidor.",
+    "reset": "Restablecer",
+    "openValuation": "Abrir valoración",
+    "reopenValuation": "Reabrir valoración",
+    "closeValuation": "Cerrar valoración",
+    "closeConfirmTitle": "¿Cerrar la valoración?",
+    "closeConfirmCount": "{{submitted}} de {{total}} miembros han enviado su lista.",
+    "closeConfirmWarn": "Han votado pocos miembros. Los jugadores sin votos recibirán B (18).",
+    "closeConfirmWarnNone": "Nadie ha votado. Todos los jugadores recibirán B (18).",
+    "closeAnyway": "Cerrar de todos modos",
+    "opened": "La valoración está abierta",
+    "closed": "Se han calculado los valores de mercado",
+    "unplaced": "Falta un nivel",
+    "editWhileOpen": "Puedes cambiar los niveles y volver a enviarlos hasta que el administrador cierre la valoración."
+  },
+  "stats": {
+    "goals": "Goles",
+    "assists": "Asistencias",
+    "submitMine": "Tus estadísticas",
+    "submitFor": "Estadísticas de {{name}}",
+    "submit": "Enviar estadísticas",
+    "update": "Actualizar estadísticas",
+    "submitted": "Estadísticas enviadas",
+    "updated": "Estadísticas actualizadas",
+    "submittedDescription": "Goles: {{goals}}, asistencias: {{assists}}",
+    "submitError": "No se pudieron guardar las estadísticas",
+    "currentValues": "Goles {{goals}} · Asistencias {{assists}}",
+    "lockedAfterScore": "Las estadísticas están bloqueadas porque el partido ya está puntuado.",
+    "notYet": "Las estadísticas se envían cuando el partido ha terminado.",
+    "noMatch": "No hay un partido terminado esperando estadísticas.",
+    "noMatchCta": "Termina un partido primero",
+    "notParticipant": "No jugaste este partido, así que no tienes estadísticas que enviar.",
+    "matchState": "Estadísticas del partido",
+    "overview": "Resumen de envíos",
+    "submittedCount": "{{submitted}} de {{total}} enviadas",
+    "expectedGoals": "Total registrado del partido",
+    "reportedGoals": "Goles enviados",
+    "difference": "Diferencia",
+    "external": "Externo",
+    "waitingOn": "Pendientes: {{names}}",
+    "inconsistentDetail": "Los goles enviados ({{reported}}) no coinciden con el total registrado ({{expected}}). Diferencia: {{difference}}.",
+    "validatedDetail": "Todos han enviado y los totales coinciden. Se puede puntuar.",
+    "acknowledge": "Aceptar la diferencia y permitir puntuar",
+    "acknowledged": "Diferencia aceptada",
+    "acknowledgedDescription": "Se puede puntuar aunque los totales no coincidan.",
+    "acknowledgedNote": "El administrador ha aceptado esta diferencia. Se puede puntuar.",
+    "calculateScores": "Calcular puntuaciones",
+    "scoring": "Calculando...",
+    "scored": "Puntuaciones calculadas",
+    "scoredDescription": "Los puntos de jugador se han guardado para este partido.",
+    "scoredWithIssues": "Puntuado. {{count}} alineación(es) no eran válidas y recibieron cero puntos de manager.",
+    "scoreError": "No se pudieron calcular las puntuaciones",
+    "alreadyScored": "Ya puntuado",
+    "scoreBlockedIncomplete": "La puntuación espera a que todos envíen sus estadísticas.",
+    "scoreBlockedInconsistent": "Corrige los totales o acepta la diferencia antes de puntuar.",
+    "states": {
+      "pending": "Pendiente",
+      "submitted": "Enviada",
+      "inconsistent": "Inconsistente",
+      "validated": "Validada"
+    }
   }
 }
