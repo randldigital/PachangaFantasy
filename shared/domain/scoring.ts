@@ -16,16 +16,58 @@ export const POINTS_PER_MVP = 2;
 export const PEER_RATING_MIN = 0;
 export const PEER_RATING_MAX = 10;
 export const PEER_RATING_NEUTRAL = 5;
+export const PEER_RATING_FORCE_DEFAULT = 6.5;
 
 export function roundOneDecimal(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
-export function meanPeerScore(scores: number[]): number {
+export function meanPeerScore(scores: number[], empty = PEER_RATING_NEUTRAL): number {
   if (scores.length === 0) {
-    return PEER_RATING_NEUTRAL;
+    return empty;
   }
   return roundOneDecimal(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+}
+
+export type PeerRatingLike = {
+  raterPlayerId: number;
+  rateePlayerId: number;
+  score: number;
+};
+
+export type PeerAssignmentLike = {
+  raterPlayerId: number;
+  rateePlayerId: number;
+};
+
+/** Incoming scores per player. When `missingScore` is set, unfilled assignment slots use that value. */
+export function collectedPeerScores(input: {
+  ratings: PeerRatingLike[];
+  assignments?: PeerAssignmentLike[];
+  missingScore?: number;
+}): Map<number, number[]> {
+  const byRatee = new Map<number, number[]>();
+
+  if (input.missingScore == null || !input.assignments) {
+    for (const rating of input.ratings) {
+      const list = byRatee.get(rating.rateePlayerId) ?? [];
+      list.push(rating.score);
+      byRatee.set(rating.rateePlayerId, list);
+    }
+    return byRatee;
+  }
+
+  const submitted = new Map(
+    input.ratings.map((rating) => [`${rating.raterPlayerId}:${rating.rateePlayerId}`, rating.score]),
+  );
+  for (const assignment of input.assignments) {
+    const key = `${assignment.raterPlayerId}:${assignment.rateePlayerId}`;
+    const score = submitted.get(key) ?? input.missingScore;
+    const list = byRatee.get(assignment.rateePlayerId) ?? [];
+    list.push(score);
+    byRatee.set(assignment.rateePlayerId, list);
+  }
+  return byRatee;
 }
 
 export function mvpPlayerIds(votes: { mvpPlayerId: number }[]): Set<number> {

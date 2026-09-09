@@ -20,15 +20,17 @@ import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
 import { useToast } from "@/hooks/use-toast";
 import { CircleStop, Target, Trophy } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { Match } from "@shared/schema";
 
 interface EndMatchButtonProps {
   match: Match;
   leagueId: number;
   isLeagueCreator: boolean;
+  className?: string;
 }
 
-export default function EndMatchButton({ match, leagueId, isLeagueCreator }: EndMatchButtonProps) {
+export default function EndMatchButton({ match, leagueId, isLeagueCreator, className }: EndMatchButtonProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [teamAGoals, setTeamAGoals] = useState("");
@@ -88,7 +90,7 @@ export default function EndMatchButton({ match, leagueId, isLeagueCreator }: End
 
   if (match.status === "scored") {
     return (
-      <div className="flex items-center gap-2 px-3 py-1 bg-purple-600/20 border border-purple-500/50 rounded-md">
+      <div className={cn("flex items-center justify-center gap-2 px-3 py-1 bg-purple-600/20 border border-purple-500/50 rounded-md", className)}>
         <Trophy className="h-4 w-4 text-purple-400" />
         <span className="text-sm text-purple-400 font-medium">{t("match.status.scored")}</span>
       </div>
@@ -97,7 +99,7 @@ export default function EndMatchButton({ match, leagueId, isLeagueCreator }: End
 
   if (match.status === "completed") {
     return (
-      <div className="flex items-center gap-2 px-3 py-1 bg-green-600/20 border border-green-500/50 rounded-md">
+      <div className={cn("flex items-center justify-center gap-2 px-3 py-1 bg-green-600/20 border border-green-500/50 rounded-md", className)}>
         <Trophy className="h-4 w-4 text-green-400" />
         <span className="text-sm text-green-400 font-medium">{t("match.status.completed")}</span>
       </div>
@@ -111,7 +113,7 @@ export default function EndMatchButton({ match, leagueId, isLeagueCreator }: End
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" className="text-orange-600 hover:text-orange-700">
+        <Button variant="outline" size="sm" className={cn("text-orange-600 hover:text-orange-700", className)}>
           <CircleStop className="h-4 w-4 mr-1" />
           {t("match.end")}
         </Button>

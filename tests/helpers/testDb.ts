@@ -243,6 +243,8 @@ export async function resetTestSchema() {
 
   await client.unsafe(`DELETE FROM stat_reports WHERE player_id IS NULL`);
   await client.unsafe(`ALTER TABLE stat_reports ALTER COLUMN player_id SET NOT NULL`);
+  await client.unsafe(`ALTER TABLE player_match_points ALTER COLUMN points TYPE double precision USING points::double precision`);
+  await client.unsafe(`ALTER TABLE manager_match_points ALTER COLUMN points TYPE double precision USING points::double precision`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS stat_reports_match_player ON stat_reports (match_id, player_id)`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS player_match_points_match_player ON player_match_points (match_id, player_id)`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS player_market_value_history_match_player ON player_market_value_history (match_id, player_id)`);

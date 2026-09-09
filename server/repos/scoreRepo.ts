@@ -18,7 +18,7 @@ import * as playerRepo from "./playerRepo";
 import * as matchRepo from "./matchRepo";
 import * as lineupRepo from "./lineupRepo";
 import * as ratingRepo from "./ratingRepo";
-import { meanPeerScore, mvpPlayerIds, playerMatchRating, scoreManagerLineup } from "@shared/domain/scoring";
+import { collectedPeerScores, meanPeerScore, mvpPlayerIds, PEER_RATING_FORCE_DEFAULT, PEER_RATING_NEUTRAL, playerMatchRating, scoreManagerLineup } from "@shared/domain/scoring";
 import {
   computeMatchMarketValues,
   DEFAULT_SCORING_BASELINE,
@@ -60,7 +60,11 @@ export async function getScoredMatchResult(matchId: number): Promise<MatchScoreR
   };
 }
 
-export async function scoreMatch(matchId: number): Promise<MatchScoreResult> {
+export type ScoreMatchOptions = {
+  forceIncompleteRatings?: boolean;
+};
+
+export async function scoreMatch(matchId: number, options: ScoreMatchOptions = {}): Promise<MatchScoreResult> {
   const match = await matchRepo.getMatch(matchId);
   if (!match) {
     throw new Error("Match not found");
@@ -77,26 +81,30 @@ export async function scoreMatch(matchId: number): Promise<MatchScoreResult> {
     .filter((participant) => participant.status === "accepted")
     .map((participant) => participant.playerId);
 
-  const [mvpVotes, peerRatings] = await Promise.all([
+  const [mvpVotes, peerRatings, assignments] = await Promise.all([
     ratingRepo.getMvpVotes(matchId),
     ratingRepo.getPeerRatings(matchId),
+    ratingRepo.getRatingAssignments(matchId),
   ]);
-  const mvps = mvpPlayerIds(mvpVotes);
-  const peerByPlayer = new Map<number, number[]>();
-  for (const rating of peerRatings) {
-    const list = peerByPlayer.get(rating.rateePlayerId) ?? [];
-    list.push(rating.score);
-    peerByPlayer.set(rating.rateePlayerId, list);
-  }
+  const force = Boolean(options.forceIncompleteRatings);
+  const mvps = force ? new Set<number>() : mvpPlayerIds(mvpVotes);
+  const peerByPlayer = collectedPeerScores({
+    ratings: peerRatings,
+    assignments: force ? assignments : undefined,
+    missingScore: force ? PEER_RATING_FORCE_DEFAULT : undefined,
+  });
 
   const playerPointsById = new Map<number, number>();
   const playerRows = reports
     .filter((report) => acceptedIds.includes(report.playerId))
     .map((report) => {
       const points = playerMatchRating({
-        peerAverage: meanPeerScore(peerByPlayer.get(report.playerId) ?? []),
-        goals: report.goals,
-        assists: report.assists,
+        peerAverage: meanPeerScore(
+          peerByPlayer.get(report.playerId) ?? [],
+          force ? PEER_RATING_FORCE_DEFAULT : PEER_RATING_NEUTRAL,
+        ),
+        goals: force ? 0 : report.goals,
+        assists: force ? 0 : report.assists,
         isMvp: mvps.has(report.playerId),
       });
       playerPointsById.set(report.playerId, points);
@@ -165,11 +173,24 @@ export async function scoreMatch(matchId: number): Promise<MatchScoreResult> {
             voterPlayerId: vote.voterPlayerId,
             mvpPlayerId: vote.mvpPlayerId,
           })),
-          peerRatings: peerRatings.map((rating) => ({
-            raterPlayerId: rating.raterPlayerId,
-            rateePlayerId: rating.rateePlayerId,
-            score: rating.score,
-          })),
+          peerRatings: force
+            ? assignments.map((assignment) => {
+                const submitted = peerRatings.find(
+                  (rating) =>
+                    rating.raterPlayerId === assignment.raterPlayerId &&
+                    rating.rateePlayerId === assignment.rateePlayerId,
+                );
+                return {
+                  raterPlayerId: assignment.raterPlayerId,
+                  rateePlayerId: assignment.rateePlayerId,
+                  score: submitted?.score ?? PEER_RATING_FORCE_DEFAULT,
+                };
+              })
+            : peerRatings.map((rating) => ({
+                raterPlayerId: rating.raterPlayerId,
+                rateePlayerId: rating.rateePlayerId,
+                score: rating.score,
+              })),
         })
       : [];
   const nextBaseline = nextScoringBaseline(

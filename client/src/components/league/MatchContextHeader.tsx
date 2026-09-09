@@ -24,6 +24,8 @@ import {
 import { teamsAreComplete } from "@shared/domain/teams";
 import type { Match, League, User, Player } from "@shared/schema";
 
+const actionButtonClass = "w-full sm:w-auto";
+
 interface MatchContextHeaderProps {
   match?: Match;
   league: League;
@@ -152,20 +154,20 @@ export default function MatchContextHeader({
   if (match) {
     return (
       <>
-        <Card className={`mx-4 my-4 ${
+        <Card className={`mx-4 my-4 overflow-hidden ${
           isFinishedStatus(match.status)
             ? 'bg-gradient-to-r from-green-500/20 to-emerald-600/20 border-green-500/50' 
             : 'bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 border-emerald-500/30'
         }`}>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2 text-emerald-400">
-                  <Calendar className="w-4 h-4" />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
+                <div className="flex items-center space-x-2 text-emerald-400 min-w-0">
+                  <Calendar className="w-4 h-4 shrink-0" />
                   <span className="font-medium">{formatDate(match.date)}</span>
                 </div>
                 <div className="flex items-center space-x-2 text-emerald-400">
-                  <Clock className="w-4 h-4" />
+                  <Clock className="w-4 h-4 shrink-0" />
                   <span className="font-medium">{formatTime(match.date)}</span>
                 </div>
                 <Badge 
@@ -179,9 +181,6 @@ export default function MatchContextHeader({
                 >
                   {t(`match.status.${normalizeMatchStatus(match.status)}`)}
                 </Badge>
-              </div>
-              
-              <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2 text-slate-300">
                   <Users className="w-4 h-4" />
                   <span className="text-sm">
@@ -192,113 +191,42 @@ export default function MatchContextHeader({
                     )}
                   </span>
                 </div>
-                
-                    {userHasJoined ? (
-                  <div className="flex items-center gap-2">
-                    {/* League Creator: Management Buttons */}
-                    {user?.id === league.createdBy && (
-                      <>
-                        {joiningOpen && (
-                        <Button
-                          onClick={() => setShowAddPlayers(true)}
-                          size="sm"
-                          variant="outline"
-                          className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
-                        >
-                          <Settings className="w-4 h-4 mr-2" />
-                          {t('match.addPlayers')}
-                        </Button>
-                        )}
-                        {canStartMatch(match.status) && (
-                          <Button
-                            onClick={() =>
-                              teamsReady
-                                ? startMatchMutation.mutate(match.id)
-                                : setShowMatchDetails(true)
-                            }
-                            disabled={startMatchMutation.isPending}
-                            size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                          >
-                            <Play className="w-4 h-4 mr-2" />
-                            {teamsReady ? t("match.startMatch") : t("match.setTeams")}
-                          </Button>
-                        )}
-                        <EndMatchButton 
-                          match={match} 
-                          leagueId={league.id} 
-                          isLeagueCreator={true} 
-                        />
-                        <DeleteMatchButton 
-                          match={match} 
-                          leagueId={league.id} 
-                          isLeagueCreator={true} 
-                          onMatchDeleted={onMatchAction}
-                        />
-                      </>
-                    )}
-                    
-                    <Button
-                      onClick={() => setShowMatchDetails(true)}
-                      size="sm"
-                      variant="outline"
-                      className="border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white"
-                    >
-                      <Eye className="w-4 h-4 mr-2" />
-                      {t('match.view')}
-                    </Button>
-                  </div>
+              </div>
+              
+              <div className="flex flex-wrap items-stretch gap-2 w-full sm:w-auto sm:justify-end">
+                {user?.id === league.createdBy && (
+                  <MatchAdminActions
+                    match={match}
+                    leagueId={league.id}
+                    joiningOpen={joiningOpen}
+                    teamsReady={teamsReady}
+                    startPending={startMatchMutation.isPending}
+                    onAddPlayers={() => setShowAddPlayers(true)}
+                    onStartOrSetTeams={() =>
+                      teamsReady
+                        ? startMatchMutation.mutate(match.id)
+                        : setShowMatchDetails(true)
+                    }
+                    onMatchDeleted={onMatchAction}
+                  />
+                )}
+                {userHasJoined ? (
+                  <Button
+                    onClick={() => setShowMatchDetails(true)}
+                    size="sm"
+                    variant="outline"
+                    className={`border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white ${actionButtonClass}`}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    {t('match.view')}
+                  </Button>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    {/* League Creator: Management Buttons (even when not joined) */}
-                    {user?.id === league.createdBy && (
-                      <>
-                        {joiningOpen && (
-                        <Button
-                          onClick={() => setShowAddPlayers(true)}
-                          size="sm"
-                          variant="outline"
-                          className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
-                        >
-                          <Settings className="w-4 h-4 mr-2" />
-                          {t('match.addPlayers')}
-                        </Button>
-                        )}
-                        {canStartMatch(match.status) && (
-                          <Button
-                            onClick={() =>
-                              teamsReady
-                                ? startMatchMutation.mutate(match.id)
-                                : setShowMatchDetails(true)
-                            }
-                            disabled={startMatchMutation.isPending}
-                            size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                          >
-                            <Play className="w-4 h-4 mr-2" />
-                            {teamsReady ? t("match.startMatch") : t("match.setTeams")}
-                          </Button>
-                        )}
-                        <EndMatchButton 
-                          match={match} 
-                          leagueId={league.id} 
-                          isLeagueCreator={true} 
-                        />
-                        <DeleteMatchButton 
-                          match={match} 
-                          leagueId={league.id} 
-                          isLeagueCreator={true} 
-                          onMatchDeleted={onMatchAction}
-                        />
-                      </>
-                    )}
-                    
-                    {!isFinishedStatus(match.status) && (
+                  !isFinishedStatus(match.status) && (
                     <Button
                       onClick={handleJoinMatch}
                       disabled={joinMatchMutation.isPending || !joiningOpen}
                       size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
+                      className={`bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 ${actionButtonClass}`}
                     >
                       {joinMatchMutation.isPending ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -312,8 +240,7 @@ export default function MatchContextHeader({
                           : t('match.joiningLocked')
                       }
                     </Button>
-                    )}
-                  </div>
+                  )
                 )}
               </div>
             </div>
@@ -384,16 +311,16 @@ export default function MatchContextHeader({
   if (league.createdBy === user?.id) {
     return (
       <>
-        <Card className="mx-4 my-4 bg-slate-800/50 border-slate-700">
+        <Card className="mx-4 my-4 overflow-hidden bg-slate-800/50 border-slate-700">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
                 <h3 className="text-white font-medium">{t("match.noActiveMatch")}</h3>
                 <p className="text-slate-400 text-sm">{t("match.createMatchDescription")}</p>
               </div>
               <Button
                 onClick={() => setShowCreateMatch(true)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                className={`bg-emerald-600 hover:bg-emerald-700 text-white ${actionButtonClass}`}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 {t("match.createMatch")}
@@ -417,6 +344,70 @@ export default function MatchContextHeader({
         </CardContent>
       </Card>
       {createMatchDialog}
+    </>
+  );
+}
+
+interface MatchAdminActionsProps {
+  match: Match;
+  leagueId: number;
+  joiningOpen: boolean;
+  teamsReady: boolean;
+  startPending: boolean;
+  onAddPlayers: () => void;
+  onStartOrSetTeams: () => void;
+  onMatchDeleted?: () => void;
+}
+
+function MatchAdminActions({
+  match,
+  leagueId,
+  joiningOpen,
+  teamsReady,
+  startPending,
+  onAddPlayers,
+  onStartOrSetTeams,
+  onMatchDeleted,
+}: MatchAdminActionsProps) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {joiningOpen && (
+        <Button
+          onClick={onAddPlayers}
+          size="sm"
+          variant="outline"
+          className={`border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white ${actionButtonClass}`}
+        >
+          <Settings className="w-4 h-4 mr-2" />
+          {t("match.addPlayers")}
+        </Button>
+      )}
+      {canStartMatch(match.status) && (
+        <Button
+          onClick={onStartOrSetTeams}
+          disabled={startPending}
+          size="sm"
+          className={`bg-blue-600 hover:bg-blue-700 text-white ${actionButtonClass}`}
+        >
+          <Play className="w-4 h-4 mr-2" />
+          {teamsReady ? t("match.startMatch") : t("match.setTeams")}
+        </Button>
+      )}
+      <EndMatchButton
+        match={match}
+        leagueId={leagueId}
+        isLeagueCreator={true}
+        className={actionButtonClass}
+      />
+      <DeleteMatchButton
+        match={match}
+        leagueId={leagueId}
+        isLeagueCreator={true}
+        onMatchDeleted={onMatchDeleted}
+        className={actionButtonClass}
+      />
     </>
   );
 }

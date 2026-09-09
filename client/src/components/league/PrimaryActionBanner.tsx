@@ -7,8 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
-import { nextPrimaryAction, type HubTab, type PrimaryActionId } from "@shared/domain/primaryAction";
-import { pickActiveMatch } from "@shared/domain/matchLifecycle";
+import { nextPrimaryAction, shouldShowPrimaryAction, type HubTab, type PrimaryActionId } from "@shared/domain/primaryAction";
+import { pickActiveMatch, normalizeMatchStatus } from "@shared/domain/matchLifecycle";
 import { pickStatsMatch } from "@shared/domain/stats";
 import { teamsAreComplete } from "@shared/domain/teams";
 import type { League, Lineup, Match, Player, StatReport, User } from "@shared/schema";
@@ -153,6 +153,13 @@ export default function PrimaryActionBanner({
   });
 
   const pending = joinMutation.isPending || addMyselfMutation.isPending;
+
+  const hasScoredMatch = matches.some(
+    (match) => normalizeMatchStatus(match.status) === "scored",
+  );
+  if (!shouldShowPrimaryAction(action.id, hasScoredMatch)) {
+    return null;
+  }
 
   const handleClick = (id: PrimaryActionId) => {
     switch (id) {

@@ -10,6 +10,17 @@ import { queryKeys } from "@/lib/queryKeys";
 import { useToast } from "@/hooks/use-toast";
 import { Calculator, CheckCircle, Clock, Users, AlertTriangle } from "lucide-react";
 import SubmitMyStats from "./SubmitMyStats";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 import type { StatsStatus } from "@shared/domain/stats";
 import type { Match, Player, StatReport } from "@shared/schema";
 
@@ -55,6 +66,7 @@ export default function AdminStatsOverview({
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [forceOpen, setForceOpen] = useState(false);
 
   const { data: ratingsPayload } = useQuery<{ ratingsComplete: boolean; submittedCount: number; voterCount: number }>({
     queryKey: queryKeys.matchRatings(match.id),
@@ -80,7 +92,8 @@ export default function AdminStatsOverview({
   };
 
   const calculateScoresMutation = useMutation({
-    mutationFn: () => api.post<{ lineupIssues?: { message: string }[] }>(`/api/matches/${match.id}/calculate-scores`),
+    mutationFn: (body?: { force?: boolean }) =>
+      api.post<{ lineupIssues?: { message: string }[] }>(`/api/matches/${match.id}/calculate-scores`, body),
     onSuccess: (result) => {
       toast({
         title: t("stats.scored"),
@@ -281,9 +294,15 @@ export default function AdminStatsOverview({
 
         <div className="pt-2 border-t border-slate-700">
           <Button
-            onClick={() => calculateScoresMutation.mutate()}
+            onClick={() => {
+              if (ratingsComplete) {
+                calculateScoresMutation.mutate(undefined);
+              } else {
+                setForceOpen(true);
+              }
+            }}
             disabled={
-              calculateScoresMutation.isPending || !status.canScore || !ratingsComplete || scored
+              calculateScoresMutation.isPending || !status.canScore || scored
             }
             className="w-full bg-emerald-600 hover:bg-emerald-700"
           >
@@ -292,23 +311,54 @@ export default function AdminStatsOverview({
               ? t("stats.alreadyScored")
               : calculateScoresMutation.isPending
                 ? t("stats.scoring")
-                : t("stats.calculateScores")}
+                : ratingsComplete
+                  ? t("stats.calculateScores")
+                  : t("stats.forceCalculate")}
           </Button>
-          {!scored && (!status.canScore || !ratingsComplete) && (
+          {!scored && !status.canScore && (
             <p className="text-xs text-slate-400 mt-2 text-center">
               {!status.complete
                 ? t("stats.scoreBlockedIncomplete")
                 : !status.assistsOk
                   ? t("stats.scoreBlockedAssists")
-                  : !status.canScore
-                    ? t("stats.scoreBlockedInconsistent")
-                    : t("stats.scoreBlockedRatings", {
-                        submitted: ratingsPayload?.submittedCount ?? 0,
-                        total: ratingsPayload?.voterCount ?? 0,
-                      })}
+                  : t("stats.scoreBlockedInconsistent")}
+            </p>
+          )}
+          {!scored && status.canScore && !ratingsComplete && (
+            <p className="text-xs text-slate-400 mt-2 text-center">
+              {t("stats.scoreBlockedRatings", {
+                submitted: ratingsPayload?.submittedCount ?? 0,
+                total: ratingsPayload?.voterCount ?? 0,
+              })}
             </p>
           )}
         </div>
+
+        <AlertDialog open={forceOpen} onOpenChange={setForceOpen}>
+          <AlertDialogContent className="bg-slate-800 border-slate-700 text-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("stats.forceCalculateTitle")}</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-300">
+                {t("stats.forceCalculateDescription", {
+                  submitted: ratingsPayload?.submittedCount ?? 0,
+                  total: ratingsPayload?.voterCount ?? 0,
+                })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-amber-600 hover:bg-amber-700"
+                onClick={() => {
+                  calculateScoresMutation.mutate({ force: true });
+                  setForceOpen(false);
+                }}
+              >
+                {t("stats.forceCalculateConfirm")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );

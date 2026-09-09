@@ -52,14 +52,17 @@ export function registerScoringRoutes(app: Express) {
       }
 
       const ratingsComplete = await ratingRepo.matchRatingsComplete(matchId);
-      if (!ratingsComplete) {
+      const force = req.body?.force === true;
+      if (!ratingsComplete && !force) {
         return res.status(400).json({
           message: "Every registered participant must vote Player of the Match and rate assigned peers",
           code: "RATINGS_INCOMPLETE",
         });
       }
 
-      const result = await scoreRepo.scoreMatch(matchId);
+      const result = await scoreRepo.scoreMatch(matchId, {
+        forceIncompleteRatings: Boolean(force && !ratingsComplete),
+      });
       res.json(result);
     } catch (error) {
       logger.error("Error calculating match scores", error);

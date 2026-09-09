@@ -65,6 +65,53 @@ describe("post-match dynamic Market Value", () => {
     expect(scored.status).toBe(200);
   });
 
+  it("lets the admin force scoring with 6.5 for missing votes and no extras", async () => {
+    const { owner, users, league } = await createLeagueWithMembers(app, 2);
+    const match = (await createOpenMatch(app, owner.token, league.id)).body;
+    await joinAllMatches(app, match.id, users);
+    const players = await listPlayers(app, owner.token, league.id);
+    const ownerPlayer = players.find((player) => player.userId === owner.user.id)!;
+    const otherPlayer = players.find((player) => player.userId === users[1].user.id)!;
+
+    await startMatch(app, owner.token, match.id);
+    await request(app)
+      .post(`/api/matches/${match.id}/end`)
+      .set(auth(owner.token))
+      .send({ teamAGoals: 2, teamBGoals: 0 });
+
+    await request(app)
+      .post(`/api/matches/${match.id}/stats`)
+      .set(auth(owner.token))
+      .send({ goals: 2, assists: 1 });
+    await request(app)
+      .post(`/api/matches/${match.id}/stats`)
+      .set(auth(users[1].token))
+      .send({ goals: 0, assists: 0 });
+
+    const blocked = await request(app)
+      .post(`/api/matches/${match.id}/calculate-scores`)
+      .set(auth(owner.token));
+    expect(blocked.status).toBe(400);
+    expect(blocked.body.code).toBe("RATINGS_INCOMPLETE");
+
+    const forced = await request(app)
+      .post(`/api/matches/${match.id}/calculate-scores`)
+      .set(auth(owner.token))
+      .send({ force: true });
+    expect(forced.status).toBe(200);
+
+    const ownerPoints = forced.body.playerPoints.find(
+      (row: { playerId: number }) => row.playerId === ownerPlayer.id,
+    );
+    const otherPoints = forced.body.playerPoints.find(
+      (row: { playerId: number }) => row.playerId === otherPlayer.id,
+    );
+    expect(ownerPoints.points).toBe(6.5);
+    expect(otherPoints.points).toBe(6.5);
+    expect(ownerPoints.goals).toBe(2);
+    expect(ownerPoints.assists).toBe(1);
+  });
+
   it("updates Market Value independently of Player Points and stores a replayable history row", async () => {
     const { owner, users, league } = await createLeagueWithMembers(app, 2);
     const match = (await createOpenMatch(app, owner.token, league.id)).body;

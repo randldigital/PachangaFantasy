@@ -511,6 +511,10 @@
     "scoreBlockedInconsistent": "Correct the totals or acknowledge the difference before scoring.",
     "scoreBlockedAssists": "Assists cannot exceed the match goal total. Correct the statistics.",
     "scoreBlockedRatings": "Scoring waits for votes ({{submitted}} of {{total}}).",
+    "forceCalculate": "Calculate anyway",
+    "forceCalculateTitle": "Calculate without every vote?",
+    "forceCalculateDescription": "Only {{submitted}} of {{total}} participants have voted. Missing numeric votes count as 6.5. Goals, assists and Player of the Match will not be added.",
+    "forceCalculateConfirm": "Calculate with 6.5",
     "states": {
       "pending": "Pending",
       "submitted": "Submitted",

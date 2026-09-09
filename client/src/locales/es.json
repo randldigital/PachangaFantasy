@@ -508,6 +508,10 @@
     "scoreBlockedInconsistent": "Corrige los totales o acepta la diferencia antes de puntuar.",
     "scoreBlockedAssists": "Las asistencias no pueden superar el total de goles del partido. Corrige las estadísticas.",
     "scoreBlockedRatings": "La puntuación espera a los votos ({{submitted}} de {{total}}).",
+    "forceCalculate": "Calcular igualmente",
+    "forceCalculateTitle": "¿Calcular sin todos los votos?",
+    "forceCalculateDescription": "Solo han votado {{submitted}} de {{total}} participantes. Los votos numéricos que falten contarán como 6,5. No se sumarán goles, asistencias ni MVP.",
+    "forceCalculateConfirm": "Calcular con 6,5",
     "states": {
       "pending": "Pendiente",
       "submitted": "Enviada",

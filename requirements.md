@@ -474,12 +474,12 @@ Reopening valuation still overwrites Market Value from the current tiers (an adm
 
 Scoring writes Player and Manager point snapshots first, then Market Value history, then `players.marketValue`, then the league scoring baseline, in one transaction. Player Match Points are the peer average plus extras (goals, assists, MVP).
 
-**Voters** are accepted participants **with a user account**. Guests do not vote. Scoring waits until every voter has submitted a ballot (`RATINGS_INCOMPLETE`). Each ballot is:
+**Voters** are accepted participants **with a user account**. Guests do not vote. Scoring waits until every voter has submitted a ballot (`RATINGS_INCOMPLETE`). The administrator may **force** scoring anyway: missing numeric votes count as **6.5**, and goals, assists and Player of the Match extras are not added. Each ballot is:
 
 - one **Player of the Match** (any other accepted participant; no self-vote);
 - integer **0.0–10.0** (one decimal) scores for the assigned teammate and rival (mapped to 0–1 as `score / 10`).
 
-Assignments are generated once when the match is ended (seeded by match id) so they are stable. Each participant, including guests, is targeted for **two incoming** ratings. Extra outgoing slots are given to voters who currently have the fewest. If a voter is alone on a team, they rate two rivals. Remaining peer-score gaps at compute time use **0.50** (neutral). Missing **ballots** still block scoring.
+Assignments are generated once when the match is ended (seeded by match id) so they are stable. Each participant, including guests, is targeted for **two incoming** ratings. Extra outgoing slots are given to voters who currently have the fewest. If a voter is alone on a team, they rate two rivals. Remaining peer-score gaps at compute time use **0.50** (neutral). Missing **ballots** still block scoring unless the administrator forces it (missing votes → 6.5, no extras).
 
 **Expected contribution** from pre-match VM:
 
@@ -826,7 +826,7 @@ Player Points measure real football performance.
 Player Points = peer average (0.0–10.0) + (Goals × 3) + (Assists × 2) + (2 if Player of the Match)
 ```
 
-**[Implemented]** The peer average is the mean of 0.0–10.0 votes received in that match (neutral **5.0** if nobody rated the player). Tied Player of the Match winners each receive the +2 bonus. The post-match Market Value update (Section 10.2) is a separate calculation and does not replace this snapshot.
+**[Implemented]** The peer average is the mean of 0.0–10.0 votes received in that match (neutral **5.0** if nobody rated the player). Tied Player of the Match winners each receive the +2 bonus. If the administrator forces scoring with incomplete ballots, missing numeric votes are **6.5** and extras (goals, assists, MVP) are omitted. The post-match Market Value update (Section 10.2) is a separate calculation and does not replace this snapshot.
 
 **Player scoring must NOT include the Captain multiplier.** Captaincy is a fantasy concept that exists only inside a Manager's lineup and has no meaning on the pitch.
 
@@ -1005,7 +1005,7 @@ Every principal screen makes the next relevant action immediately clear. At any 
 - Validate Match
 - View Leaderboard
 
-**[Implemented]** — the league view shows a single next-step banner derived from match, valuation and roster state.
+**[Implemented]** — the league view shows a single next-step banner derived from match, valuation and roster state. After the first match has been scored, the banner hides while the league is idle (valuation prompts, create-match, view-leaderboard). It returns when a new match needs action.
 
 ### 20.2 Minimal navigation
 
@@ -1066,7 +1066,7 @@ In order of prominence:
 
 > **Do not use decorative visual complexity to compensate for unclear information architecture.** If a screen needs a gradient to be understandable, the screen is wrong.
 
-**[Implemented]** — the next-step banner sits above match status; participants sit behind View Match; mobile uses the bottom bar only.
+**[Implemented]** — the next-step banner sits above match status until the first match is scored; participants sit behind View Match; mobile uses the bottom bar only.
 
 ### 20.12 Language
 

@@ -82,15 +82,15 @@ export default function LeagueHub() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="border-b border-slate-700 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center space-x-4 min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               <Link href="/overview">
-                <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-slate-700">
+                <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-slate-700 shrink-0">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  {t("common.back")}
+                  <span className="hidden sm:inline">{t("common.back")}</span>
                 </Button>
               </Link>
               <div className="min-w-0">
@@ -101,7 +101,7 @@ export default function LeagueHub() {
               </div>
             </div>
 
-            <div className="flex items-center space-x-3 shrink-0">
+            <div className="flex flex-wrap items-center gap-2">
               {isAdmin && (
                 <>
                 <Button

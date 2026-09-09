@@ -4,9 +4,11 @@ import {
   POINTS_PER_GOAL,
   POINTS_PER_MVP,
   PEER_RATING_NEUTRAL,
+  PEER_RATING_FORCE_DEFAULT,
   playerPointsFromStats,
   playerMatchRating,
   meanPeerScore,
+  collectedPeerScores,
   mvpPlayerIds,
   validateGoalTotal,
   managerMatchPoints,
@@ -36,6 +38,27 @@ describe("playerMatchRating", () => {
     ).toBe(5);
     expect(mvpPlayerIds([{ mvpPlayerId: 1 }, { mvpPlayerId: 1 }, { mvpPlayerId: 2 }]).has(1)).toBe(true);
     expect(mvpPlayerIds([{ mvpPlayerId: 1 }, { mvpPlayerId: 1 }, { mvpPlayerId: 2 }]).has(2)).toBe(false);
+  });
+
+  it("fills missing assignment votes at 6.5 and can ignore extras", () => {
+    expect(PEER_RATING_FORCE_DEFAULT).toBe(6.5);
+    const scores = collectedPeerScores({
+      assignments: [
+        { raterPlayerId: 1, rateePlayerId: 2 },
+        { raterPlayerId: 2, rateePlayerId: 1 },
+      ],
+      ratings: [{ raterPlayerId: 1, rateePlayerId: 2, score: 8 }],
+      missingScore: PEER_RATING_FORCE_DEFAULT,
+    });
+    expect(scores.get(2)).toEqual([8]);
+    expect(scores.get(1)).toEqual([6.5]);
+    expect(meanPeerScore([], PEER_RATING_FORCE_DEFAULT)).toBe(6.5);
+    expect(
+      playerMatchRating({ peerAverage: 6.5, goals: 2, assists: 1, isMvp: true }),
+    ).toBe(6.5 + 8 + 2);
+    expect(
+      playerMatchRating({ peerAverage: 6.5, goals: 0, assists: 0, isMvp: false }),
+    ).toBe(6.5);
   });
 });
 

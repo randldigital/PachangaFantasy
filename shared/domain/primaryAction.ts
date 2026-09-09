@@ -103,7 +103,7 @@ export function nextPrimaryAction(input: PrimaryActionInput): PrimaryAction {
     if (input.userPlayedStatsMatch && !input.userSubmittedRatings) {
       return { id: "vote_match", tab: "stats" };
     }
-    if (input.isAdmin && input.statsCanScore && input.ratingsComplete) {
+    if (input.isAdmin && input.statsCanScore) {
       return { id: "score_match", tab: "stats" };
     }
     return { id: "wait_for_stats", tab: "stats" };
@@ -120,4 +120,24 @@ export function nextPrimaryAction(input: PrimaryActionInput): PrimaryAction {
   }
 
   return { id: "view_leaderboard", tab: "clasificacion" };
+}
+
+const idleAfterFirstCycle: PrimaryActionId[] = [
+  "open_valuation",
+  "wait_for_valuation",
+  "submit_valuation",
+  "create_match",
+  "view_leaderboard",
+  "wait_for_match",
+];
+
+/** Hide the tutorial banner once a match has been scored and the league is idle. */
+export function shouldShowPrimaryAction(
+  actionId: PrimaryActionId,
+  hasScoredMatch: boolean,
+): boolean {
+  if (!hasScoredMatch) {
+    return true;
+  }
+  return !idleAfterFirstCycle.includes(actionId);
 }

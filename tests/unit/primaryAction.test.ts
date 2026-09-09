@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextPrimaryAction, type PrimaryActionInput } from "@shared/domain/primaryAction";
+import { nextPrimaryAction, shouldShowPrimaryAction, type PrimaryActionInput } from "@shared/domain/primaryAction";
 
 const base: PrimaryActionInput = {
   isAdmin: false,
@@ -99,7 +99,7 @@ describe("nextPrimaryAction", () => {
         userSubmittedStats: true,
         userSubmittedRatings: true,
         statsCanScore: true,
-        ratingsComplete: true,
+        ratingsComplete: false,
       }).id,
     ).toBe("score_match");
     expect(
@@ -116,5 +116,22 @@ describe("nextPrimaryAction", () => {
     expect(nextPrimaryAction({ ...base, isAdmin: true }).id).toBe("create_match");
     expect(nextPrimaryAction({ ...base, statsMatchStatus: "scored" }).id).toBe("view_leaderboard");
     expect(nextPrimaryAction(base).id).toBe("wait_for_match");
+  });
+});
+
+describe("shouldShowPrimaryAction", () => {
+  it("hides idle coaching after the first scored match", () => {
+    expect(shouldShowPrimaryAction("create_match", true)).toBe(false);
+    expect(shouldShowPrimaryAction("view_leaderboard", true)).toBe(false);
+    expect(shouldShowPrimaryAction("wait_for_match", true)).toBe(false);
+    expect(shouldShowPrimaryAction("open_valuation", true)).toBe(false);
+    expect(shouldShowPrimaryAction("submit_valuation", true)).toBe(false);
+  });
+
+  it("keeps the banner for the first cycle and for a new match", () => {
+    expect(shouldShowPrimaryAction("create_match", false)).toBe(true);
+    expect(shouldShowPrimaryAction("join_match", true)).toBe(true);
+    expect(shouldShowPrimaryAction("score_match", true)).toBe(true);
+    expect(shouldShowPrimaryAction("submit_stats", true)).toBe(true);
   });
 });

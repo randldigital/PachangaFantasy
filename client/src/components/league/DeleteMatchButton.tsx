@@ -18,6 +18,7 @@ import { describeApiError } from "@/lib/apiError";
 import { useToast } from "@/hooks/use-toast";
 import { queryKeys } from "@/lib/queryKeys";
 import { Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { Match } from "@shared/schema";
 
 interface DeleteMatchButtonProps {
@@ -25,6 +26,7 @@ interface DeleteMatchButtonProps {
   leagueId: number;
   isLeagueCreator: boolean;
   onMatchDeleted?: () => void;
+  className?: string;
 }
 
 export default function DeleteMatchButton({
@@ -32,6 +34,7 @@ export default function DeleteMatchButton({
   leagueId,
   isLeagueCreator,
   onMatchDeleted,
+  className,
 }: DeleteMatchButtonProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -72,7 +75,7 @@ export default function DeleteMatchButton({
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+        <Button variant="outline" size="sm" className={cn("text-red-600 hover:text-red-700", className)}>
           <Trash2 className="h-4 w-4 mr-1" />
           {t("match.delete")}
         </Button>
