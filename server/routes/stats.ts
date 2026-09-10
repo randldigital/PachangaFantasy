@@ -30,6 +30,18 @@ export function registerStatsRoutes(app: Express) {
       const access = await loadMatchAccess(req, res, matchId);
       if (!access) return;
 
+      const parsed = submitStatsSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.issues });
+      }
+
+      if (access.context === "league" && parsed.data.minutes != null) {
+        return res.status(400).json({
+          message: "Minutes are only recorded on club matches",
+          code: "MINUTES_NOT_SUPPORTED",
+        });
+      }
+
       if (access.match.status === "scored" || isClosedStatus(access.match.status)) {
         return res.status(400).json({
           message: "Statistics cannot be changed after the match is scored",
@@ -42,11 +54,6 @@ export function registerStatsRoutes(app: Express) {
           message: "Can only submit statistics for a finished match",
           code: "STATS_NOT_EDITABLE",
         });
-      }
-
-      const parsed = submitStatsSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid input", errors: parsed.error.issues });
       }
 
       const ownPlayer = await playerRepo.checkUserAsPlayer(access.user.id, access.match);
@@ -65,13 +72,6 @@ export function registerStatsRoutes(app: Express) {
           : targetPlayer?.clubId === access.match.clubId;
       if (!targetPlayer || !sameContext) {
         return res.status(404).json({ message: "Player not found" });
-      }
-
-      if (access.context === "league" && parsed.data.minutes != null) {
-        return res.status(400).json({
-          message: "Minutes are only recorded on club matches",
-          code: "MINUTES_NOT_SUPPORTED",
-        });
       }
 
       const userIsAdmin = isAdmin(access.organisation, access.user.id);

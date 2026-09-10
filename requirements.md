@@ -1,8 +1,17 @@
 # Pachanga Fantasy — Functional Requirements
 
-**Status:** Functional baseline, version 1.0 scope
+**Status:** Functional baseline, version **2.0**
 **Document type:** Functional specification (not an architecture document)
 **Audience:** Developers, testers and AI agents implementing or modifying Pachanga Fantasy
+
+### How this document is organised
+
+| Part | What it covers | Sections |
+|---|---|---|
+| **Shared** | User, avatar, alias, membership in many contexts, invite codes, Player belongs to League xor Club, claim requests, seasons | 1–4, 3.3, 7–8 |
+| **Fantasy League** | The existing dual-role loop: 5/7/11 real sides, lineup of five, Team A/B, valuation, Market Value, Manager/Player scoring, force-score, rankings and history by season | 5–22 |
+| **Club Mode** | A separate experience: one real squad versus an opponent name and score. No lineup, no Market Value, no Team A/B | 23 |
+| **Cross-cutting** | Future features, technical notes, acceptance | 24–26 |
 
 ---
 
@@ -25,11 +34,26 @@ These close Appendix A. They are product rules, not recommendations. Revisit the
 | **P0.5** | Lineups and joining **lock when the administrator starts the match**. Ending the match is too late — results are already known. Scheduled kick-off time is not the lock. |
 | **P0.6** | A player **may edit their own statistics** until the match is scored. After scoring, statistics are immutable. |
 | **P0.7** | **External players are in scope.** The administrator may submit statistics for **any participant**, including externals and absent registered players. Statistics are keyed to the Player, not the User. |
-| **P0.8** | **No participant cap.** A match may have any number of players. The UI must not invent a limit of 10. |
+| **P0.8** | **Superseded in 2.0 for Fantasy Matches.** 1.0 had no participant cap and forbade inventing a limit of 10. Fantasy Matches now have an immutable `sideSize` of 5, 7 or 11; capacity is `sideSize × 2` (P2.4). Club Matches still have no side-size cap. |
 | **P0.9** | At most **one match in Open or Started** per league. A previous match may still be awaiting stats or validation while the next is created. |
 | **P0.10** | **Automatic team balancing is not a product feature.** Remove it, including the `ready` status it creates. The administrator **must** divide every participant into Team A or Team B before starting. There is no automatic balancing, no `ready` status, and no team-win scoring bonus. |
-| **P0.11** | Display names need not be globally unique. Player names must be unique within a league (case-insensitive). On collision, auto-created player names become `Name`, then `Name (2)`, `Name (3)`, and so on. |
+| **P0.11** | **Superseded in 2.0 for join/create.** Usernames need not be globally unique as football identity. The visible name in a League or Club is the **alias** (`players.name`), unique within that context. Join/create require the user to supply it; a clash with a linked Player is rejected (`ALIAS_TAKEN`). A clash with an unlinked Player becomes a claim request (P2.3), not a silent rename. Administrators adding an external Player may still suffix `Name (2)` on collision. |
 | **P0.12** | After statistics are valid, every logged-in participant must vote Player of the Match and rate assigned peers from **0.0 to 10.0**. Player Match Points are `peer average + goals × 3 + assists × 2 + MVP bonus (2)`. Scoring then updates each participant's Market Value from that match's performance. The S/A/B/C/D tier list remains **initial VM only**. |
+
+### Phase 2.0 decisions (10 September 2026)
+
+These extend Phase 0. They are product rules, not recommendations.
+
+| ID | Decision |
+|---|---|
+| **P2.1** | **Club Mode** is a separate experience (`clubs`, `/club/:id`), not a League flag and not “Team Mode”. **Team** means only Fantasy Match sides (Team A / Team B / `matchTeams`). |
+| **P2.2** | A User may belong to many Leagues and many Clubs. Avatar belongs to the User. Alias is the Player name inside one League or one Club; after membership exists only that context's administrator may change it. |
+| **P2.3** | Matching an unlinked Player's alias on join **does not auto-link**. It creates a pending **claim request** and returns `409 CLAIM_PENDING`. The User is not a member until the administrator accepts. Rejecting leaves them out; they may join only with a different unused alias. |
+| **P2.4** | Fantasy Match `sideSize` is **5, 7 or 11**, chosen at creation and **immutable**. Capacity is `sideSize × 2`. Start requires **exactly** `sideSize` on Team A and **exactly** `sideSize` on Team B. The fantasy lineup remains **always five**. |
+| **P2.5** | Invite codes carry context: new Leagues `L-XXXXXX`, Clubs `C-XXXXXX`. Legacy six-character League codes still join Leagues only. Never search League then Club. The column is unbounded `text` (never `varchar(6)`). |
+| **P2.6** | A season is **1 August–31 July**, labelled `YYYY/YY` of the August start. Rankings default to the current season; history groups by season. Membership and invite codes are not reset on 1 August. |
+| **P2.7** | Club Player Points = peer average + goals×3 + assists×2 + minutes component (max 5 at 90 minutes). **Club result weight** and **Club MVP weight** require product confirmation and must not be invented; persist W/D/L and MVP for history only until confirmed. |
+| **P2.8** | Club force-score fills missing **incoming assigned** ratings with **6.5**; existing objective stats still count. After score or force, scoring is definitive. Admin **close** is a separate action (`scored` → `closed`). |
 
 ### How to read the status markers
 
@@ -52,13 +76,19 @@ This document was derived from the in-repository project narrative (`replit.md`,
 
 ## 1. Product Overview
 
-Pachanga Fantasy is a **private fantasy-football application for a group of friends who actually play football together**.
+Pachanga is a **private amateur-football application for a group of friends who actually play together**.
 
-It is not a fantasy game built on top of professional football. There are no famous players, no external data feeds and no public leagues. The players in the game are the people in the group, and the statistics come from the match they just played on a Sunday morning.
+It is not a fantasy game built on top of professional football. There are no famous players, no external data feeds and no public leagues. The players in the game are the people in the group, and the statistics come from the match they just played.
 
-### The dual-role model
+From 2.0 there are **two experiences**. A User may belong to both at once.
 
-This is the concept that explains the entire application. **The same person occupies two independent roles at the same time**, and almost every rule in this document follows from keeping those two roles separate.
+**Fantasy League** is the original dual-role game (this document's sections 5–22). The same person is a Real Player and a Fantasy Manager. Matches have Team A and Team B, a lineup of five, Market Value and two leaderboards.
+
+**Club Mode** (Section 23) is a separate organisation: one real squad versus an opponent that exists only as a **name and a score**. There is no lineup, no Market Value, no Manager Points and no opposite roster in the app.
+
+### The dual-role model (Fantasy League only)
+
+This is the concept that explains Fantasy League. **The same person occupies two independent roles at the same time**, and almost every Fantasy rule in this document follows from keeping those two roles separate.
 
 **1. Real Player**
 
@@ -84,7 +114,7 @@ A person can be an excellent Real Player and a poor Fantasy Manager, or the reve
 
 ### What the product is not
 
-Pachanga is not a club-management tool, a scheduling application, a social network or a professional sports platform. It exists to support one repeatable loop (Section 2) for a small group of people who already know each other. Features that do not serve that loop belong in Section 23.
+Pachanga is not a club-management ERP, a scheduling application, a social network or a professional sports platform. Club Mode (Section 23) still does not include training, tactics, availability, positions, competitions or opponent rosters. Features that do not serve the Fantasy loop or the Club contribution ranking belong in Section 24.
 
 ---
 
@@ -100,7 +130,7 @@ When a functional or technical decision conflicts with simplicity, **simplicity 
 
 ### 2.2 Everything serves the core loop
 
-Any proposed feature must do one of three things: strengthen the core loop, improve its usability, or improve engagement around it. If it does none of these, it belongs in Future Features (Section 23) and must not be allowed to redefine current business rules.
+Any proposed feature must do one of three things: strengthen the Fantasy loop, strengthen Club Mode's seasonal contribution ranking, or improve usability around either. If it does none of these, it belongs in Future Features (Section 24) and must not be allowed to redefine current business rules.
 
 ### 2.3 Separation of the two roles
 
@@ -120,11 +150,11 @@ A plain tap or click that always works is better than a gesture that sometimes f
 
 ### 3.1 Roles
 
-Pachanga has exactly **one privileged role**: the **League Owner / Administrator**, who is the person who created the league.
+Pachanga has exactly **one privileged role per context**: the **Administrator**, who is the person who created that League or that Club.
 
-There are no moderators, no co-administrators, no permission matrices and no enterprise-style RBAC. Administration is scoped to a single league; a user may administer one league and be an ordinary member of another.
+There are no moderators, no co-administrators, no permission matrices and no enterprise-style RBAC. Administration is scoped to a single League or a single Club; a user may administer one context and be an ordinary member of another.
 
-> **[Implemented as vestigial data]** The `users` table still carries a legacy global `role` field (`admin` / `player`). It is not used to authorise anything: every privileged operation checks `league.createdBy === user.id`. Do not use `users.role` as an authorisation source.
+> **[Implemented as vestigial data]** The `users` table still carries a legacy global `role` field (`admin` / `player`). It is not used to authorise anything: every privileged operation checks `createdBy === user.id` on the League or Club. Do not use `users.role` as an authorisation source.
 
 ### 3.2 Core concepts and terminology
 
@@ -132,25 +162,58 @@ The following vocabulary is authoritative. Use it consistently in code, in the i
 
 | Term | Definition |
 |---|---|
-| **User** | A registered account. Can log in. Identified persistently across sessions. |
-| **League** | A private group. Contains members, players, matches and both leaderboards. |
-| **League Member** | A User who belongs to a League. Grants access to that League's functionality. |
-| **Player** | A real-world football participant available within a League. May or may not be linked to a User. |
+| **User** | A registered account. Can log in. Identified persistently across sessions. Owns the avatar. |
+| **Username** | The account / authentication identifier. Must not be shown as the football identity where an alias exists. |
+| **Alias** | The visible Player name inside **one** League or **one** Club. Stored as `players.name`. Unique only in that context. |
+| **League** | A private Fantasy competition. Contains members, players, matches, valuation, Market Value and both leaderboards. |
+| **Club** | A persistent real squad (2.0). Contains members, players, Club Matches, a Player ranking and match history. No lineup, no Market Value, no Manager leaderboard. |
+| **League / Club Member** | A User who belongs to that context. Grants access to its functionality. |
+| **Player** | A real-world football participant in **exactly one** context: a League **or** a Club (`leagueId` xor `clubId`). May or may not be linked to a User. |
 | **External Player** | A Player with no linked User account. See Section 8.3. |
-| **Manager** | A League Member acting as a fantasy team selector. Every League Member is implicitly a Manager. |
-| **Player Valuation** | The act of a member ranking the League's players by perceived quality. See Section 9. |
+| **Manager** | A **League** Member acting as a fantasy team selector. Every League Member is implicitly a Manager. Club Mode has no Managers. |
+| **Team A / Team B** | Temporary sides of a **Fantasy** Match only (`matchTeams`). Never used in Club Mode. |
+| **Player Valuation** | The act of a League member ranking that League's players by perceived quality. See Section 9. Club Mode has no valuation. |
 | **Tier List** | The interface through which Player Valuation is expressed. |
-| **Market Value** | The fantasy price of a Player. Initial value comes from aggregated Player Valuation (Section 10.2). After each scored match it updates from that match's performance, independently of Player Points. |
-| **Match** | A single real football game within a League, and the fantasy round attached to it. |
+| **Market Value** | The fantasy price of a League Player. Initial value comes from aggregated Player Valuation (Section 10.2). After each scored Fantasy match it updates from that match's performance, independently of Player Points. |
+| **Match** | A single real football game in exactly one context (League xor Club). |
 | **Match Participant** | A Player registered as taking part in a specific Match. |
-| **Lineup** | A Manager's fantasy selection of five Match Participants for one Match. |
+| **Lineup** | A Manager's fantasy selection of five Fantasy Match Participants. Club Matches have no lineup. |
 | **Captain** | The one Lineup Player whose points are doubled — **for the Manager only**. |
-| **Player Points** | Points earned by a Player from their own real statistics. |
-| **Manager Points** | Points earned by a Manager from their Lineup. |
-| **Player Leaderboard** | Ranking of Players by accumulated Player Points. |
-| **Manager Leaderboard** | Ranking of Managers by accumulated Manager Points. |
+| **Player Points** | Points earned by a Player from their own real statistics (formula differs by context: Section 16.1 vs Section 23.5). |
+| **Manager Points** | Points earned by a Manager from their Lineup. Fantasy only. |
+| **Season** | 1 August 00:00 – 31 July 23:59 of the following year, labelled `YYYY/YY` of the August start (e.g. `2026/27`). |
+| **Player Leaderboard** | Ranking of Players by accumulated Player Points **in the current season by default**. |
+| **Manager Leaderboard** | Ranking of Managers by accumulated Manager Points **in the current season by default**. Fantasy only. |
 
-Terms to avoid: "ranking" without a qualifier, "score" without saying whose, "completed" without saying whether the football match or the fantasy scoring is meant (see Section 11).
+Terms to avoid: "ranking" without a qualifier, "score" without saying whose, "completed" without saying whether the football match or the scoring is meant (see Section 11), **"Team Mode"**, and using **Team** for a Club.
+
+### 3.3 Shared identity (2.0)
+
+**Avatar.** Belongs to the User, not the Player. **[Implemented]** A User may upload an image; the server compresses it (square JPEG, about 256px, quality ~70, cap ~80KB) and others see it on leaderboards, recap tokens, participants, stats and Club roster. Non-images are rejected.
+
+**Alias.** Required when creating or joining a League or Club (1–30 characters). **[Implemented]** After membership exists, Users cannot change their own alias. Only that context's administrator may (`PATCH` player alias). The same User may have different aliases in different Leagues and Clubs.
+
+**Invite codes.** **[Implemented]** Distinguish at the code itself. One Join field on Overview.
+
+| Context | Format |
+|---|---|
+| New League | `L-XXXXXX` |
+| Club | `C-XXXXXX` |
+| Legacy League | six characters, no prefix |
+
+`XXXXXX` is 6 uppercase alphanumeric characters. `L-…` looks up Leagues only. `C-…` looks up Clubs only. Unprefixed codes resolve **legacy League codes only**, never Clubs. Existing six-character League codes are not rewritten. The stored column is `text` (wide enough for eight-character prefixed codes; never `char(6)` / `varchar(6)`).
+
+**Claim requests.** **[Implemented]** If the typed alias matches an existing unlinked Player in that League or Club:
+
+1. Do not create a second Player, do not set `userId`, and do not add the User to participants.
+2. Create a pending claim request. Response: `409 CLAIM_PENDING` (include request id). Retrying the same alias while pending is idempotent and still not a member.
+3. The User cannot open Match flows in that context until the administrator accepts or rejects.
+4. On **accept**: add the User to participants and set `players.userId`. Only then is join complete.
+5. On **reject**: the User remains out. They may join only with a **different** unused alias. The same alias cannot be reused unless the admin later allows a new claim.
+
+A User with a pending claim for that League/Club cannot complete membership via any other path for that same alias. They may join a **different** League or Club immediately.
+
+**Seasons.** **[Implemented]** A Match belongs to exactly one season from its `date`, persisted as `seasonKey` (e.g. `2026/27`). Rankings default to the current season (`?season=2026/27`). History groups Matches into season sections, newest first. Club aggregates (P/W/D/L/GF/GA) are per season. Do not auto-reset rosters or invite codes at 1 August.
 
 ---
 
@@ -162,7 +225,7 @@ The user's journey, end to end.
 
 A new user must be able to create an account. **[Implemented]**
 
-The functional requirement is that the application can identify the user persistently and associate them with leagues, player identities, match participation, fantasy lineups, statistics and rankings. The authentication mechanism itself is a technical detail and is deliberately not specified here (see Section 24).
+The functional requirement is that the application can identify the user persistently and associate them with leagues, clubs, player identities, match participation, fantasy lineups, statistics and rankings. The authentication mechanism itself is a technical detail and is deliberately not specified here (see Section 25).
 
 Current collected data: a display name, an email address and a password. Rules in force:
 
@@ -170,9 +233,9 @@ Current collected data: a display name, an email address and a password. Rules i
 - An email address may only be used by one account. **[Implemented]**
 - Registration must not silently succeed with an empty password. **[Implemented]**
 
-Display names need not be unique across the application. Player names must be unique within a league, compared case-insensitively. **[Implemented]**
+Display names (usernames) need not be unique as football identity. The alias inside a League or Club must be unique in that context, compared case-insensitively. **[Implemented]**
 
-When auto-creating a Player from a user's display name, if that name is already taken in the league, use `Name (2)`, then `Name (3)`, and so on. **[Implemented]**
+Users are not auto-created as Players from their username on join. They supply an alias (Section 3.3). **[Implemented]**
 
 ### 4.2 Login
 
@@ -182,16 +245,16 @@ After login the user is taken directly to their league context. There must be no
 
 ### 4.3 Initial state — no league yet
 
-If the user does not belong to any league, the two principal actions must be immediately obvious and reachable in one tap: **[Implemented]**
+If the user does not belong to any league or club, the principal actions must be immediately obvious and reachable in one tap: **[Implemented]**
 
-- **Create League**
-- **Join League**
+- **Create League** / **Create Club**
+- **Join** (one invite field; `L-` / `C-` / legacy routes the context)
 
 No dashboard, statistics panel, empty leaderboard or configuration screen may be shown before the user has meaningful data. An empty state is a call to action, not a report.
 
 ### 4.4 With one or more leagues
 
-The user sees their leagues. Selecting one enters the League context, which is where essentially all activity happens.
+The user sees their Leagues and Clubs. Selecting a League enters LeagueHub; selecting a Club enters ClubHub (`/club/:id`).
 
 > **Recommendation (not an existing rule):** if a user belongs to exactly one league, taking them straight into it after login would remove a screen and is consistent with the simplicity principle. Currently the league list is always shown, and creating a league does not navigate into it.
 
@@ -208,7 +271,7 @@ From the league the user can, at any time:
 
 ### 4.6 Repeat
 
-The user repeats the loop for each new Match. There is no end state; a league continues until its members stop playing. Seasons are a future concept (Section 23).
+The user repeats the loop for each new Match. There is no end state; a league or club continues until its members stop playing. Rankings and history slice by season (Section 3.3); membership persists across 1 August.
 
 ---
 
@@ -222,11 +285,11 @@ A League minimally has:
 
 - **Name** — required, maximum 25 characters. **[Implemented]**
 - **Short description** — optional, maximum 200 characters. **[Implemented]**
-- **Unique invite code** — generated automatically, 6 characters, uppercase. **[Implemented]**
+- **Unique invite code** — generated automatically as `L-` plus 6 uppercase alphanumeric characters. **[Implemented]** Legacy leagues keep their original 6-character codes.
 - **Creator / Administrator** **[Implemented]**
 - **Members**, **Players**, **Matches**, **Leaderboards** — see the relevant sections.
 
-On creation, the creator is automatically added both as a **League Member** and as a **Player**. **[Implemented]**
+On creation, the creator supplies their own **alias** and is automatically added both as a **League Member** and as a **Player** under that alias. **[Implemented]**
 
 ### 5.2 League states
 
@@ -283,12 +346,12 @@ Rules that always apply:
 
 ### 7.1 Joining
 
-A registered user joins a league by entering its invite code. The flow is: **[Implemented]**
+A registered user joins a league by entering its invite code **and an alias**. The flow is: **[Implemented]**
 
-1. Enter an invite code.
-2. The system resolves the corresponding league.
-3. The user confirms joining.
-4. The user becomes a **League Member**.
+1. Enter an invite code (`L-XXXXXX` or a legacy 6-character League code) and an alias.
+2. The system resolves the corresponding league (`L-` and legacy only; `C-` never hits leagues).
+3. If the alias matches an unlinked Player, join is **blocked** with `CLAIM_PENDING` until the administrator resolves it (Section 3.3).
+4. If the alias is free, the user becomes a **League Member** and a **Player** under that alias.
 5. The user gains access to the league's functionality.
 
 ### 7.2 Membership must be reliably represented
@@ -297,7 +360,7 @@ A registered user joins a league by entering its invite code. The flow is: **[Im
 
 This is a functional requirement, not a database prescription. Whatever representation is used must support, cheaply and unambiguously: "is this user a member of this league?", "which leagues does this user belong to?" and "who are the members of this league?".
 
-> **[Partially implemented]** Membership is currently stored as an array of user identifiers embedded in the league record. It works, but it makes membership a property of a document rather than an explicit relation, which makes duplicate-prevention and membership queries dependent on array manipulation. Section 24.2 recommends an explicit relation. Any change here must preserve existing memberships.
+> **[Partially implemented]** Membership is currently stored as an array of user identifiers embedded in the league (or club) record. It works, but it makes membership a property of a document rather than an explicit relation, which makes duplicate-prevention and membership queries dependent on array manipulation. Section 25.2 recommends an explicit relation. Any change here must preserve existing memberships.
 
 ### 7.3 Member versus Player — the relationship is explicit
 
@@ -308,15 +371,15 @@ These are two different concepts and must never be conflated:
 
 **Current behaviour, stated explicitly:**
 
-> **[Implemented]** Joining a league automatically creates a Player record for that user in that league, linked to their account and named after their display name. Creating a league does the same for the creator. The user does not perform a separate "become a player" action.
+> **[Implemented]** Joining a league automatically creates a Player record for that user in that league, linked to their account and named with the **alias they supplied**. Creating a league does the same for the creator. Matching an existing unlinked alias does **not** auto-link; it raises a claim request (Section 3.3). The user does not perform a separate "become a player" action.
 
 Consequences that follow from this and must be preserved:
 
 - Every League Member is also a Player in that league. **[Implemented]**
 - Not every Player is a League Member — external players exist without accounts (Section 8.3).
-- A user has a *separate* Player identity in each league they belong to. Player identity is league-scoped; Market Value, statistics and Player Points never cross league boundaries. **[Implemented]**
+- A user has a *separate* Player identity in each League and each Club they belong to. Player identity is context-scoped; Market Value, statistics and Player Points never cross those boundaries. **[Implemented]**
 
-> **[Partially implemented] — repair path.** A separate "add me as a player" operation still exists and is used to repair leagues where the automatic creation failed, including relinking an orphaned Player record that has a matching name but no user link. This is a data-repair mechanism, not part of the intended user journey, and it is not reachable from the live interface. New code must not depend on the user performing it.
+> **[Implemented] — claim, not silent repair.** A separate "add me as a player" operation still exists. An unlinked alias raises `CLAIM_PENDING` rather than silently relinking, including for the administrator. New code must not auto-claim by name.
 
 ### 7.4 Membership rules
 
@@ -330,19 +393,19 @@ Consequences that follow from this and must be preserved:
 
 ### 8.1 Definition
 
-A Player is a real-world football participant within one league.
+A Player is a real-world football participant within **exactly one** context: a League **or** a Club (`leagueId` xor `clubId`; the other is null). **[Implemented]**
 
 A Player minimally has:
 
-- **Identity / name** — required, maximum 30 characters. **[Implemented]**
-- **League association** — a Player belongs to exactly one league. **[Implemented]**
+- **Identity / alias** — required, maximum 30 characters. Unique within that League or Club (case-insensitive). **[Implemented]**
+- **Context association** — exactly one of `leagueId` or `clubId`. **[Implemented]**
 - **Optional user association** — present for members, absent for external players. **[Implemented]**
-- **Market value** — league-specific, derived from Player Valuation. **[Implemented as a field]**
+- **Market value** — League-specific, derived from Player Valuation. Unused in Club Mode. **[Implemented as a field]**
 - **Match participation history** **[Implemented]**
-- **Real performance statistics** — see Section 15 for an important limitation.
-- **Accumulated Player Points** — see Section 17.
+- **Real performance statistics** — see Section 15 for Fantasy; Club adds minutes (Section 23).
+- **Accumulated Player Points** — see Section 17 (Fantasy, per season) and Section 23.6 (Club, per season).
 
-Player names must be unique within a league, compared case-insensitively. **[Implemented]**
+After membership exists, only that context's administrator may change the alias. **[Implemented]**
 
 ### 8.2 Registered players
 
@@ -517,7 +580,9 @@ League **scoring baseline** (default 5): `0.8 × previous + 0.2 × ((teamAGoals 
 
 ## 11. Match Lifecycle
 
-A Match is a stateful process. The most important rule in this section is about vocabulary:
+A Match is a stateful process. A Match belongs to exactly one context: a League **or** a Club. This section describes **Fantasy League** Matches. Club Match states are in Section 23.4.
+
+The most important rule in this section is about vocabulary:
 
 > **"The football match has finished" and "the fantasy scoring is final" are different events and must never share a word in the interface.**
 
@@ -527,9 +592,9 @@ Calling both "completed" is the single most confusing thing the application can 
 
 **Upcoming / Open**
 
-- The Match exists with a date, time and budget.
-- Players can join, or the administrator can add them.
-- Managers can build and edit lineups.
+- The Match exists with a date, time, budget and an immutable **side size** (5, 7 or 11).
+- Players can join, or the administrator can add them, until capacity (`sideSize × 2`) is reached.
+- Managers can build and edit lineups of exactly five participants.
 - Statistics cannot be submitted.
 - Nothing is scored.
 
@@ -581,12 +646,13 @@ Only the League Administrator creates matches. **[Implemented]**
 A Match minimally requires:
 
 - **League** **[Implemented]**
-- **Date and time** **[Implemented]**
+- **Date and time** **[Implemented]** — also writes `seasonKey` from that date
+- **Side size** — **5 vs 5**, **7 vs 7** or **11 vs 11**, chosen at creation and **immutable**. Wrong size → delete the Match and create another. Existing Matches default to 5. **[Implemented]**
 - **Fantasy lineup budget** **[Implemented]** — default 100
 - **Participation state** **[Implemented]**
 - **Match state** **[Implemented]**
 
-The administrator creates the next match from within the league context, in a single short form. There must be no calendar management, no recurring-fixture configuration and no season planning. **The match exists to support the fantasy loop**, not to manage a club.
+The administrator creates the next match from within the league context, in a single short form. There must be no calendar management and no recurring-fixture configuration. **The Fantasy match exists to support the fantasy loop**, not to manage a club. Club Matches are a different object (Section 23).
 
 > **[Implemented]** Server and form both accept a budget of **50–200**. Default remains **100**.
 
@@ -600,12 +666,14 @@ Before the match can start, the administrator must assign every accepted partici
 
 Rules:
 
-- Both teams must have at least one player.
+- Team A has **exactly** `sideSize` Players and Team B has **exactly** `sideSize` Players.
 - A player cannot be on both teams.
 - Every accepted participant must be on exactly one team.
 - Teams may be edited while the match is Open. They lock when the match starts.
-- Starting without a complete assignment is rejected (`TEAMS_REQUIRED` / `TEAMS_EMPTY` / `TEAMS_OVERLAP` / `TEAMS_NOT_PARTITION`).
+- Starting without a complete assignment is rejected (`TEAMS_REQUIRED` / `TEAMS_EMPTY` / `TEAMS_OVERLAP` / `TEAMS_NOT_PARTITION` / `SIDE_INCOMPLETE`).
+- Assigning a Player to a side that already has `sideSize` is rejected (`SIDE_OVER_CAPACITY`). For a 7v7 Match this is the eighth Player on one side (not the sixth).
 - Assignment is **manual**. There is no automatic balancing and no `ready` status (P0.10).
+- `sideSize` cannot be changed after creation.
 
 ---
 
@@ -628,10 +696,11 @@ A league member who is not playing in a given match must not be available in tha
 ### 12.3 Participation rules
 
 - Joining a match twice must not create duplicate participation. **[Implemented]**
-- A user must have a Player identity in the league before joining a match. **[Implemented]** — this is normally automatic (Section 7.3).
+- A user must have a Player identity in the league before joining a match. **[Implemented]** — this is normally automatic (Section 7.3), and is blocked while a claim is pending.
 - A Player may only participate in matches of their own league. **[Implemented]**
+- Join / add-players is rejected with `MATCH_FULL` at capacity `sideSize × 2`. **[Implemented]**
 
-> **[Implemented]** There is **no participant cap** (P0.8). Joining is not refused at 10, and teams are not auto-balanced.
+> **[Implemented]** Fantasy Matches are capped at `sideSize × 2` (P2.4). There is still no invented limit of 10 independent of side size: a 7v7 holds 14, an 11v11 holds 22. Teams are not auto-balanced.
 
 ---
 
@@ -842,7 +911,7 @@ Therefore, a Player who scores 2 goals and receives a 6.0 peer average (and is n
 
 > The historical rule `if team_won: points += 1` is **not part of the current scoring requirements**.
 >
-> Matches now have a real two-team assignment and a two-team result, used to start the match and to validate statistics. That does **not** add a win bonus to Player Points. A win bonus may be reconsidered as a future scoring extension (Section 23) only by updating this document.
+> Matches now have a real two-team assignment and a two-team result, used to start the match and to validate statistics. That does **not** add a win bonus to Player Points. A win bonus may be reconsidered as a future scoring extension (Section 24) only by updating this document. Club Mode must still affect Player Points from the match result, but that coefficient is unresolved (P2.7, Section 23.5).
 
 ### 16.2 Manager scoring
 
@@ -891,11 +960,13 @@ Scoring values (3 per goal, 2 per assist, ×2 for the Captain) are **fixed produ
 
 ### 17.2 Definition
 
-For every scored Match, each Player's **Player Match Points** are calculated per Section 16.1. Across the league:
+For every scored Match, each Player's **Player Match Points** are calculated per Section 16.1. Across the league, **within one season**:
 
 ```
-Player Total Points = sum of Player Match Points across all scored matches
+Player Total Points = sum of Player Match Points across scored matches in that season
 ```
+
+Totals do not mix seasons. The UI defaults to the **current** season (1 Aug–31 Jul) and can switch or section by `seasonKey`.
 
 ### 17.3 What it shows
 
@@ -916,7 +987,7 @@ Optional, and sortable in the Player Leaderboard:
 
 ### 17.4 Current state
 
-> **[Implemented]** The Player Leaderboard is keyed by Player, includes zero-point players and externals, and never applies a captain multiplier. Members can reorder it by points, goals, assists, Player of the Match awards, wins, or matches played.
+> **[Implemented]** The Player Leaderboard is keyed by Player, includes zero-point players and externals, never applies a captain multiplier, and is filtered by season (default current). Members can reorder it by points, goals, assists, Player of the Match awards, wins, or matches played. History lists group finished matches into season sections, newest first.
 
 ---
 
@@ -928,10 +999,10 @@ Optional, and sortable in the Player Leaderboard:
 
 ### 18.2 Definition
 
-For every scored Match, each Manager's **Manager Match Points** are calculated from their lineup per Section 16.2. Across the league:
+For every scored Match, each Manager's **Manager Match Points** are calculated from their lineup per Section 16.2. Across the league, **within one season**:
 
 ```
-Manager Total Points = sum of Manager Match Points across all scored matches
+Manager Total Points = sum of Manager Match Points across scored matches in that season
 ```
 
 ### 18.3 Rules
@@ -979,7 +1050,7 @@ Additional rules that follow from the sections above:
 
 | # | Rule | Status |
 |---|---|---|
-| 21 | A Player belongs to exactly one league; Market Value, statistics and points never cross leagues. | **[Implemented]** |
+| 21 | A Player belongs to exactly one League **or** one Club; statistics and points never cross those contexts. | **[Implemented]** |
 | 22 | External players may play and be selected, but can never log in or appear in the Manager Leaderboard. | **[Implemented]** |
 | 23 | Statistics are only submitted for Matches marked as finished. | **[Implemented]** |
 | 24 | Only the administrator may trigger final scoring. | **[Implemented]** |
@@ -1009,7 +1080,7 @@ Every principal screen makes the next relevant action immediately clear. At any 
 
 ### 20.2 Minimal navigation
 
-Avoid deep hierarchies. A small number of persistent top-level destinations, with everything about a league living inside a single league view. **[Implemented]** — the league view consolidates lineup, leaderboard, history, valuation, statistics and external-player management into one screen with tabs. Match detail stays a dialog inside that view (P1.5.1: fold, do not add a second route).
+Avoid deep hierarchies. A small number of persistent top-level destinations, with everything about a league living inside a single league view and everything about a club inside ClubHub. **[Implemented]** — the league view consolidates lineup, leaderboard, history, valuation, statistics and roster into one screen with tabs. ClubHub omits lineup and valuation. Match detail stays a dialog inside that view (P1.5.1: fold, do not add a second route).
 
 ### 20.3 Mobile-first
 
@@ -1025,7 +1096,7 @@ Secondary information — full statistics, historical matches, per-player detail
 
 ### 20.6 Avoid unnecessary configuration
 
-Reasonable defaults must exist for match budgets, scoring rules and every other repetitive value. A league administrator should be able to create a match by choosing a date and nothing else. **[Implemented]** — budget defaults to 100 and scoring is fixed.
+Reasonable defaults must exist for match budgets, scoring rules and every other repetitive value. A league administrator should be able to create a Fantasy match by choosing a date and a side size, with budget defaulting to 100. **[Implemented]**
 
 ### 20.7 Immediate feedback
 
@@ -1133,14 +1204,103 @@ The following features constitute the current core product. Everything not in th
 | Player Leaderboard | **[Implemented]** |
 | Manager Leaderboard | **[Implemented]** |
 | Repeatable match loop | **[Implemented]** — Player and Manager scoring both run from snapshots |
+| Avatars and per-context aliases | **[Implemented]** |
+| Claim requests that block join until resolved | **[Implemented]** |
+| Prefixed invite codes (`L-` / `C-`) with legacy League fallback | **[Implemented]** |
+| Fantasy side size 5 / 7 / 11 | **[Implemented]** — immutable; lineup still five |
+| Seasons (1 Aug–31 Jul) on rankings and history | **[Implemented]** |
+| Club Mode | **[Implemented]** — see Section 23; result and MVP point weights still unresolved |
 
 ### 22.1 The critical path
 
-**[Implemented]** The core loop can be completed end to end: register → create league → join → open valuation → rank → close → create match → join → build lineup → start → finish → submit statistics → vote → score → both leaderboards and updated Market Values. Automated coverage is `tests/api/full-loop.test.ts` and `tests/api/market-value.test.ts`.
+**[Implemented]** The Fantasy core loop can be completed end to end: register → create league (alias) → join (alias) → open valuation → rank → close → create match (choose 5/7/11) → join → build Team A / Team B (exact sideSize) → lineup of five → start → finish → submit statistics → vote → score → both leaderboards and updated Market Values, sliced by season. Automated coverage is `tests/api/full-loop.test.ts`, `tests/api/side-size.test.ts` and `tests/api/market-value.test.ts`. Club Mode has its own loop in Section 23.7.
 
 ---
 
-## 23. Future Features
+
+## 23. Club Mode
+
+Club Mode is a **separate Pachanga experience**. It is not a League flag, not a Fantasy variant, and not “Team Mode”. **Team** remains reserved for Fantasy Match sides (Team A / Team B).
+
+A Club is a persistent real squad. Matches are **our Club versus an opponent that exists only as a name and a score**. Opponent players are never stored.
+
+### 23.1 In scope (2.0)
+
+- Club create / join (`C-` codes, alias, claims — Section 3.3).
+- Roster: registered and external Players.
+- Matches: date, opponent name, our goals, opponent goals.
+- Individual stats: goals, assists, minutes (0–120).
+- Assigned peer ratings (registered voters only).
+- MVP (registered voters).
+- Player Ranking (season totals).
+- Match history, grouped by season, with Club aggregates P / W / D / L / GF / GA **per season**.
+
+**[Implemented]**
+
+### 23.2 Out of scope (do not build)
+
+Training, tactics, availability, positions, competitions/tournaments, opponent rosters, opponent Player entities, club-management ERP, Fantasy lineups, Market Value, Tier List, budget, Captain, Manager Points, Manager Leaderboard, Team A / Team B.
+
+### 23.3 Membership
+
+External Players are full football participants: Matches, goals, assists, minutes, **receive** peer ratings and MVP votes, appear in rankings. They cannot submit ratings or MVP votes (no account).
+
+Administrators may submit/correct **objective** stats (goals, assists, minutes) for any participant. Administrators must **never** submit peer ratings or MVP votes on behalf of another User. **[Implemented]**
+
+A pending claim blocks Club membership until the administrator accepts or rejects, the same as in a League (Section 3.3). **[Implemented]**
+
+### 23.4 Club Match flow
+
+Persisted statuses: `open` → `started` → `completed` (result recorded) → `scored` → `closed`. Fantasy may keep `scored` as terminal; Club close is a separate action.
+
+1. Admin creates a Club Match (date; opponent name may be filled at result time). Reject `sideSize`, `matchTeams` and lineup budget on Club Matches. **[Implemented]**
+2. Club Players join / admin registers participants (including externals). No Team A/B.
+3. Match is played (`started` may lock joining).
+4. Admin records opponent name, our goals, opponent goals → `completed`. **[Implemented]**
+5. Participants (or admin for objective fields) submit goals, assists, minutes.
+6. Registered participants complete **assigned** peer ratings. Goal: every participant receives **at least 3** incoming ratings when mathematically possible. Outgoing counts need not be equal. Small squads (fewer than four eligible voters): each voter rates every other rateable participant. Assignments persist and are stable on reload. **[Implemented]**
+7. Registered participants vote MVP among Match Participants (no self-vote).
+8. Admin may resolve missing objective stats.
+9. Scoring is calculated, or force-scored. Incomplete peer ballots still block normal calculate (`RATINGS_INCOMPLETE`). Force fills each missing **incoming assigned** rating with **6.5**; objective stats that exist still count. After calculate or force, scoring is definitive; late ratings and late stats are rejected. **[Implemented]**
+10. Admin **explicitly closes** the Match. After close it is immutable in normal User and admin correction flows. **[Implemented]**
+11. Player Ranking and history reflect the closed/scored Match, sliced by season.
+
+Sum of participant goals versus ourGoals may warn the admin. Do not invent a second opponent-stat model.
+
+### 23.5 Club Player Points
+
+```
+Player Points =
+  peerAverage
+  + (goals × 3)
+  + (assists × 2)
+  + minutesComponent
+  + resultContribution
+  + mvpContribution
+```
+
+- **Goals / assists:** same football weights as Fantasy (`×3`, `×2`).
+- **Peer:** mean of received assigned ratings (0.0–10.0). Force-score: each missing incoming rating required by the assignment set is **6.5**, then average. Asymmetry of 3 vs 4 incoming ratings is allowed.
+- **Minutes:** 0–120. Cap **5** points at a full 90 minutes: `minutesComponent = min(5, round1(minutes * 5 / 90))`. So 90+ minutes → 5.0; 45 minutes → 2.5.
+- **Result contribution:** must affect Player Points. Fantasy explicitly has **no** win bonus (Section 16.1). **[Requires product decision]** Do not implement +3/+1/0 or any other invented constant. Persist W/D/L for history and ranking filters only until confirmed.
+- **MVP contribution:** must affect Player Points. Fantasy uses **+2**. **[Requires product decision]** whether Club reuses that +2. Persist the MVP flag for history only until confirmed.
+
+**[Implemented]** for peer, goals, assists and minutes. The two unresolved bonuses stay at zero in code (`CLUB_RESULT_POINTS_PENDING`, `CLUB_MVP_POINTS_PENDING`).
+
+### 23.6 Ranking and history
+
+Ranking = **total contribution across the season** (sum of Match Player Points). Minutes and participation accumulate. Also persist, per season: matches played, wins, draws, losses, goals for, goals against (Club-level history) and per-Player minutes/goals/assists/peer/MVP/points.
+
+History list: grouped by season (1 Aug–31 Jul), date, opponent, result. **[Implemented]**
+
+### 23.7 Club UI, API and tests
+
+- Overview: Create Club, Join (one field, prefix routes). Cards: League vs Club.
+- `ClubHub` `/club/:id`: Roster, Clasificación (Player only), Historial, Estadísticas. No Lineup, no Valoración, no Team A/B.
+- Automated coverage: `tests/api/club-entity.test.ts`, `tests/api/club-match.test.ts` (full loop: create club → join alias → match → participants → result → stats+minutes → ratings+MVP → calculate → close → ranking + history by season), plus unit tests for assignments and the scoring formula.
+
+---
+## 24. Future Features
 
 The following are **`Future / Not required for the current core loop`**.
 
@@ -1148,9 +1308,9 @@ They are recorded so they are not lost, not because they are committed. **A futu
 
 | Feature | Notes |
 |---|---|
-| **Season cycles** | An administrator-triggered "End Season" action, with no dates and no season entity. Explicitly scoped as manual, not time-based. |
 | **End-of-season Wrapped** | A simple in-app summary screen showing best player, best manager and highlights. No export, no image generation, no sharing. |
-| **Historical seasons** | Browsing previous seasons after the season concept exists. |
+| **Club result scoring weight** | Must affect Club Player Points. Unresolved (P2.7). Do not invent +3/+1/0. |
+| **Club MVP scoring weight** | Must affect Club Player Points. Unresolved (P2.7). Do not invent a Club-only constant; Fantasy uses +2. |
 | **PWA / offline improvements** | Installability and tolerance of poor connectivity at a football pitch. |
 | **Improved animations and transitions** | Strictly decorative; Section 20.8 applies. |
 | **Player cards** | Richer per-player visual identity. |
@@ -1164,11 +1324,11 @@ They are recorded so they are not lost, not because they are committed. **A futu
 
 ---
 
-## 24. Lightweight Technical Recommendations
+## 25. Lightweight Technical Recommendations
 
 This document is functional. This section is deliberately short and contains no schemas, endpoint catalogues or architecture diagrams; those belong in separate technical documentation.
 
-### 24.1 Priority order for technical decisions
+### 25.1 Priority order for technical decisions
 
 1. Simplicity
 2. Reliability
@@ -1180,7 +1340,7 @@ This document is functional. This section is deliberately short and contains no 
 
 **Pachanga is a small-group application.** A league has a handful of members and plays perhaps weekly. Architecture designed for hypothetical massive scale is a cost with no benefit.
 
-### 24.2 Prefer
+### 25.2 Prefer
 
 - One frontend application.
 - One backend API.
@@ -1192,30 +1352,30 @@ This document is functional. This section is deliberately short and contains no 
 - Minimal dependencies and minimal infrastructure.
 - Explicit relations for important business relationships, in preference to storing them inside loosely structured blobs. This applies directly to league membership (Section 7.2) and team assignments.
 
-### 24.3 Avoid unless a demonstrated requirement exists
+### 25.3 Avoid unless a demonstrated requirement exists
 
 Microservices · event-driven architectures · message brokers · distributed caching · CQRS · service meshes · multiple databases · premature GraphQL · WebSockets for anything that works with ordinary requests · enterprise RBAC · complex infrastructure orchestration.
 
-### 24.4 On the existing stack
+### 25.4 On the existing stack
 
 The application uses React, TypeScript, Express, PostgreSQL and Drizzle. **These remain adequate and should be retained.** Do not recommend migrating technologies for novelty. A technical change must have a clear functional or maintenance benefit.
 
-### 24.5 Persistence principles
+### 25.5 Persistence principles
 
 Not a database specification — but the persistence model must be able to represent, unambiguously:
 
-Users · Leagues · League Membership · Players · Player-to-User association · Player Valuations · Market Values · Matches · Match Participants · Fantasy Lineups · Captain · Match Statistics · Player of the Match votes · Peer ratings · Market Value history · Player Match Points · Manager Match Points · Historical leaderboard inputs
+Users · Avatars · Leagues · Clubs · Membership · Players (leagueId xor clubId) · Aliases · Claim requests · Invite codes (`L-` / `C-` / legacy, text width) · Player Valuations · Market Values · Matches (leagueId xor clubId, seasonKey, Fantasy sideSize, Club opponent/result) · Match Participants · Fantasy Lineups · Captain · Match Statistics (minutes on Club rows) · Player of the Match votes · Peer ratings and assignments · Market Value history · Player Match Points · Manager Match Points · Historical leaderboard inputs
 
 Two principles:
 
 - **Prefer explicit relations** over embedding important relationships in JSON blobs.
 - **Historical scored data must be reproducible.** Once a match is scored, the inputs that produced its result must remain retrievable and unchanged, independently of any later edits to current state.
 
-Two gaps to note against these principles: **Manager Match Points have no representation at all** (Section 16.4), and statistics are keyed to the User rather than the Player (Section 15.1).
+Those earlier gaps are closed: Manager Match Points are snapshotted (Section 16.4) and statistics are keyed to the Player (Section 15.1). New 2.0 values (avatarPath, claim requests, sideSize, seasonKey, clubId, minutes, opponent fields) must be allowed in Drizzle, SQL migrations and the test schema **before** application code writes them.
 
 Table names are not prescribed here. Documenting the currently implemented model belongs in a separate technical document.
 
-### 24.6 On the API
+### 25.6 On the API
 
 **Functional requirements describe actions, not URLs.** Prefer:
 
@@ -1227,15 +1387,15 @@ over:
 
 Endpoint naming belongs in technical documentation. However, backend operations should correspond cleanly to functional actions:
 
-create league · join league · open valuation · submit valuation · close valuation · create match · join match · add players to match · save lineup · finalise match · submit stats · validate stats · calculate scoring · retrieve player leaderboard · retrieve manager leaderboard
+create league · join league · create club · join club · upload avatar · resolve claim · open valuation · submit valuation · close valuation · create match · join match · add players to match · save lineup · assign teams · start match · record club result · close club match · finalise match · submit stats · validate stats · calculate scoring · retrieve player leaderboard · retrieve manager leaderboard
 
 Where an operation has no functional counterpart in this document, question whether it should exist.
 
 ---
 
-## 25. Acceptance Criteria / Functional Validation Checklist
+## 26. Acceptance Criteria / Functional Validation Checklist
 
-### 25.1 Worked examples
+### 26.1 Worked examples
 
 These examples are deliberately concrete so they can be lifted directly into tests.
 
@@ -1246,7 +1406,21 @@ These examples are deliberately concrete so they can be lifted directly into tes
 
 **Player scoring**
 
-- A Player records 2 goals and 1 assist → `Player Points = (2 × 3) + (1 × 2) = 8`.
+- A Player records 2 goals and 1 assist and is not MVP, with a 5.0 peer average → Fantasy `Player Points = 5.0 + (2 × 3) + (1 × 2) = 13.0`.
+- Force-score with incomplete Fantasy ballots: missing votes are 6.5 and extras (goals, assists, MVP) are omitted.
+
+**Club minutes and unresolved bonuses**
+
+- 45 minutes → `minutesComponent = 2.5`. 90 or 120 minutes → `5.0`.
+- Club Player Points currently add peer average + goals×3 + assists×2 + minutes only. Result and MVP weights stay 0 until P2.7 is confirmed.
+
+**Claim request**
+
+- Join a League or Club with an alias that matches an unlinked Player → `409 CLAIM_PENDING`, user is not a member, cannot open that context's matches until the administrator accepts.
+
+**Fantasy side size**
+
+- A 7v7 Match accepts 7 on Team A; the 8th on Team A is rejected; 14 participants can start; 13 cannot. Lineup on an 11v11 is still exactly five.
 
 **Captain separation**
 
@@ -1282,14 +1456,15 @@ These examples are deliberately concrete so they can be lifted directly into tes
 
 - After a Match is scored, editing a lineup or resubmitting a statistic does not change that Match's contribution to either leaderboard.
 
-### 25.2 Checklist for any new functionality
+### 26.2 Checklist for any new functionality
 
 Before merging any change, a developer should be able to answer every question below.
 
 **Product compatibility**
 
 - [ ] Does the feature support the core Pachanga loop?
-- [ ] Does it preserve the distinction between Player and Manager?
+- [ ] Does it preserve the distinction between Player and Manager in Fantasy, and avoid inventing Managers in Club Mode?
+- [ ] If it is Club Mode, does it avoid Team A/B, lineups, Market Value and invented result/MVP coefficients?
 - [ ] Does it preserve the distinction between Market Value and Player Points (points are peer average plus extras, VM still uses the performance formula)?
 - [ ] Does it preserve the distinction between the Player Leaderboard and the Manager Leaderboard?
 - [ ] Could this be left out entirely without weakening the loop?
