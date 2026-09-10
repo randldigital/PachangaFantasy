@@ -331,6 +331,37 @@ export const joinWithAliasSchema = z.object({
   alias: aliasSchema,
 });
 
+/** Join with a new alias, or claim an existing unlinked Player. Never both. */
+export const joinOrganisationSchema = z
+  .object({
+    alias: z.string().optional(),
+    playerId: z.number().int().positive().optional(),
+  })
+  .superRefine((value, ctx) => {
+    const alias = typeof value.alias === "string" ? value.alias.trim() : "";
+    const hasAlias = alias.length > 0;
+    const hasPlayer = value.playerId != null;
+    if (hasAlias === hasPlayer) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Send either an alias or a playerId",
+      });
+      return;
+    }
+    if (hasAlias) {
+      const parsed = aliasSchema.safeParse(alias);
+      if (!parsed.success) {
+        for (const issue of parsed.error.issues) {
+          ctx.addIssue({ ...issue, path: ["alias"] });
+        }
+      }
+    }
+  });
+
+export const joinByPlayerIdSchema = z.object({
+  playerId: z.number().int().positive(),
+});
+
 export const updateAliasSchema = z.object({
   alias: aliasSchema,
 });
@@ -450,6 +481,7 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type JoinLeagueInput = z.infer<typeof joinLeagueSchema>;
 export type CreateLeagueInput = z.infer<typeof createLeagueSchema>;
 export type JoinWithAliasInput = z.infer<typeof joinWithAliasSchema>;
+export type JoinOrganisationInput = z.infer<typeof joinOrganisationSchema>;
 export type PlayerClaimRequest = typeof playerClaimRequests.$inferSelect;
 export type Club = typeof clubs.$inferSelect;
 export type InsertClub = z.infer<typeof insertClubSchema>;

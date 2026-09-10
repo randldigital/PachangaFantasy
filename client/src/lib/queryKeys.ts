@@ -36,4 +36,6 @@ export const queryKeys = {
   clubClaimRequests: (clubId: number) => [`/api/clubs/${clubId}/claim-requests`] as const,
   clubTierList: (clubId: number) => [`/api/clubs/${clubId}/tierlist`] as const,
   clubTierListsAll: (clubId: number) => [`/api/clubs/${clubId}/tierlist/all`] as const,
+  unlinkedPlayers: (inviteCode: string) =>
+    [`/api/${inviteCode.startsWith("C-") ? "clubs" : "leagues"}/${inviteCode}/unlinked-players`] as const,
 };

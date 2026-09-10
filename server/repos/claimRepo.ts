@@ -100,3 +100,15 @@ export async function deleteClaimsByPlayerIds(playerIds: number[]): Promise<void
     await db.delete(playerClaimRequests).where(eq(playerClaimRequests.playerId, playerId));
   }
 }
+
+/** Drops leftover pending claims when a user leaves or is removed from a context. */
+export async function rejectPendingClaimsForUserInContext(
+  userId: number,
+  ref: ContextRef,
+  resolvedBy: number,
+): Promise<void> {
+  const pending = await getPendingClaimsForUserInContext(userId, ref);
+  for (const request of pending) {
+    await resolveClaim(request.id, "rejected", resolvedBy);
+  }
+}

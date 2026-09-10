@@ -11,6 +11,7 @@ import ClubClasificacionSection from "@/components/club/ClubClasificacionSection
 import ClubHistorialSection from "@/components/club/ClubHistorialSection";
 import ClubMatchBanner from "@/components/club/ClubMatchBanner";
 import DeleteClubButton from "@/components/club/DeleteClubButton";
+import LeaveOrganisationButton from "@/components/LeaveOrganisationButton";
 import AddPlayerForm from "@/components/league/AddPlayerForm";
 import RosterManagerDialog from "@/components/league/RosterManagerDialog";
 import StatsSection from "@/components/league/StatsSection";
@@ -139,6 +140,7 @@ export default function ClubHub() {
               <DeleteClubButton club={club} isClubCreator={isAdmin} />
             </div>
           )}
+          {!isAdmin && <LeaveOrganisationButton kind="club" organisationId={club.id} />}
           <div className="flex items-center gap-2 text-slate-400 text-sm ml-auto">
             <Users className="w-4 h-4" />
             <span>
@@ -225,6 +227,7 @@ export default function ClubHub() {
       />
       <RosterManagerDialog
         clubId={clubId}
+        createdBy={club.createdBy}
         players={players}
         isOpen={showRoster}
         onClose={() => setShowRoster(false)}

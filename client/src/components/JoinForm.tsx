@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
 import { apiRequest } from "@/lib/queryClient";
 import { ApiError, describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
@@ -12,6 +13,12 @@ import { isValidInviteCode, normalizeInviteCode, parseInviteCode } from "@shared
 
 interface JoinFormProps {
   onSuccess?: () => void;
+}
+
+interface UnlinkedPlayer {
+  id: number;
+  name: string;
+  isExternal: boolean;
 }
 
 /**
@@ -24,19 +31,31 @@ export default function JoinForm({ onSuccess }: JoinFormProps) {
   const queryClient = useQueryClient();
   const [inviteCode, setInviteCode] = useState("");
   const [alias, setAlias] = useState("");
+  const [claimedName, setClaimedName] = useState("");
   const [claimPending, setClaimPending] = useState(false);
 
   const normalized = normalizeInviteCode(inviteCode);
   const parsed = parseInviteCode(normalized);
   const codeLooksValid = isValidInviteCode(normalized);
   const isClub = parsed?.context === "club";
+  const resource = isClub ? "clubs" : "leagues";
+
+  const { data: unlinked = [] } = useQuery<UnlinkedPlayer[]>({
+    queryKey: queryKeys.unlinkedPlayers(normalized),
+    queryFn: () => api.get<UnlinkedPlayer[]>(`/api/${resource}/${encodeURIComponent(normalized)}/unlinked-players`),
+    enabled: codeLooksValid,
+  });
 
   const joinMutation = useMutation({
-    mutationFn: async (input: { inviteCode: string; alias: string; club: boolean }) => {
-      const resource = input.club ? "clubs" : "leagues";
-      return apiRequest("POST", `/api/${resource}/${input.inviteCode}/join`, {
-        alias: input.alias,
-      });
+    mutationFn: async (input: {
+      inviteCode: string;
+      club: boolean;
+      alias?: string;
+      playerId?: number;
+    }) => {
+      const path = input.club ? "clubs" : "leagues";
+      const body = input.playerId != null ? { playerId: input.playerId } : { alias: input.alias };
+      return apiRequest("POST", `/api/${path}/${input.inviteCode}/join`, body);
     },
     onSuccess: (_data, variables) => {
       toast({
@@ -66,8 +85,16 @@ export default function JoinForm({ onSuccess }: JoinFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!codeLooksValid || !alias.trim()) return;
+    setClaimedName(alias.trim());
     setClaimPending(false);
     joinMutation.mutate({ inviteCode: normalized, alias: alias.trim(), club: isClub });
+  };
+
+  const handleClaim = (player: UnlinkedPlayer) => {
+    if (!codeLooksValid) return;
+    setClaimedName(player.name);
+    setClaimPending(false);
+    joinMutation.mutate({ inviteCode: normalized, playerId: player.id, club: isClub });
   };
 
   if (claimPending) {
@@ -75,7 +102,7 @@ export default function JoinForm({ onSuccess }: JoinFormProps) {
       <div className="space-y-4 text-center">
         <p className="text-white font-medium">{t("claims.pendingTitle")}</p>
         <p className="text-sm text-slate-400">
-          {t("claims.pendingDescription", { alias: alias.trim() })}
+          {t("claims.pendingDescription", { alias: claimedName || alias.trim() })}
         </p>
         <Button
           type="button"
@@ -114,6 +141,29 @@ export default function JoinForm({ onSuccess }: JoinFormProps) {
         )}
       </div>
 
+      {codeLooksValid && unlinked.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm text-slate-300">{t("join.unlinkedHint")}</p>
+          <ul className="divide-y divide-slate-700 rounded-md border border-slate-700">
+            {unlinked.map((player) => (
+              <li key={player.id} className="flex items-center justify-between gap-2 px-3 py-2">
+                <span className="text-white truncate">{player.name}</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={joinMutation.isPending}
+                  onClick={() => handleClaim(player)}
+                  className="shrink-0 border-sky-500 text-sky-400 hover:bg-sky-500 hover:text-white"
+                >
+                  {t("join.claim")}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="joinAlias" className="text-white">
           {t("alias.label")} *
@@ -124,7 +174,7 @@ export default function JoinForm({ onSuccess }: JoinFormProps) {
           value={alias}
           onChange={(e) => setAlias(e.target.value)}
           placeholder={t("alias.placeholder")}
-          className="bg-slate-900 border-slate-600 text-white placeholder-slate-400"
+          className="bg-slate-900 border-slate-600 text-slate-400 placeholder-slate-400"
           maxLength={30}
           required
         />

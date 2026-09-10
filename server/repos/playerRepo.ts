@@ -156,6 +156,52 @@ export async function resolveJoinAlias(input: ContextRef & {
   return { kind: "created", player: created };
 }
 
+export type ClaimUnlinkedOutcome =
+  | { kind: "claim_pending"; player: Player; requestId: number }
+  | { kind: "already_has_player"; player: Player }
+  | { kind: "already_linked"; player: Player }
+  | { kind: "wrong_context" }
+  | { kind: "not_found" };
+
+/**
+ * Starts a claim on a chosen unlinked Player. Does not create a Player or add membership.
+ * Join-by-alias stays the name-match path; this is the explicit pick-to-claim path.
+ */
+export async function claimUnlinkedPlayer(input: ContextRef & {
+  userId: number;
+  playerId: number;
+}): Promise<ClaimUnlinkedOutcome> {
+  const ref: ContextRef = { leagueId: input.leagueId, clubId: input.clubId };
+  const existing = await checkUserAsPlayer(input.userId, ref);
+  if (existing) {
+    return { kind: "already_has_player", player: existing };
+  }
+
+  const player = await getPlayer(input.playerId);
+  if (!player) {
+    return { kind: "not_found" };
+  }
+
+  const sameContext =
+    contextOf(ref) === "league"
+      ? player.leagueId === ref.leagueId && player.clubId == null
+      : player.clubId === ref.clubId && player.leagueId == null;
+  if (!sameContext) {
+    return { kind: "wrong_context" };
+  }
+  if (player.userId != null) {
+    return { kind: "already_linked", player };
+  }
+
+  const request = await claimRepo.requestClaim(player.id, input.userId);
+  return { kind: "claim_pending", player, requestId: request.id };
+}
+
+export async function getUnlinkedPlayers(ref: ContextRef): Promise<Player[]> {
+  const roster = await getPlayersByContext(ref);
+  return roster.filter((player) => player.userId == null);
+}
+
 /** Completes an accepted claim: the unlinked Player becomes the user's Player. */
 export async function linkPlayerToUser(playerId: number, userId: number): Promise<Player> {
   const linked = await updatePlayer(playerId, { userId, isExternal: false });
@@ -163,6 +209,18 @@ export async function linkPlayerToUser(playerId: number, userId: number): Promis
     throw new Error("Failed to link player to user");
   }
   return linked;
+}
+
+/**
+ * Leaves the Player in place (history, rankings, match rows) but clears the account link
+ * so someone else can claim it. Does not delete the Player.
+ */
+export async function unlinkPlayerFromUser(playerId: number): Promise<Player> {
+  const unlinked = await updatePlayer(playerId, { userId: null, isExternal: true });
+  if (!unlinked) {
+    throw new Error("Failed to unlink player from user");
+  }
+  return unlinked;
 }
 
 async function deleteRoster(ref: ContextRef): Promise<void> {

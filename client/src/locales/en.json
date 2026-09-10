@@ -282,6 +282,12 @@
     "CLAIM_PENDING": "An administrator must confirm your claim before you can join.",
     "ALIAS_TAKEN": "That alias is already used here.",
     "ALIAS_REQUIRED": "An alias is required.",
+    "JOIN_IDENTITY_REQUIRED": "Choose an existing name or type a new alias.",
+    "ALREADY_HAS_PLAYER": "You already have a player in this group.",
+    "PLAYER_NOT_IN_CONTEXT": "That player is not in this group.",
+    "NOT_A_MEMBER": "That account is not a member of this group.",
+    "ADMIN_CANNOT_LEAVE": "The administrator cannot leave. Delete the group instead.",
+    "CANNOT_REMOVE_ADMIN": "The administrator cannot be removed.",
     "ADMIN_ONLY": "Only the administrator can do that.",
     "AVATAR_NOT_IMAGE": "Only image files are accepted.",
     "AVATAR_REQUIRED": "Choose an image first.",
@@ -577,7 +583,7 @@
   },
   "claims": {
     "pendingTitle": "Waiting for the administrator",
-    "pendingDescription": "\"{{alias}}\" already exists in this league. The administrator has to confirm it is you before you can join.",
+    "pendingDescription": "\"{{alias}}\" already exists here. The administrator has to confirm it is you before you can join.",
     "title": "Claim requests",
     "adminHint": "Confirm only if this account really belongs to that player.",
     "requestedBy": "Requested by {{username}}",
@@ -592,6 +598,19 @@
     "rename": "Rename",
     "external": "External"
   },
+  "membership": {
+    "leave": "Leave",
+    "leaveTitle": "Leave this group?",
+    "leaveDescription": "Your name stays on the roster, history and rankings. The account is unlinked, so you or someone else can claim that name later. Coming back needs administrator approval.",
+    "leaving": "Leaving...",
+    "left": "You left",
+    "leftDescription": "Your player is still on the roster and can be claimed.",
+    "remove": "Remove",
+    "removeTitle": "Remove this member?",
+    "removeDescription": "\"{{name}}\" stays on the roster, history and rankings, but the account is unlinked. Anyone can claim that name; joining again needs your approval.",
+    "removing": "Removing...",
+    "removed": "Member removed"
+  },
   "season": {
     "label": "Season",
     "all": "All",
@@ -601,7 +620,9 @@
     "title": "Join with a code",
     "submit": "Join",
     "detectedLeague": "This code opens a Fantasy league.",
-    "detectedClub": "This code opens a club."
+    "detectedClub": "This code opens a club.",
+    "claim": "Claim",
+    "unlinkedHint": "If your name is already on the roster, claim it. Otherwise join with a new alias."
   },
   "club": {
     "badge": "Club",

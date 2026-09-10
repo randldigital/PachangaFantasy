@@ -119,14 +119,14 @@ describe("aliases", () => {
     expect(created.status).toBe(400);
   });
 
-  it("requires an alias to join", async () => {
+  it("requires an alias or a playerId to join", async () => {
     const { league } = await createLeagueWithMembers(app, 1);
     const joiner = (await registerUser(app, 50)).body;
     const joined = await request(app)
       .post(`/api/leagues/${league.inviteCode}/join`)
       .set(auth(joiner.token));
     expect(joined.status).toBe(400);
-    expect(joined.body.code).toBe("ALIAS_REQUIRED");
+    expect(joined.body.code).toBe("JOIN_IDENTITY_REQUIRED");
   });
 
   it("rejects an alias already taken by another account in the same league", async () => {
@@ -346,6 +346,181 @@ describe("claim requests", () => {
       .set(auth(joiner.token))
       .send({ decision: "accept" });
     expect(asJoiner.status).toBe(403);
+  });
+
+  it("lists unlinked players for a valid invite and rejects a wrong prefix", async () => {
+    const { owner, league, external, joiner } = await leagueWithExternal();
+
+    const listed = await request(app)
+      .get(`/api/leagues/${league.inviteCode}/unlinked-players`)
+      .set(auth(joiner.token));
+    expect(listed.status).toBe(200);
+    expect(listed.body).toEqual([
+      expect.objectContaining({ id: external.id, name: "Invitado", isExternal: true }),
+    ]);
+
+    const asMember = await request(app)
+      .get(`/api/leagues/${league.inviteCode}/unlinked-players`)
+      .set(auth(owner.token));
+    expect(asMember.status).toBe(200);
+    expect(asMember.body.map((player: { id: number }) => player.id)).toEqual([external.id]);
+
+    const wrongPrefix = await request(app)
+      .get("/api/leagues/C-ABC123/unlinked-players")
+      .set(auth(joiner.token));
+    expect(wrongPrefix.status).toBe(404);
+    expect(wrongPrefix.body.code).toBe("WRONG_INVITE_CONTEXT");
+
+    const missing = await request(app)
+      .get("/api/leagues/L-NOCODE/unlinked-players")
+      .set(auth(joiner.token));
+    expect(missing.status).toBe(404);
+    expect(missing.body.code).toBe("INVALID_INVITE_CODE");
+  });
+
+  it("starts a pending claim from playerId without creating membership", async () => {
+    const { owner, league, external, joiner } = await leagueWithExternal();
+
+    const blocked = await request(app)
+      .post(`/api/leagues/${league.inviteCode}/join`)
+      .set(auth(joiner.token))
+      .send({ playerId: external.id });
+    expect(blocked.status).toBe(409);
+    expect(blocked.body.code).toBe("CLAIM_PENDING");
+    expect(blocked.body.requestId).toBeTruthy();
+
+    const retry = await request(app)
+      .post(`/api/leagues/${league.inviteCode}/join`)
+      .set(auth(joiner.token))
+      .send({ playerId: external.id });
+    expect(retry.status).toBe(409);
+    expect(retry.body.code).toBe("CLAIM_PENDING");
+    expect(retry.body.requestId).toBe(blocked.body.requestId);
+
+    const hidden = await request(app).get(`/api/leagues/${league.id}`).set(auth(joiner.token));
+    expect(hidden.status).toBe(404);
+
+    const roster = await request(app).get(`/api/players/${league.id}`).set(auth(owner.token));
+    expect(roster.body.filter((player: { userId: number | null }) => player.userId === joiner.user.id)).toEqual([]);
+    expect(roster.body.find((player: { id: number }) => player.id === external.id).userId).toBeNull();
+
+    const accepted = await request(app)
+      .post(`/api/claim-requests/${blocked.body.requestId}/resolve`)
+      .set(auth(owner.token))
+      .send({ decision: "accept" });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.player.id).toBe(external.id);
+    expect(accepted.body.player.userId).toBe(joiner.user.id);
+    expect(accepted.body.league.participants).toContain(joiner.user.id);
+  });
+
+  it("rejects playerId join when the user is a member, already has a player, or the player is linked", async () => {
+    const { owner, league, external, joiner } = await leagueWithExternal();
+    const otherLeague = (
+      await request(app)
+        .post("/api/leagues")
+        .set(auth(owner.token))
+        .send({ name: "Otra", alias: "Dueño" })
+    ).body;
+    const otherExternal = (
+      await request(app)
+        .post(`/api/players/${otherLeague.id}`)
+        .set(auth(owner.token))
+        .send({ name: "Ajeno", isExternal: true })
+    ).body;
+    const ownerPlayer = (
+      await request(app).get(`/api/players/${league.id}`).set(auth(owner.token))
+    ).body.find((player: { userId: number | null }) => player.userId === owner.user.id);
+
+    const asMember = await request(app)
+      .post(`/api/leagues/${league.inviteCode}/join`)
+      .set(auth(owner.token))
+      .send({ playerId: external.id });
+    expect(asMember.status).toBe(409);
+    expect(asMember.body.code).toBe("ALREADY_IN_LEAGUE");
+
+    const alreadyLinked = await request(app)
+      .post(`/api/leagues/${league.inviteCode}/join`)
+      .set(auth(joiner.token))
+      .send({ playerId: ownerPlayer.id });
+    expect(alreadyLinked.status).toBe(409);
+    expect(alreadyLinked.body.code).toBe("ALIAS_TAKEN");
+
+    const wrongContext = await request(app)
+      .post(`/api/leagues/${league.inviteCode}/join`)
+      .set(auth(joiner.token))
+      .send({ playerId: otherExternal.id });
+    expect(wrongContext.status).toBe(400);
+    expect(wrongContext.body.code).toBe("PLAYER_NOT_IN_CONTEXT");
+
+    const { createPlayer } = await import("../../server/repos/playerRepo");
+    await createPlayer({
+      leagueId: league.id,
+      name: "Huérfano",
+      userId: joiner.user.id,
+      createdBy: owner.user.id,
+    });
+    const alreadyHasPlayer = await request(app)
+      .post(`/api/leagues/${league.inviteCode}/join`)
+      .set(auth(joiner.token))
+      .send({ playerId: external.id });
+    expect(alreadyHasPlayer.status).toBe(409);
+    expect(alreadyHasPlayer.body.code).toBe("ALREADY_HAS_PLAYER");
+  });
+
+  it("unlinks a leaving member and requires a claim to return", async () => {
+    const { owner, users, league } = await createLeagueWithMembers(app, 2);
+    const member = users[1];
+    const before = (
+      await request(app).get(`/api/players/${league.id}`).set(auth(owner.token))
+    ).body.find((player: { userId: number | null }) => player.userId === member.user.id);
+
+    const asOwner = await request(app).post(`/api/leagues/${league.id}/leave`).set(auth(owner.token));
+    expect(asOwner.status).toBe(409);
+    expect(asOwner.body.code).toBe("ADMIN_CANNOT_LEAVE");
+
+    const left = await request(app).post(`/api/leagues/${league.id}/leave`).set(auth(member.token));
+    expect(left.status).toBe(200);
+    expect(left.body.player.id).toBe(before.id);
+    expect(left.body.player.userId).toBeNull();
+
+    const hidden = await request(app).get(`/api/leagues/${league.id}`).set(auth(member.token));
+    expect(hidden.status).toBe(404);
+
+    const roster = await request(app).get(`/api/players/${league.id}`).set(auth(owner.token));
+    expect(roster.body.find((player: { id: number }) => player.id === before.id).userId).toBeNull();
+
+    const reclaim = await request(app)
+      .post(`/api/leagues/${league.inviteCode}/join`)
+      .set(auth(member.token))
+      .send({ playerId: before.id });
+    expect(reclaim.status).toBe(409);
+    expect(reclaim.body.code).toBe("CLAIM_PENDING");
+
+    const accepted = await request(app)
+      .post(`/api/claim-requests/${reclaim.body.requestId}/resolve`)
+      .set(auth(owner.token))
+      .send({ decision: "accept" });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.player.id).toBe(before.id);
+    expect(accepted.body.player.userId).toBe(member.user.id);
+    expect(accepted.body.league.participants).toContain(member.user.id);
+  });
+
+  it("lets the administrator remove a league member without deleting the player", async () => {
+    const { owner, users, league } = await createLeagueWithMembers(app, 2);
+    const member = users[1];
+    const memberPlayer = (
+      await request(app).get(`/api/players/${league.id}`).set(auth(owner.token))
+    ).body.find((player: { userId: number | null }) => player.userId === member.user.id);
+
+    const removed = await request(app)
+      .post(`/api/leagues/${league.id}/members/${member.user.id}/remove`)
+      .set(auth(owner.token));
+    expect(removed.status).toBe(200);
+    expect(removed.body.player.id).toBe(memberPlayer.id);
+    expect(removed.body.player.userId).toBeNull();
+    expect(removed.body.league.participants).not.toContain(member.user.id);
   });
 });
 

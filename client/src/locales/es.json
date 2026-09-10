@@ -279,6 +279,12 @@
     "CLAIM_PENDING": "Un administrador debe confirmar tu solicitud antes de que puedas entrar.",
     "ALIAS_TAKEN": "Ese alias ya está en uso aquí.",
     "ALIAS_REQUIRED": "El alias es obligatorio.",
+    "JOIN_IDENTITY_REQUIRED": "Elige un nombre existente o escribe un alias nuevo.",
+    "ALREADY_HAS_PLAYER": "Ya tienes un jugador en este grupo.",
+    "PLAYER_NOT_IN_CONTEXT": "Ese jugador no está en este grupo.",
+    "NOT_A_MEMBER": "Esa cuenta no es miembro de este grupo.",
+    "ADMIN_CANNOT_LEAVE": "El administrador no puede irse. Elimina el grupo.",
+    "CANNOT_REMOVE_ADMIN": "No se puede quitar al administrador.",
     "ADMIN_ONLY": "Solo el administrador puede hacer eso.",
     "AVATAR_NOT_IMAGE": "Solo se aceptan archivos de imagen.",
     "AVATAR_REQUIRED": "Elige una imagen primero.",
@@ -574,7 +580,7 @@
   },
   "claims": {
     "pendingTitle": "Esperando al administrador",
-    "pendingDescription": "\"{{alias}}\" ya existe en esta liga. El administrador tiene que confirmar que eres tú antes de que puedas entrar.",
+    "pendingDescription": "\"{{alias}}\" ya existe aquí. El administrador tiene que confirmar que eres tú antes de que puedas entrar.",
     "title": "Solicitudes de identidad",
     "adminHint": "Confirma solo si esa cuenta pertenece de verdad a ese jugador.",
     "requestedBy": "Solicitado por {{username}}",
@@ -589,6 +595,19 @@
     "rename": "Renombrar",
     "external": "Externo"
   },
+  "membership": {
+    "leave": "Salir",
+    "leaveTitle": "¿Salir de este grupo?",
+    "leaveDescription": "Tu nombre sigue en la plantilla, el historial y la clasificación. Se desvincula la cuenta, así que tú u otra persona podéis reclamar ese nombre después. Volver requiere la aprobación del administrador.",
+    "leaving": "Saliendo...",
+    "left": "Has salido",
+    "leftDescription": "Tu jugador sigue en la plantilla y se puede reclamar.",
+    "remove": "Quitar",
+    "removeTitle": "¿Quitar a este miembro?",
+    "removeDescription": "\"{{name}}\" sigue en la plantilla, el historial y la clasificación, pero se desvincula la cuenta. Cualquiera puede reclamar ese nombre; volver a entrar necesita tu confirmación.",
+    "removing": "Quitando...",
+    "removed": "Miembro quitado"
+  },
   "season": {
     "label": "Temporada",
     "all": "Todas",
@@ -598,7 +617,9 @@
     "title": "Unirse con un código",
     "submit": "Unirse",
     "detectedLeague": "Este código abre una liga Fantasy.",
-    "detectedClub": "Este código abre un club."
+    "detectedClub": "Este código abre un club.",
+    "claim": "Reclamar",
+    "unlinkedHint": "Si tu nombre ya está en la plantilla, reclámalo. Si no, únete con un alias nuevo."
   },
   "club": {
     "badge": "Club",

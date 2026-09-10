@@ -48,7 +48,7 @@ These extend Phase 0. They are product rules, not recommendations.
 |---|---|
 | **P2.1** | **Club Mode** is a separate experience (`clubs`, `/club/:id`), not a League flag and not “Team Mode”. **Team** means only Fantasy Match sides (Team A / Team B / `matchTeams`). |
 | **P2.2** | A User may belong to many Leagues and many Clubs. Avatar belongs to the User. Alias is the Player name inside one League or one Club; after membership exists only that context's administrator may change it. |
-| **P2.3** | Matching an unlinked Player's alias on join **does not auto-link**. It creates a pending **claim request** and returns `409 CLAIM_PENDING`. The User is not a member until the administrator accepts. Rejecting leaves them out; they may join only with a different unused alias. |
+| **P2.3** | Matching an unlinked Player's alias on join, or selecting that Player at join, **does not auto-link**. It creates a pending **claim request** and returns `409 CLAIM_PENDING`. The User is not a member until the administrator accepts. Rejecting leaves them out; they may join only with a different unused alias. Members cannot claim a second Player. |
 | **P2.4** | Fantasy Match `sideSize` is **5, 7 or 11**, chosen at creation and **immutable**. Capacity is `sideSize × 2`. Start requires **exactly** `sideSize` on Team A and **exactly** `sideSize` on Team B. The fantasy lineup remains **always five**. |
 | **P2.5** | Invite codes carry context: new Leagues `L-XXXXXX`, Clubs `C-XXXXXX`. Legacy six-character League codes still join Leagues only. Never search League then Club. The column is unbounded `text` (never `varchar(6)`). |
 | **P2.6** | A season is **1 August–31 July**, labelled `YYYY/YY` of the August start. Rankings default to the current season; history groups by season. Membership and invite codes are not reset on 1 August. |
@@ -203,15 +203,22 @@ Terms to avoid: "ranking" without a qualifier, "score" without saying whose, "co
 
 `XXXXXX` is 6 uppercase alphanumeric characters. `L-…` looks up Leagues only. `C-…` looks up Clubs only. Unprefixed codes resolve **legacy League codes only**, never Clubs. Existing six-character League codes are not rewritten. The stored column is `text` (wide enough for eight-character prefixed codes; never `char(6)` / `varchar(6)`).
 
-**Claim requests.** **[Implemented]** If the typed alias matches an existing unlinked Player in that League or Club:
+**Claim requests.** **[Implemented]** A claim can start at join by **selecting** an unlinked Player, or by typing that Player's exact alias. Members cannot claim a second Player. In either start path:
 
 1. Do not create a second Player, do not set `userId`, and do not add the User to participants.
-2. Create a pending claim request. Response: `409 CLAIM_PENDING` (include request id). Retrying the same alias while pending is idempotent and still not a member.
+2. Create a pending claim request. Response: `409 CLAIM_PENDING` (include request id). Retrying the same pick or alias while pending is idempotent and still not a member.
 3. The User cannot open Match flows in that context until the administrator accepts or rejects.
 4. On **accept**: add the User to participants and set `players.userId`. Only then is join complete.
 5. On **reject**: the User remains out. They may join only with a **different** unused alias. The same alias cannot be reused unless the admin later allows a new claim.
 
-A User with a pending claim for that League/Club cannot complete membership via any other path for that same alias. They may join a **different** League or Club immediately.
+Accept and reject are unchanged: the administrator only confirms or refuses; there is no second linking path. A User with a pending claim for that League/Club cannot complete membership via any other path for that same Player. They may join a **different** League or Club immediately.
+
+**Leave and remove.** **[Implemented]** A non-administrator may leave a League or Club. The administrator may remove another member. Both actions:
+
+1. Remove the User from participants. They lose access immediately.
+2. Unlink their Player (`userId` cleared). Do **not** delete the Player, match rows, statistics, history or rankings.
+3. The administrator cannot leave or be removed; they delete the League or Club instead.
+4. To return, the same User (or another) must **claim** that unlinked Player at join. Membership is withheld until the administrator accepts. A new unused alias still creates a new Player as on first join.
 
 **Seasons.** **[Implemented]** A Match belongs to exactly one season from its `date`, persisted as `seasonKey` (e.g. `2026/27`). Rankings default to the current season (`?season=2026/27`). History groups Matches into season sections, newest first. Club aggregates (P/W/D/L/GF/GA) are per season. Do not auto-reset rosters or invite codes at 1 August.
 
@@ -386,6 +393,7 @@ Consequences that follow from this and must be preserved:
 - A user must not be able to join the same league twice; the attempt must produce a clear message rather than a duplicate membership. **[Implemented]**
 - A user must not receive a second Player record in a league they are already a Player in. **[Implemented]**
 - Access to a league's data must be restricted to its members. **[Implemented]** for league, player, match, statistics, ranking and valuation reads (Phase 2).
+- A non-administrator may leave; the administrator may remove another member. The Player stays (unlinked) so history and rankings are preserved. Return is a claim that the administrator must accept (Section 3.3). The administrator cannot leave or be removed. **[Implemented]**
 
 ---
 
@@ -1250,6 +1258,8 @@ Administrators may submit/correct **objective** stats (goals, assists, minutes) 
 
 A pending claim blocks Club membership until the administrator accepts or rejects, the same as in a League (Section 3.3). **[Implemented]**
 
+Leave and admin-remove unlink the Club Player and drop membership without deleting history or rankings. Rejoin is a claim that must be accepted. The creator cannot leave or be removed. **[Implemented]**
+
 ### 23.4 Club Match flow
 
 Persisted statuses: `open` → `started` → `completed` (result recorded) → `scored` → `closed`. Fantasy may keep `scored` as terminal; Club close is a separate action.
@@ -1428,7 +1438,7 @@ These examples are deliberately concrete so they can be lifted directly into tes
 
 **Claim request**
 
-- Join a League or Club with an alias that matches an unlinked Player → `409 CLAIM_PENDING`, user is not a member, cannot open that context's matches until the administrator accepts.
+- Join a League or Club by selecting an unlinked Player, or with an alias that matches one → `409 CLAIM_PENDING`, user is not a member, cannot open that context's matches until the administrator accepts.
 
 **Fantasy side size**
 

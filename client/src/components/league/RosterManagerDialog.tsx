@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Pencil, X } from "lucide-react";
+import { Check, Pencil, UserMinus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { apiRequest } from "@/lib/queryClient";
@@ -30,6 +40,7 @@ interface ClaimRequest {
 interface RosterManagerDialogProps {
   leagueId?: number;
   clubId?: number;
+  createdBy: number;
   players: Player[];
   isOpen: boolean;
   onClose: () => void;
@@ -38,6 +49,7 @@ interface RosterManagerDialogProps {
 export default function RosterManagerDialog({
   leagueId,
   clubId,
+  createdBy,
   players,
   isOpen,
   onClose,
@@ -47,7 +59,10 @@ export default function RosterManagerDialog({
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draftAlias, setDraftAlias] = useState("");
+  const [removing, setRemoving] = useState<Player | null>(null);
+  const [removingName, setRemovingName] = useState("");
   const isClub = clubId != null;
+  const organisationId = isClub ? clubId : leagueId;
 
   const { data: claims = [] } = useQuery<ClaimRequest[]>({
     queryKey: isClub ? queryKeys.clubClaimRequests(clubId) : queryKeys.leagueClaimRequests(leagueId!),
@@ -99,6 +114,27 @@ export default function RosterManagerDialog({
     onSuccess: () => {
       invalidate();
       toast({ title: t("claims.resolved") });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: t("common.error"),
+        description: describeApiError(error, t),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const path = isClub
+        ? `/api/clubs/${organisationId}/members/${userId}/remove`
+        : `/api/leagues/${organisationId}/members/${userId}/remove`;
+      return apiRequest("POST", path);
+    },
+    onSuccess: () => {
+      setRemoving(null);
+      invalidate();
+      toast({ title: t("membership.removed") });
     },
     onError: (error: unknown) => {
       toast({
@@ -212,23 +248,60 @@ export default function RosterManagerDialog({
                   </Button>
                 </div>
               ) : (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setEditingId(player.id);
-                    setDraftAlias(player.name);
-                  }}
-                  className="text-slate-300 hover:text-white hover:bg-slate-700"
-                >
-                  <Pencil className="h-4 w-4 mr-1" />
-                  {t("roster.rename")}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setEditingId(player.id);
+                      setDraftAlias(player.name);
+                    }}
+                    className="text-slate-300 hover:text-white hover:bg-slate-700"
+                  >
+                    <Pencil className="h-4 w-4 mr-1" />
+                    {t("roster.rename")}
+                  </Button>
+                  {player.userId != null && player.userId !== createdBy && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setRemoving(player);
+                        setRemovingName(player.name);
+                      }}
+                      className="text-orange-400 hover:text-orange-300 hover:bg-slate-700"
+                    >
+                      <UserMinus className="h-4 w-4 mr-1" />
+                      {t("membership.remove")}
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           ))}
         </div>
       </DialogContent>
+
+      <AlertDialog open={removing != null} onOpenChange={(open) => !open && setRemoving(null)}>
+        <AlertDialogContent className="bg-slate-800 border-slate-700 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("membership.removeTitle")}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300">
+              {t("membership.removeDescription", { name: removingName })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={removeMutation.isPending || removing?.userId == null}
+              onClick={() => removing?.userId != null && removeMutation.mutate(removing.userId)}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {removeMutation.isPending ? t("membership.removing") : t("membership.remove")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
