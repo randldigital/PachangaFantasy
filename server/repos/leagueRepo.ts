@@ -1,7 +1,10 @@
 import { leagues, type League, type InsertLeague } from "@shared/schema";
 import { db } from "../db";
 import { eq, or, sql } from "drizzle-orm";
-import { nanoid } from "nanoid";
+import { customAlphabet } from "nanoid";
+import { buildInviteCode, INVITE_ALPHABET, INVITE_BODY_LENGTH } from "@shared/domain/inviteCodes";
+
+const inviteBody = customAlphabet(INVITE_ALPHABET, INVITE_BODY_LENGTH);
 import * as matchRepo from "./matchRepo";
 import * as valuationRepo from "./valuationRepo";
 import * as playerRepo from "./playerRepo";
@@ -22,7 +25,7 @@ export async function createLeague(league: InsertLeague, createdBy: number): Pro
     .values({
       name: league.name,
       description: league.description,
-      inviteCode: nanoid(6).toUpperCase(),
+      inviteCode: buildInviteCode("league", inviteBody()),
       createdBy,
       participants: [createdBy],
       status: "open",

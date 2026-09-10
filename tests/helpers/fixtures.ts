@@ -30,20 +30,26 @@ export async function createLeagueWithMembers(app: Express, memberCount = 2) {
   const leagueResponse = await request(app)
     .post("/api/leagues")
     .set("Authorization", `Bearer ${owner.token}`)
-    .send({ name: "Parque", description: "Sunday" });
+    .send({ name: "Parque", description: "Sunday", alias: owner.user.username });
 
   const league = leagueResponse.body;
 
   for (const member of users.slice(1)) {
     await request(app)
       .post(`/api/leagues/${league.inviteCode}/join`)
-      .set("Authorization", `Bearer ${member.token}`);
+      .set("Authorization", `Bearer ${member.token}`)
+      .send({ alias: member.user.username });
   }
 
   return { users, owner, league };
 }
 
-export async function createOpenMatch(app: Express, ownerToken: string, leagueId: number) {
+export async function createOpenMatch(
+  app: Express,
+  ownerToken: string,
+  leagueId: number,
+  sideSize?: 5 | 7 | 11,
+) {
   const matchResponse = await request(app)
     .post("/api/matches")
     .set("Authorization", `Bearer ${ownerToken}`)
@@ -51,17 +57,81 @@ export async function createOpenMatch(app: Express, ownerToken: string, leagueId
       leagueId,
       date: new Date(Date.now() + 86400000).toISOString(),
       lineupBudget: 100,
+      ...(sideSize ? { sideSize } : {}),
     });
   return matchResponse;
 }
 
-export async function startMatch(app: Express, ownerToken: string, matchId: number) {
+async function acceptedPlayerIds(app: Express, token: string, matchId: number) {
   const participants = await request(app)
     .get(`/api/matches/${matchId}/participants`)
-    .set(auth(ownerToken));
-  const ids = ((participants.body as { playerId: number; status: string }[]) || [])
+    .set(auth(token));
+  return ((participants.body as { playerId: number; status: string }[]) || [])
     .filter((participant) => participant.status === "accepted")
     .map((participant) => participant.playerId);
+}
+
+/**
+ * A Fantasy Match only starts with exactly `sideSize` players per side, so tests that
+ * care about something else top the squad up with external players.
+ */
+const paddingPlayersByMatch = new Map<number, number[]>();
+
+export async function padMatchToCapacity(app: Express, ownerToken: string, matchId: number) {
+  const match = (await request(app).get(`/api/matches/${matchId}`).set(auth(ownerToken))).body as {
+    leagueId: number;
+    sideSize: number;
+  };
+  const capacity = (match.sideSize ?? 5) * 2;
+  let ids = await acceptedPlayerIds(app, ownerToken, matchId);
+
+  const padding: number[] = [];
+  let index = 0;
+  while (ids.length < capacity) {
+    const created = await request(app)
+      .post(`/api/players/${match.leagueId}`)
+      .set(auth(ownerToken))
+      .send({ name: `Relleno ${Date.now()}-${index}`, isExternal: true });
+    index += 1;
+    padding.push(created.body.id as number);
+    const added = await request(app)
+      .post(`/api/matches/${matchId}/add-players`)
+      .set(auth(ownerToken))
+      .send({ playerIds: [created.body.id] });
+    if (added.status !== 200) {
+      throw new Error(`pad match failed: ${added.status} ${JSON.stringify(added.body)}`);
+    }
+    ids = await acceptedPlayerIds(app, ownerToken, matchId);
+  }
+  paddingPlayersByMatch.set(matchId, [...(paddingPlayersByMatch.get(matchId) ?? []), ...padding]);
+  return ids;
+}
+
+/**
+ * Zero-fills objective stats for the filler players added by `padMatchToCapacity`, so that a
+ * test's assertions about the real squad's statistics still hold.
+ */
+export async function fillMissingStats(app: Express, ownerToken: string, matchId: number) {
+  const status = await request(app)
+    .get(`/api/matches/${matchId}/stats-status`)
+    .set(auth(ownerToken));
+  const padding = new Set(paddingPlayersByMatch.get(matchId) ?? []);
+  const pending = ((status.body?.status?.pendingPlayerIds ?? []) as number[]).filter((id) =>
+    padding.has(id),
+  );
+  for (const playerId of pending) {
+    const submitted = await request(app)
+      .post(`/api/matches/${matchId}/stats`)
+      .set(auth(ownerToken))
+      .send({ playerId, goals: 0, assists: 0 });
+    if (submitted.status !== 200) {
+      throw new Error(`fill stats failed: ${submitted.status} ${JSON.stringify(submitted.body)}`);
+    }
+  }
+}
+
+export async function startMatch(app: Express, ownerToken: string, matchId: number) {
+  const ids = await padMatchToCapacity(app, ownerToken, matchId);
   if (ids.length >= 2) {
     const mid = Math.ceil(ids.length / 2);
     await request(app)

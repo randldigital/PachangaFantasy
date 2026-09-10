@@ -10,7 +10,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { nextPrimaryAction, shouldShowPrimaryAction, type HubTab, type PrimaryActionId } from "@shared/domain/primaryAction";
 import { pickActiveMatch, normalizeMatchStatus } from "@shared/domain/matchLifecycle";
 import { pickStatsMatch } from "@shared/domain/stats";
-import { teamsAreComplete } from "@shared/domain/teams";
+import { sideSizeOf, teamsAreComplete } from "@shared/domain/teams";
 import type { League, Lineup, Match, Player, StatReport, User } from "@shared/schema";
 
 interface Participant {
@@ -112,6 +112,7 @@ export default function PrimaryActionBanner({
       participants
         .filter((participant) => participant.status === "accepted")
         .map((participant) => participant.playerId),
+      sideSizeOf(activeMatch),
     ),
     statsMatchStatus: statsMatch?.status,
     userPlayedStatsMatch: playedStatsMatch,

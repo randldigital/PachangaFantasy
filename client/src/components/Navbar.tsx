@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { LogOut, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import AvatarUploadButton from "@/components/AvatarUploadButton";
 
 export default function Navbar() {
   const { t } = useTranslation();
@@ -24,6 +25,7 @@ export default function Navbar() {
             <LanguageSwitcher />
             {user && (
               <>
+                <AvatarUploadButton />
                 <span className="text-sm text-text-secondary hidden sm:inline">
                   {t("nav.welcome", { name: user.username })}
                 </span>

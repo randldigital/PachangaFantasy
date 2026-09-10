@@ -87,7 +87,9 @@
   "overview": {
     "title": "Mis Ligas",
     "noLeagues": "No tienes ligas aún",
-    "noLeaguesDescription": "Crea tu primera liga o únete a una existente"
+    "noLeaguesDescription": "Crea tu primera liga o únete a una existente",
+    "leaguesHeading": "Ligas Fantasy",
+    "clubsHeading": "Clubes"
   },
   "league": {
     "create": "Crear Liga",
@@ -138,7 +140,8 @@
     "addPlayerError": "No se pudo añadir el jugador",
     "nameRequired": "El nombre de la liga es obligatorio",
     "nameTooLong": "El nombre de la liga no puede superar 25 caracteres",
-    "descriptionTooLong": "La descripción no puede superar 200 caracteres"
+    "descriptionTooLong": "La descripción no puede superar 200 caracteres",
+    "inviteCodeFormat": "Usa un código como L-AB12CD o C-AB12CD."
   },
   "nextAction": {
     "label": "Siguiente paso",
@@ -272,7 +275,18 @@
     "STATS_ALREADY_VALID": "Los totales ya coinciden, no hay nada que aceptar.",
     "RATINGS_INCOMPLETE": "La puntuación espera a que todos los participantes registrados hayan votado.",
     "RATINGS_INVALID": "Elige un jugador del partido y puntúa exactamente a los jugadores asignados.",
-    "MATCH_NOT_SCOREABLE": "Este partido aún no se puede puntuar."
+    "MATCH_NOT_SCOREABLE": "Este partido aún no se puede puntuar.",
+    "CLAIM_PENDING": "Un administrador debe confirmar tu solicitud antes de que puedas entrar.",
+    "ALIAS_TAKEN": "Ese alias ya está en uso aquí.",
+    "ALIAS_REQUIRED": "El alias es obligatorio.",
+    "ADMIN_ONLY": "Solo el administrador puede hacer eso.",
+    "AVATAR_NOT_IMAGE": "Solo se aceptan archivos de imagen.",
+    "AVATAR_REQUIRED": "Elige una imagen primero.",
+    "WRONG_INVITE_CONTEXT": "Ese código de invitación pertenece a otro tipo de grupo.",
+    "CLAIM_ALREADY_RESOLVED": "Esta solicitud ya está resuelta.",
+    "MATCH_FULL": "Este partido ya está completo.",
+    "SIDE_OVER_CAPACITY": "Un equipo tiene más jugadores de los que permite el tamaño del partido.",
+    "SIDE_INCOMPLETE": "Cada equipo necesita el número exacto de jugadores para empezar."
   },
   "match": {
     "noActiveMatch": "No hay partidos activos",
@@ -351,8 +365,14 @@
       "open": "Abierto",
       "ready": "Empezado",
       "started": "Empezado",
-      "scored": "Puntuado"
-    }
+      "scored": "Puntuado",
+      "closed": "Cerrado"
+    },
+    "sideSize": "Tamaño del partido",
+    "sideSizeOption": "{{size}} vs {{size}}",
+    "sideSizeHint": "Se fija al crear el partido. Para cambiarlo, borra el partido y crea otro.",
+    "sideFull": "Ese equipo ya tiene {{size}} jugadores.",
+    "teamsExactHint": "Cada equipo necesita exactamente {{size}} jugadores para empezar el partido."
   },
   "lineup": {
     "title": "Mi Alineación",
@@ -517,6 +537,81 @@
       "submitted": "Enviada",
       "inconsistent": "Inconsistente",
       "validated": "Validada"
+    }
+  },
+  "avatar": {
+    "title": "Foto de perfil",
+    "change": "Cambiar foto de perfil",
+    "choose": "Subir imagen",
+    "remove": "Quitar",
+    "hint": "Las imágenes se recortan en cuadrado y se comprimen antes de guardarse.",
+    "uploaded": "Foto de perfil actualizada",
+    "uploadedDescription": "El resto de jugadores ya verá tu foto."
+  },
+  "alias": {
+    "label": "Alias",
+    "placeholder": "El nombre por el que te conocen",
+    "hint": "Es el nombre que se muestra dentro de esta liga. Después solo el administrador puede cambiarlo.",
+    "required": "El alias es obligatorio",
+    "renamed": "Alias actualizado"
+  },
+  "claims": {
+    "pendingTitle": "Esperando al administrador",
+    "pendingDescription": "\"{{alias}}\" ya existe en esta liga. El administrador tiene que confirmar que eres tú antes de que puedas entrar.",
+    "title": "Solicitudes de identidad",
+    "adminHint": "Confirma solo si esa cuenta pertenece de verdad a ese jugador.",
+    "requestedBy": "Solicitado por {{username}}",
+    "accept": "Confirmar",
+    "reject": "Rechazar",
+    "resolved": "Solicitud resuelta"
+  },
+  "roster": {
+    "title": "Plantilla",
+    "manage": "Plantilla",
+    "players": "Jugadores",
+    "rename": "Renombrar",
+    "external": "Externo"
+  },
+  "season": {
+    "label": "Temporada",
+    "all": "Todas",
+    "heading": "Temporada {{season}}"
+  },
+  "join": {
+    "title": "Unirse con un código",
+    "submit": "Unirse",
+    "detectedLeague": "Este código abre una liga Fantasy.",
+    "detectedClub": "Este código abre un club."
+  },
+  "club": {
+    "badge": "Club",
+    "createClub": "Crear Club",
+    "joinClub": "Unirse a Club",
+    "name": "Nombre del club",
+    "namePlaceholder": "Ingresa el nombre del club",
+    "description": "Descripción",
+    "descriptionPlaceholder": "Descripción opcional",
+    "created": "Club creado",
+    "createdDescription": "El club se ha creado correctamente",
+    "createError": "Error al crear el club",
+    "joined": "Te has unido al club",
+    "joinedDescription": "Ya formas parte de la plantilla",
+    "notFound": "Club no encontrado",
+    "noPlayers": "Todavía no hay jugadores en la plantilla",
+    "noMatches": "Todavía no hay partidos",
+    "noRanking": "Nadie ha puntuado todavía esta temporada",
+    "opponentPending": "Rival por definir",
+    "rankingLine": "{{matches}} PJ · {{goals}} G · {{assists}} A · {{minutes}} min",
+    "aggregateLine": "{{played}} PJ · {{wins}}V {{draws}}E {{losses}}D · {{goalsFor}}:{{goalsAgainst}}",
+    "result": {
+      "win": "Victoria",
+      "draw": "Empate",
+      "loss": "Derrota"
+    },
+    "tabs": {
+      "roster": "Plantilla",
+      "clasificacion": "Clasificación",
+      "historial": "Historial"
     }
   }
 }

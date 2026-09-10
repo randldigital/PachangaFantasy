@@ -1,5 +1,7 @@
 import type { Express } from "express";
 import { registerAuthRoutes } from "./auth";
+import { registerAvatarRoutes } from "./avatars";
+import { registerClubRoutes } from "./clubs";
 import { registerLeagueRoutes } from "./leagues";
 import { registerMemberRoutes } from "./members";
 import { registerPlayerRoutes } from "./players";
@@ -13,7 +15,9 @@ import { registerLeaderboardRoutes } from "./leaderboards";
 
 export function registerRoutes(app: Express) {
   registerAuthRoutes(app);
+  registerAvatarRoutes(app);
   registerLeagueRoutes(app);
+  registerClubRoutes(app);
   registerMemberRoutes(app);
   registerPlayerRoutes(app);
   registerValuationRoutes(app);

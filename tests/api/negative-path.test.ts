@@ -8,6 +8,7 @@ import {
   createOpenMatch,
   joinAllMatches,
   listPlayers,
+  fillMissingStats,
   startMatch,
   submitAllRatings,
 } from "../helpers/fixtures";
@@ -75,6 +76,7 @@ describe("negative paths", () => {
       .post(`/api/matches/${match.id}/end`)
       .set(auth(owner.token))
       .send({ teamAGoals: 3, teamBGoals: 0 });
+    await fillMissingStats(app, owner.token, match.id);
 
     const first = await request(app)
       .post(`/api/matches/${match.id}/stats`)

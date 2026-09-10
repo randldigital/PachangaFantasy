@@ -37,6 +37,18 @@ export async function createUser(insertUser: InsertUser): Promise<User> {
   return user;
 }
 
+export async function setAvatarPath(
+  userId: number,
+  avatarPath: string | null,
+): Promise<User | undefined> {
+  const [updated] = await db
+    .update(users)
+    .set({ avatarPath })
+    .where(eq(users.id, userId))
+    .returning();
+  return updated || undefined;
+}
+
 export async function authenticateUser(
   email: string,
   password: string,

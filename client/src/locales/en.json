@@ -87,7 +87,9 @@
   "overview": {
     "title": "My Leagues",
     "noLeagues": "You don't have any leagues yet",
-    "noLeaguesDescription": "Create your first league or join an existing one"
+    "noLeaguesDescription": "Create your first league or join an existing one",
+    "leaguesHeading": "Fantasy Leagues",
+    "clubsHeading": "Clubs"
   },
   "league": {
     "create": "Create League",
@@ -141,7 +143,8 @@
     "addPlayerError": "Could not add the player",
     "nameRequired": "League name is required",
     "nameTooLong": "League name must be 25 characters or less",
-    "descriptionTooLong": "Description must be 200 characters or less"
+    "descriptionTooLong": "Description must be 200 characters or less",
+    "inviteCodeFormat": "Use a code like L-AB12CD or C-AB12CD."
   },
   "nextAction": {
     "label": "Next step",
@@ -275,7 +278,18 @@
     "STATS_ALREADY_VALID": "The totals already match, so there is nothing to acknowledge.",
     "RATINGS_INCOMPLETE": "Scoring waits until every registered participant has voted.",
     "RATINGS_INVALID": "Choose a Player of the Match and rate exactly the assigned players.",
-    "MATCH_NOT_SCOREABLE": "This match cannot be scored yet."
+    "MATCH_NOT_SCOREABLE": "This match cannot be scored yet.",
+    "CLAIM_PENDING": "An administrator must confirm your claim before you can join.",
+    "ALIAS_TAKEN": "That alias is already used here.",
+    "ALIAS_REQUIRED": "An alias is required.",
+    "ADMIN_ONLY": "Only the administrator can do that.",
+    "AVATAR_NOT_IMAGE": "Only image files are accepted.",
+    "AVATAR_REQUIRED": "Choose an image first.",
+    "WRONG_INVITE_CONTEXT": "That invite code belongs to a different kind of group.",
+    "CLAIM_ALREADY_RESOLVED": "This claim has already been resolved.",
+    "MATCH_FULL": "This match is already full.",
+    "SIDE_OVER_CAPACITY": "A side has more players than the match size allows.",
+    "SIDE_INCOMPLETE": "Both sides need the exact number of players before starting."
   },
   "match": {
     "noActiveMatch": "No active matches",
@@ -354,8 +368,14 @@
       "open": "Open",
       "ready": "Started",
       "started": "Started",
-      "scored": "Scored"
-    }
+      "scored": "Scored",
+      "closed": "Closed"
+    },
+    "sideSize": "Match size",
+    "sideSizeOption": "{{size}} vs {{size}}",
+    "sideSizeHint": "Fixed when the match is created. To change it, delete the match and create another.",
+    "sideFull": "That side already has {{size}} players.",
+    "teamsExactHint": "Both sides need exactly {{size}} players before the match can start."
   },
   "lineup": {
     "title": "My Lineup",
@@ -520,6 +540,81 @@
       "submitted": "Submitted",
       "inconsistent": "Inconsistent",
       "validated": "Validated"
+    }
+  },
+  "avatar": {
+    "title": "Profile picture",
+    "change": "Change profile picture",
+    "choose": "Upload image",
+    "remove": "Remove",
+    "hint": "Images are cropped to a square and compressed before they are stored.",
+    "uploaded": "Profile picture updated",
+    "uploadedDescription": "Other players will now see your picture."
+  },
+  "alias": {
+    "label": "Alias",
+    "placeholder": "The name others know you by",
+    "hint": "This is the name shown inside this league. Only the administrator can change it later.",
+    "required": "An alias is required",
+    "renamed": "Alias updated"
+  },
+  "claims": {
+    "pendingTitle": "Waiting for the administrator",
+    "pendingDescription": "\"{{alias}}\" already exists in this league. The administrator has to confirm it is you before you can join.",
+    "title": "Claim requests",
+    "adminHint": "Confirm only if this account really belongs to that player.",
+    "requestedBy": "Requested by {{username}}",
+    "accept": "Confirm",
+    "reject": "Reject",
+    "resolved": "Claim resolved"
+  },
+  "roster": {
+    "title": "Roster",
+    "manage": "Roster",
+    "players": "Players",
+    "rename": "Rename",
+    "external": "External"
+  },
+  "season": {
+    "label": "Season",
+    "all": "All",
+    "heading": "Season {{season}}"
+  },
+  "join": {
+    "title": "Join with a code",
+    "submit": "Join",
+    "detectedLeague": "This code opens a Fantasy league.",
+    "detectedClub": "This code opens a club."
+  },
+  "club": {
+    "badge": "Club",
+    "createClub": "Create Club",
+    "joinClub": "Join Club",
+    "name": "Club name",
+    "namePlaceholder": "Enter the club name",
+    "description": "Description",
+    "descriptionPlaceholder": "Optional description",
+    "created": "Club created",
+    "createdDescription": "The club was created successfully",
+    "createError": "Failed to create the club",
+    "joined": "You joined the club",
+    "joinedDescription": "You are now part of the squad",
+    "notFound": "Club not found",
+    "noPlayers": "No players in the squad yet",
+    "noMatches": "No matches yet",
+    "noRanking": "Nobody has scored this season yet",
+    "opponentPending": "Opponent to be confirmed",
+    "rankingLine": "{{matches}} MP · {{goals}} G · {{assists}} A · {{minutes}} min",
+    "aggregateLine": "{{played}} P · {{wins}}W {{draws}}D {{losses}}L · {{goalsFor}}:{{goalsAgainst}}",
+    "result": {
+      "win": "Win",
+      "draw": "Draw",
+      "loss": "Loss"
+    },
+    "tabs": {
+      "roster": "Squad",
+      "clasificacion": "Standings",
+      "historial": "History"
     }
   }
 }

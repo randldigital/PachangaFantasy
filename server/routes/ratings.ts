@@ -2,7 +2,9 @@ import type { Express, Response } from "express";
 import { submitRatingsSchema } from "@shared/schema";
 import { logger } from "../logger";
 import { requireAuth } from "../middleware/auth";
-import { loadMatchMember } from "../middleware/access";
+import { loadMatchAccess } from "../middleware/access";
+import type { ContextRef } from "@shared/domain/context";
+import { isClosedStatus } from "@shared/domain/matchLifecycle";
 import { isStatsEditable } from "@shared/domain/stats";
 import { ballotMatchesAssignments } from "@shared/domain/ratingAssignments";
 import * as matchRepo from "../repos/matchRepo";
@@ -10,7 +12,7 @@ import * as playerRepo from "../repos/playerRepo";
 import * as ratingRepo from "../repos/ratingRepo";
 import type { AuthRequest } from "../types";
 
-async function ratingsPayload(matchId: number, leagueId: number, userId: number) {
+async function ratingsPayload(matchId: number, context: ContextRef, userId: number) {
   const [assignments, votes, peerRatings, voters, submitted, history, roster, vmRows, ownPlayer] =
     await Promise.all([
       ratingRepo.getRatingAssignments(matchId),
@@ -19,9 +21,9 @@ async function ratingsPayload(matchId: number, leagueId: number, userId: number)
       ratingRepo.voterPlayerIdsForMatch(matchId),
       ratingRepo.submittedVoterIds(matchId),
       ratingRepo.getMarketValueHistory(matchId),
-      playerRepo.getPlayersByLeague(leagueId),
+      playerRepo.getRosterFor(context),
       ratingRepo.getMatchPlayerVm(matchId),
-      playerRepo.checkUserAsPlayer(userId, leagueId),
+      playerRepo.checkUserAsPlayer(userId, context),
     ]);
 
   const names = new Map(roster.map((player) => [player.id, player.name]));
@@ -70,13 +72,15 @@ export function registerRatingRoutes(app: Express) {
   app.get("/api/matches/:matchId/ratings", requireAuth, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.matchId);
-      const access = await loadMatchMember(req, res, matchId);
+      const access = await loadMatchAccess(req, res, matchId);
       if (!access) return;
       if (access.match.status === "completed" || access.match.status === "scored") {
         await ratingRepo.ensureRatingAssignments(matchId);
-        await ratingRepo.snapshotMatchPlayerVm(matchId);
+        if (access.context === "league") {
+          await ratingRepo.snapshotMatchPlayerVm(matchId);
+        }
       }
-      res.json(await ratingsPayload(matchId, access.match.leagueId, access.user.id));
+      res.json(await ratingsPayload(matchId, access.match, access.user.id));
     } catch (error) {
       logger.error("Error fetching match ratings", error);
       res.status(500).json({ message: "Internal server error" });
@@ -86,10 +90,10 @@ export function registerRatingRoutes(app: Express) {
   app.post("/api/matches/:matchId/ratings", requireAuth, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.matchId);
-      const access = await loadMatchMember(req, res, matchId);
+      const access = await loadMatchAccess(req, res, matchId);
       if (!access) return;
 
-      if (access.match.status === "scored") {
+      if (access.match.status === "scored" || isClosedStatus(access.match.status)) {
         return res.status(400).json({
           message: "Ratings are locked because this match has been scored",
           code: "STATS_LOCKED",
@@ -107,7 +111,7 @@ export function registerRatingRoutes(app: Express) {
         return res.status(400).json({ message: "Invalid input", errors: parsed.error.issues });
       }
 
-      const ownPlayer = await playerRepo.checkUserAsPlayer(access.user.id, access.match.leagueId);
+      const ownPlayer = await playerRepo.checkUserAsPlayer(access.user.id, access.match);
       if (!ownPlayer) {
         return res.status(403).json({
           message: "Only match participants can submit ratings",
@@ -149,7 +153,10 @@ export function registerRatingRoutes(app: Express) {
         )
       ) {
         return res.status(400).json({
-          message: "Rate exactly the assigned teammate and rival",
+          message:
+            access.context === "club"
+              ? "Rate exactly the peers you were assigned"
+              : "Rate exactly the assigned teammate and rival",
           code: "RATINGS_INVALID",
         });
       }
@@ -160,7 +167,7 @@ export function registerRatingRoutes(app: Express) {
         parsed.data.mvpPlayerId,
         parsed.data.ratings,
       );
-      res.json(await ratingsPayload(matchId, access.match.leagueId, access.user.id));
+      res.json(await ratingsPayload(matchId, access.match, access.user.id));
     } catch (error) {
       logger.error("Error saving match ratings", error);
       res.status(500).json({ message: "Internal server error" });

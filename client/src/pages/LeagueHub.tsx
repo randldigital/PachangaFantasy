@@ -20,6 +20,7 @@ import StatsSection from "@/components/league/StatsSection";
 import PrimaryActionBanner from "@/components/league/PrimaryActionBanner";
 import AddPlayerForm from "@/components/league/AddPlayerForm";
 import DeleteLeagueButton from "@/components/league/DeleteLeagueButton";
+import RosterManagerDialog from "@/components/league/RosterManagerDialog";
 import { pickActiveMatch } from "@shared/domain/matchLifecycle";
 import { pickStatsMatch } from "@shared/domain/stats";
 import type { HubTab } from "@shared/domain/primaryAction";
@@ -33,6 +34,7 @@ export default function LeagueHub() {
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [showCreateMatch, setShowCreateMatch] = useState(false);
   const [showMatchDetails, setShowMatchDetails] = useState(false);
+  const [showRoster, setShowRoster] = useState(false);
   const leagueId = parseInt(id!);
 
   const { data: league, isLoading: leagueLoading } = useQuery<League>({
@@ -50,10 +52,17 @@ export default function LeagueHub() {
     queryFn: () => api.get<Player[]>(`/api/players/${leagueId}`),
   });
 
+  const isAdmin = Boolean(user && league && user.id === league.createdBy);
+
+  const { data: pendingClaims = [] } = useQuery<{ id: number }[]>({
+    queryKey: queryKeys.leagueClaimRequests(leagueId),
+    queryFn: () => api.get<{ id: number }[]>(`/api/leagues/${leagueId}/claim-requests`),
+    enabled: isAdmin,
+  });
+
   const activeMatch = pickActiveMatch(matches);
   const statsMatch = pickStatsMatch(matches);
   const headerMatch = activeMatch ?? (statsMatch?.status === "completed" ? statsMatch : undefined);
-  const isAdmin = Boolean(user && league && user.id === league.createdBy);
 
   if (leagueLoading) {
     return (
@@ -112,6 +121,20 @@ export default function LeagueHub() {
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
                   <span className="hidden sm:inline">{t("league.addPlayers")}</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowRoster(true)}
+                  className="relative border-slate-500 text-slate-200 hover:bg-slate-700"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">{t("roster.manage")}</span>
+                  {pendingClaims.length > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-slate-900">
+                      {pendingClaims.length}
+                    </span>
+                  )}
                 </Button>
                 <DeleteLeagueButton league={league} isLeagueCreator={isAdmin} />
                 </>
@@ -231,6 +254,13 @@ export default function LeagueHub() {
         leagueId={String(leagueId)}
         isOpen={showAddPlayer}
         onClose={() => setShowAddPlayer(false)}
+      />
+
+      <RosterManagerDialog
+        leagueId={leagueId}
+        players={players}
+        isOpen={showRoster}
+        onClose={() => setShowRoster(false)}
       />
     </div>
   );

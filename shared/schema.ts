@@ -1,7 +1,10 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp, json, primaryKey, uniqueIndex, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, json, primaryKey, uniqueIndex, index, doublePrecision } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import type { ValuationTier } from "./domain/valuation";
+import { isValidInviteCode } from "./domain/inviteCodes";
+import { DEFAULT_SIDE_SIZE } from "./domain/teams";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -12,6 +15,7 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("player"), // "admin" | "player"
   // Vestigial: users may belong to many leagues. Phase 2.
   leagueId: integer("league_id"),
+  avatarPath: text("avatar_path"),
 });
 
 export const leagues = pgTable("leagues", {
@@ -26,17 +30,53 @@ export const leagues = pgTable("leagues", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+/**
+ * A Club is the persistent real squad of Club Mode. It is a sibling of `leagues`, not a
+ * flag on one: a Club has no tier list, no budget and no Fantasy managers.
+ */
+export const clubs = pgTable("clubs", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").default(""),
+  inviteCode: text("invite_code").notNull().unique(),
+  createdBy: integer("created_by").notNull(),
+  participants: jsonb("participants").$type<number[]>().notNull().default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+/** A Player belongs to exactly one context: `leagueId` XOR `clubId` (DB check constraint). */
 export const players = pgTable("players", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  leagueId: integer("league_id").notNull(),
+  leagueId: integer("league_id"),
+  clubId: integer("club_id"),
   marketValue: integer("market_value").default(0),
   emoji: text("emoji").notNull().default("⚽"),
   isExternal: boolean("is_external").default(false),
   createdBy: integer("created_by"),
   userId: integer("user_id"), // Optional FK to users.id for user-players
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  clubIdx: index("players_club").on(table.clubId),
+}));
+
+/**
+ * A join whose alias matches an unlinked Player becomes a claim request instead of a
+ * silent link. Membership is withheld until an administrator accepts or rejects.
+ */
+export const playerClaimRequests = pgTable("player_claim_requests", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").notNull(),
+  userId: integer("user_id").notNull(),
+  status: text("status").$type<"pending" | "accepted" | "rejected">().notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: integer("resolved_by"),
+}, (table) => ({
+  pendingPairUnique: uniqueIndex("player_claim_requests_pending_pair")
+    .on(table.playerId, table.userId)
+    .where(sql`status = 'pending'`),
+}));
 
 export const playerTierPlacementSchema = z.object({
   playerId: z.number().int(),
@@ -55,20 +95,35 @@ export const tierLists = pgTable("tier_lists", {
 });
 
 // v0.2 Features - Matches System
+/** A Match belongs to exactly one context: `leagueId` XOR `clubId` (DB check constraint). */
 export const matches = pgTable("matches", {
   id: serial("id").primaryKey(),
-  leagueId: integer("league_id").notNull().references(() => leagues.id),
+  leagueId: integer("league_id").references(() => leagues.id),
+  clubId: integer("club_id").references(() => clubs.id),
   date: timestamp("date").notNull(),
+  // Fantasy only.
   lineupBudget: integer("lineup_budget").default(100),
-  status: text("status").$type<"open" | "started" | "completed" | "scored">().default("open"),
+  // Fantasy only: players per side (5 / 7 / 11). Immutable once the match exists.
+  sideSize: integer("side_size").notNull().default(5),
+  status: text("status").$type<"open" | "started" | "completed" | "scored" | "closed">().default("open"),
+  // Fantasy only.
   matchTeams: json("match_teams").$type<{ teamA: number[], teamB: number[] }>(),
   finalScore: integer("final_score"),
   teamAGoals: integer("team_a_goals"),
   teamBGoals: integer("team_b_goals"),
+  // Club only: the opponent is a name and a score, never a roster.
+  opponentName: text("opponent_name"),
+  ourGoals: integer("our_goals"),
+  opponentGoals: integer("opponent_goals"),
   statsAcknowledged: boolean("stats_acknowledged").notNull().default(false),
   createdBy: integer("created_by").notNull().references(() => users.id),
+  // Season the match belongs to (1 Aug – 31 Jul), derived from `date` at creation.
+  seasonKey: text("season_key"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  leagueSeasonIdx: index("matches_league_season").on(table.leagueId, table.seasonKey),
+  clubSeasonIdx: index("matches_club_season").on(table.clubId, table.seasonKey),
+}));
 
 export const matchParticipants = pgTable("match_participants", {
   matchId: integer("match_id").notNull().references(() => matches.id),
@@ -95,6 +150,8 @@ export const statReports = pgTable("stat_reports", {
   matchId: integer("match_id").notNull().references(() => matches.id),
   goals: integer("goals").default(0),
   assists: integer("assists").default(0),
+  // Club only (0–120); null on Fantasy rows.
+  minutes: integer("minutes"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   matchPlayerUnique: uniqueIndex("stat_reports_match_player").on(table.matchId, table.playerId),
@@ -137,7 +194,8 @@ export const matchRatingAssignments = pgTable("match_rating_assignments", {
   matchId: integer("match_id").notNull().references(() => matches.id),
   raterPlayerId: integer("rater_player_id").notNull().references(() => players.id),
   rateePlayerId: integer("ratee_player_id").notNull().references(() => players.id),
-  kind: text("kind").$type<"teammate" | "rival">().notNull(),
+  // Fantasy ballots are teammate/rival; Club ballots are a single undifferentiated pool.
+  kind: text("kind").$type<"teammate" | "rival" | "club">().notNull(),
 }, (table) => ({
   pk: primaryKey({ columns: [table.matchId, table.raterPlayerId, table.rateePlayerId] }),
 }));
@@ -207,6 +265,19 @@ export const insertLeagueSchema = createInsertSchema(leagues).omit({
   description: z.string().max(200, "Description must be 200 characters or less").optional(),
 });
 
+/** The visible football identity inside one League or one Club. */
+export const aliasSchema = z
+  .string()
+  .trim()
+  .min(1, "Alias is required")
+  .max(30, "Alias must be 30 characters or less");
+
+export const inviteCodeSchema = z
+  .string()
+  .trim()
+  .transform((value) => value.toUpperCase())
+  .refine(isValidInviteCode, "Invite code must be L-XXXXXX or C-XXXXXX");
+
 export const insertPlayerSchema = createInsertSchema(players).pick({
   name: true,
   emoji: true,
@@ -230,22 +301,92 @@ export const joinLeagueSchema = z.object({
   inviteCode: z.string().min(1),
 });
 
-// v0.2 Insert Schemas
-export const insertMatchSchema = createInsertSchema(matches).omit({
+export const createLeagueSchema = insertLeagueSchema.extend({
+  alias: aliasSchema,
+});
+
+export const insertClubSchema = createInsertSchema(clubs).omit({
   id: true,
-  status: true,
-  matchTeams: true,
+  inviteCode: true,
   createdBy: true,
+  participants: true,
   createdAt: true,
-  finalScore: true,
-  teamAGoals: true,
-  teamBGoals: true,
 }).extend({
-  date: z.string().min(1, "Date is required").refine((str) => {
-    const date = new Date(str);
-    return !isNaN(date.getTime());
-  }, "Invalid date format").transform((str) => new Date(str)),
-  lineupBudget: z.number().min(50, "Budget must be at least 50").max(200, "Budget cannot exceed 200"),
+  name: z.string().min(1, "Name is required").max(25, "Name must be 25 characters or less"),
+  description: z.string().max(200, "Description must be 200 characters or less").optional(),
+});
+
+export const createClubSchema = insertClubSchema.extend({
+  alias: aliasSchema,
+});
+
+export const joinWithAliasSchema = z.object({
+  alias: aliasSchema,
+});
+
+export const updateAliasSchema = z.object({
+  alias: aliasSchema,
+});
+
+export const resolveClaimSchema = z.object({
+  decision: z.enum(["accept", "reject"]),
+});
+
+// v0.2 Insert Schemas
+const matchDateSchema = z.string().min(1, "Date is required").refine((str) => {
+  const date = new Date(str);
+  return !isNaN(date.getTime());
+}, "Invalid date format").transform((str) => new Date(str));
+
+/** Fantasy Match: a League, a side size and a lineup budget. */
+export const insertMatchSchema = z.object({
+  leagueId: z.number().int().positive(),
+  date: matchDateSchema,
+  lineupBudget: z
+    .number()
+    .min(50, "Budget must be at least 50")
+    .max(200, "Budget cannot exceed 200")
+    .default(100),
+  sideSize: z
+    .union([z.literal(5), z.literal(7), z.literal(11)])
+    .default(DEFAULT_SIDE_SIZE),
+});
+
+/** Club Match: a Club and a date. No side size, no budget, no Team A/B. */
+export const insertClubMatchSchema = z.object({
+  clubId: z.number().int().positive(),
+  date: matchDateSchema,
+  opponentName: z.string().trim().max(40).optional(),
+});
+
+/**
+ * A Match belongs to exactly one context. Callers send `leagueId` or `clubId`, never both:
+ * Fantasy-only fields on a Club Match (and vice versa) are rejected rather than ignored.
+ */
+export const createMatchSchema = z
+  .object({ leagueId: z.unknown().optional(), clubId: z.unknown().optional() })
+  .passthrough()
+  .superRefine((value, ctx) => {
+    const hasLeague = value.leagueId != null;
+    const hasClub = value.clubId != null;
+    if (hasLeague === hasClub) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A match belongs to either a league or a club, not both",
+      });
+    }
+    if (hasClub && (value as Record<string, unknown>).sideSize != null) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Club matches have no side size" });
+    }
+    if (hasClub && (value as Record<string, unknown>).lineupBudget != null) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Club matches have no lineup budget" });
+    }
+  });
+
+export const clubResultSchema = z.object({
+  opponentName: z.string().trim().min(1, "Opponent name is required").max(40),
+  ourGoals: z.coerce.number().int().min(0),
+  opponentGoals: z.coerce.number().int().min(0),
 });
 
 export const saveLineupSchema = z.object({
@@ -257,6 +398,8 @@ export const submitStatsSchema = z.object({
   goals: z.coerce.number().int().min(0),
   assists: z.coerce.number().int().min(0),
   playerId: z.number().int().positive().optional(),
+  /** Club only: 0–120. Rejected on Fantasy matches. */
+  minutes: z.coerce.number().int().min(0).max(120).optional(),
 });
 
 export const insertStatReportSchema = createInsertSchema(statReports).omit({
@@ -298,6 +441,14 @@ export type InsertTierList = z.infer<typeof insertTierListSchema>;
 export type TierList = typeof tierLists.$inferSelect;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type JoinLeagueInput = z.infer<typeof joinLeagueSchema>;
+export type CreateLeagueInput = z.infer<typeof createLeagueSchema>;
+export type JoinWithAliasInput = z.infer<typeof joinWithAliasSchema>;
+export type PlayerClaimRequest = typeof playerClaimRequests.$inferSelect;
+export type Club = typeof clubs.$inferSelect;
+export type InsertClub = z.infer<typeof insertClubSchema>;
+export type CreateClubInput = z.infer<typeof createClubSchema>;
+export type InsertClubMatch = z.infer<typeof insertClubMatchSchema>;
+export type ClubResultInput = z.infer<typeof clubResultSchema>;
 
 // v0.2 Types
 export type Match = typeof matches.$inferSelect;

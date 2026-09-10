@@ -6,6 +6,7 @@ import {
   players,
   leagues,
   playerMarketValueHistory,
+  statReports,
   type PlayerMatchPoints,
   type ManagerMatchPoints,
   type PlayerMarketValueHistory,
@@ -24,6 +25,14 @@ import {
   DEFAULT_SCORING_BASELINE,
   nextScoringBaseline,
 } from "@shared/domain/marketValue";
+import { seasonOf, sortSeasonKeysDescending } from "@shared/domain/season";
+import { requireLeagueId } from "@shared/domain/context";
+import {
+  clubPlayerPoints,
+  clubResultOf,
+  type ClubMatchResult,
+  type ClubPlayerPointsBreakdown,
+} from "@shared/domain/clubScoring";
 
 export type MatchScoreResult = {
   playerPoints: PlayerMatchPoints[];
@@ -64,6 +73,130 @@ export type ScoreMatchOptions = {
   forceIncompleteRatings?: boolean;
 };
 
+export type ClubScoreRow = {
+  playerId: number;
+  matchId: number;
+  goals: number;
+  assists: number;
+  minutes: number;
+  points: number;
+  breakdown: ClubPlayerPointsBreakdown;
+};
+
+export type ClubMatchScoreResult = {
+  playerPoints: PlayerMatchPoints[];
+  result: ClubMatchResult;
+  mvpPlayerIds: number[];
+  breakdowns: ClubScoreRow[];
+};
+
+/**
+ * Club scoring. No lineups, no Market Value and no Manager Points; the result and MVP are
+ * recorded but contribute nothing until their weights are confirmed by product.
+ */
+export async function scoreClubMatch(
+  matchId: number,
+  options: ScoreMatchOptions = {},
+): Promise<ClubMatchScoreResult> {
+  const match = await matchRepo.getMatch(matchId);
+  if (!match || match.clubId == null) {
+    throw new Error("Club match not found");
+  }
+  if (match.ourGoals == null || match.opponentGoals == null) {
+    throw new Error("Record the club match result before scoring");
+  }
+
+  const [reports, participants, mvpVotes, peerRatings, assignments] = await Promise.all([
+    statsRepo.getStatReportsForMatch(matchId),
+    matchRepo.getMatchParticipants(matchId),
+    ratingRepo.getMvpVotes(matchId),
+    ratingRepo.getPeerRatings(matchId),
+    ratingRepo.getRatingAssignments(matchId),
+  ]);
+
+  const acceptedIds = participants
+    .filter((participant) => participant.status === "accepted")
+    .map((participant) => participant.playerId);
+
+  const force = Boolean(options.forceIncompleteRatings);
+  // Club force-score fills each missing assigned incoming rating with 6.5 and keeps the
+  // objective statistics, unlike Fantasy which also omits goals and assists.
+  const peerByPlayer = collectedPeerScores({
+    ratings: peerRatings,
+    assignments: force ? assignments : undefined,
+    missingScore: force ? PEER_RATING_FORCE_DEFAULT : undefined,
+  });
+  const mvps = mvpPlayerIds(mvpVotes);
+  const result = clubResultOf(match.ourGoals, match.opponentGoals);
+
+  const reportByPlayer = new Map(reports.map((report) => [report.playerId, report]));
+  const rows: ClubScoreRow[] = acceptedIds.map((playerId) => {
+    const report = reportByPlayer.get(playerId);
+    const breakdown = clubPlayerPoints({
+      peerAverage: meanPeerScore(
+        peerByPlayer.get(playerId) ?? [],
+        force ? PEER_RATING_FORCE_DEFAULT : PEER_RATING_NEUTRAL,
+      ),
+      goals: report?.goals ?? 0,
+      assists: report?.assists ?? 0,
+      minutes: report?.minutes ?? 0,
+      result,
+      isMvp: mvps.has(playerId),
+    });
+    return {
+      playerId,
+      matchId,
+      goals: report?.goals ?? 0,
+      assists: report?.assists ?? 0,
+      minutes: report?.minutes ?? 0,
+      points: breakdown.points,
+      breakdown,
+    };
+  });
+
+  const inserted = await db.transaction(async (tx) => {
+    await tx.delete(playerMatchPoints).where(eq(playerMatchPoints.matchId, matchId));
+    const saved =
+      rows.length > 0
+        ? await tx
+            .insert(playerMatchPoints)
+            .values(
+              rows.map((row) => ({
+                playerId: row.playerId,
+                matchId,
+                goals: row.goals,
+                assists: row.assists,
+                points: row.points,
+              })),
+            )
+            .returning()
+        : [];
+    await tx.update(matches).set({ status: "scored" }).where(eq(matches.id, matchId));
+    return saved;
+  });
+
+  return {
+    playerPoints: inserted,
+    result,
+    mvpPlayerIds: [...mvps],
+    breakdowns: rows,
+  };
+}
+
+export async function getScoredClubMatchResult(matchId: number): Promise<ClubMatchScoreResult> {
+  const match = await matchRepo.getMatch(matchId);
+  const [playerPoints, mvpVotes] = await Promise.all([
+    getPlayerPointsForMatch(matchId),
+    ratingRepo.getMvpVotes(matchId),
+  ]);
+  return {
+    playerPoints,
+    result: clubResultOf(match?.ourGoals ?? 0, match?.opponentGoals ?? 0),
+    mvpPlayerIds: [...mvpPlayerIds(mvpVotes)],
+    breakdowns: [],
+  };
+}
+
 export async function scoreMatch(matchId: number, options: ScoreMatchOptions = {}): Promise<MatchScoreResult> {
   const match = await matchRepo.getMatch(matchId);
   if (!match) {
@@ -74,7 +207,7 @@ export async function scoreMatch(matchId: number, options: ScoreMatchOptions = {
     statsRepo.getStatReportsForMatch(matchId),
     matchRepo.getMatchParticipants(matchId),
     lineupRepo.getLineupsForMatch(matchId),
-    leagueRepo.getLeague(match.leagueId),
+    leagueRepo.getLeague(requireLeagueId(match)),
   ]);
 
   const acceptedIds = participants
@@ -273,6 +406,8 @@ export type MatchRecapPlayer = {
   goals: number;
   assists: number;
   points: number | null;
+  /** Club only; null on Fantasy rows. */
+  minutes: number | null;
   mvpVotes: number;
   isMvp: boolean;
   peerAverage: number | null;
@@ -283,10 +418,15 @@ export type MatchRecapPlayer = {
 
 export type MatchRecap = {
   matchId: number;
+  context: "league" | "club";
   status: string | null;
   date: Date | string;
   teamAGoals: number | null;
   teamBGoals: number | null;
+  /** Club only. */
+  opponentName: string | null;
+  ourGoals: number | null;
+  opponentGoals: number | null;
   players: MatchRecapPlayer[];
 };
 
@@ -298,7 +438,7 @@ export async function getMatchRecap(matchId: number): Promise<MatchRecap | null>
 
   const [participants, roster, reports, pointRows, history, votes, peerRatings] = await Promise.all([
     matchRepo.getMatchParticipants(matchId),
-    playerRepo.getPlayersByLeague(match.leagueId),
+    playerRepo.getRosterFor(match),
     statsRepo.getStatReportsForMatch(matchId),
     getPlayerPointsForMatch(matchId),
     ratingRepo.getMarketValueHistory(matchId),
@@ -343,6 +483,7 @@ export async function getMatchRecap(matchId: number): Promise<MatchRecap | null>
       goals: pointRow?.goals ?? report?.goals ?? 0,
       assists: pointRow?.assists ?? report?.assists ?? 0,
       points: pointRow?.points ?? null,
+      minutes: report?.minutes ?? null,
       mvpVotes,
       isMvp: maxVotes > 0 && mvpVotes === maxVotes,
       peerAverage,
@@ -361,15 +502,24 @@ export async function getMatchRecap(matchId: number): Promise<MatchRecap | null>
 
   return {
     matchId,
+    context: match.clubId != null ? "club" : "league",
     status: match.status,
     date: match.date,
     teamAGoals: match.teamAGoals,
     teamBGoals: match.teamBGoals,
+    opponentName: match.opponentName,
+    ourGoals: match.ourGoals,
+    opponentGoals: match.opponentGoals,
     players,
   };
 }
 
-export async function getPlayerLeaderboard(leagueId: number): Promise<{
+/** Matches carry `seasonKey`; rows written before 2.0 fall back to their date. */
+export function seasonKeyOf(match: { seasonKey: string | null; date: Date | string }): string {
+  return match.seasonKey ?? seasonOf(match.date);
+}
+
+export async function getPlayerLeaderboard(leagueId: number, season?: string): Promise<{
   playerId: number;
   name: string;
   userId: number | null;
@@ -387,6 +537,7 @@ export async function getPlayerLeaderboard(leagueId: number): Promise<{
   }
 
   const playerIds = leaguePlayers.map((player) => player.id);
+  const seasonFilter = season ? eq(matches.seasonKey, season) : undefined;
   const totals = await db
     .select({
       playerId: playerMatchPoints.playerId,
@@ -396,7 +547,10 @@ export async function getPlayerLeaderboard(leagueId: number): Promise<{
       matchesPlayed: sql<number>`COUNT(${playerMatchPoints.id})`,
     })
     .from(playerMatchPoints)
-    .innerJoin(matches, and(eq(playerMatchPoints.matchId, matches.id), eq(matches.leagueId, leagueId)))
+    .innerJoin(
+      matches,
+      and(eq(playerMatchPoints.matchId, matches.id), eq(matches.leagueId, leagueId), seasonFilter),
+    )
     .where(inArray(playerMatchPoints.playerId, playerIds))
     .groupBy(playerMatchPoints.playerId);
 
@@ -413,7 +567,9 @@ export async function getPlayerLeaderboard(leagueId: number): Promise<{
   );
 
   const leagueMatches = await matchRepo.getMatchesByLeague(leagueId);
-  const scoredMatches = leagueMatches.filter((match) => match.status === "scored");
+  const scoredMatches = leagueMatches.filter(
+    (match) => match.status === "scored" && (!season || seasonKeyOf(match) === season),
+  );
   const scoredIds = scoredMatches.map((match) => match.id);
   const historyRows =
     scoredIds.length > 0
@@ -475,6 +631,7 @@ export async function getPlayerLeaderboard(leagueId: number): Promise<{
 
 export async function getManagerLeaderboard(
   leagueId: number,
+  season?: string,
 ): Promise<{ userId: number; username: string; totalPoints: number }[]> {
   const league = await leagueRepo.getLeague(leagueId);
   if (!league) {
@@ -500,7 +657,14 @@ export async function getManagerLeaderboard(
       totalPoints: sql<number>`COALESCE(SUM(${managerMatchPoints.points}), 0)`,
     })
     .from(managerMatchPoints)
-    .innerJoin(matches, and(eq(managerMatchPoints.matchId, matches.id), eq(matches.leagueId, leagueId)))
+    .innerJoin(
+      matches,
+      and(
+        eq(managerMatchPoints.matchId, matches.id),
+        eq(matches.leagueId, leagueId),
+        season ? eq(matches.seasonKey, season) : undefined,
+      ),
+    )
     .where(inArray(managerMatchPoints.userId, memberIds))
     .groupBy(managerMatchPoints.userId);
 
@@ -517,6 +681,140 @@ export async function getManagerLeaderboard(
     .sort((a, b) => b.totalPoints - a.totalPoints || a.username.localeCompare(b.username));
 }
 
-export async function getLeagueRankings(leagueId: number) {
-  return getPlayerLeaderboard(leagueId);
+export async function getLeagueRankings(leagueId: number, season?: string) {
+  return getPlayerLeaderboard(leagueId, season);
+}
+
+/** Seasons that have at least one match, newest first. */
+export async function getLeagueSeasons(leagueId: number): Promise<string[]> {
+  const leagueMatches = await matchRepo.getMatchesByLeague(leagueId);
+  return sortSeasonKeysDescending(leagueMatches.map(seasonKeyOf));
+}
+
+export async function getClubSeasons(clubId: number): Promise<string[]> {
+  const clubMatches = await matchRepo.getMatchesByClub(clubId);
+  return sortSeasonKeysDescending(clubMatches.map(seasonKeyOf));
+}
+
+export type ClubRankingRow = {
+  playerId: number;
+  name: string;
+  userId: number | null;
+  isExternal: boolean;
+  totalPoints: number;
+  goals: number;
+  assists: number;
+  minutes: number;
+  matchesPlayed: number;
+};
+
+/**
+ * Season contribution ranking for a Club. Points accumulate from scored Club matches, so
+ * minutes and participation add up rather than averaging out.
+ */
+export async function getClubPlayerLeaderboard(
+  clubId: number,
+  season?: string,
+): Promise<ClubRankingRow[]> {
+  const roster = await playerRepo.getPlayersByClub(clubId);
+  if (roster.length === 0) {
+    return [];
+  }
+
+  const playerIds = roster.map((player) => player.id);
+  const totals = await db
+    .select({
+      playerId: playerMatchPoints.playerId,
+      totalPoints: sql<number>`COALESCE(SUM(${playerMatchPoints.points}), 0)`,
+      goals: sql<number>`COALESCE(SUM(${playerMatchPoints.goals}), 0)`,
+      assists: sql<number>`COALESCE(SUM(${playerMatchPoints.assists}), 0)`,
+      matchesPlayed: sql<number>`COUNT(${playerMatchPoints.id})`,
+    })
+    .from(playerMatchPoints)
+    .innerJoin(
+      matches,
+      and(
+        eq(playerMatchPoints.matchId, matches.id),
+        eq(matches.clubId, clubId),
+        season ? eq(matches.seasonKey, season) : undefined,
+      ),
+    )
+    .where(inArray(playerMatchPoints.playerId, playerIds))
+    .groupBy(playerMatchPoints.playerId);
+
+  const minuteRows = await db
+    .select({
+      playerId: statReports.playerId,
+      minutes: sql<number>`COALESCE(SUM(${statReports.minutes}), 0)`,
+    })
+    .from(statReports)
+    .innerJoin(
+      matches,
+      and(
+        eq(statReports.matchId, matches.id),
+        eq(matches.clubId, clubId),
+        season ? eq(matches.seasonKey, season) : undefined,
+      ),
+    )
+    .where(inArray(statReports.playerId, playerIds))
+    .groupBy(statReports.playerId);
+
+  const minutesByPlayer = new Map(minuteRows.map((row) => [row.playerId, Number(row.minutes)]));
+  const byPlayer = new Map(totals.map((row) => [row.playerId, row]));
+
+  return roster
+    .map((player) => {
+      const row = byPlayer.get(player.id);
+      return {
+        playerId: player.id,
+        name: player.name,
+        userId: player.userId ?? null,
+        isExternal: player.isExternal ?? false,
+        totalPoints: Number(row?.totalPoints ?? 0),
+        goals: Number(row?.goals ?? 0),
+        assists: Number(row?.assists ?? 0),
+        minutes: minutesByPlayer.get(player.id) ?? 0,
+        matchesPlayed: Number(row?.matchesPlayed ?? 0),
+      };
+    })
+    .sort((a, b) => b.totalPoints - a.totalPoints || a.name.localeCompare(b.name));
+}
+
+export type ClubSeasonAggregate = {
+  season: string;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+};
+
+/** Club-level P/W/D/L/GF/GA, one row per season, newest first. */
+export async function getClubSeasonAggregates(clubId: number): Promise<ClubSeasonAggregate[]> {
+  const clubMatches = await matchRepo.getMatchesByClub(clubId);
+  const bySeason = new Map<string, ClubSeasonAggregate>();
+
+  for (const match of clubMatches) {
+    if (match.ourGoals == null || match.opponentGoals == null) {
+      continue;
+    }
+    const season = seasonKeyOf(match);
+    const row =
+      bySeason.get(season) ??
+      { season, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0 };
+    row.played += 1;
+    row.goalsFor += match.ourGoals;
+    row.goalsAgainst += match.opponentGoals;
+    if (match.ourGoals > match.opponentGoals) {
+      row.wins += 1;
+    } else if (match.ourGoals < match.opponentGoals) {
+      row.losses += 1;
+    } else {
+      row.draws += 1;
+    }
+    bySeason.set(season, row);
+  }
+
+  return sortSeasonKeysDescending([...bySeason.keys()]).map((season) => bySeason.get(season)!);
 }

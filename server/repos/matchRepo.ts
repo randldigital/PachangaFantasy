@@ -13,10 +13,13 @@ import {
   playerMarketValueHistory,
   type Match,
   type InsertMatch,
+  type InsertClubMatch,
   type MatchParticipant,
 } from "@shared/schema";
 import { db } from "../db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
+import { seasonOf } from "@shared/domain/season";
+import { contextOf, type ContextRef } from "@shared/domain/context";
 import { logger } from "../logger";
 
 export async function getMatch(id: number): Promise<Match | undefined> {
@@ -24,12 +27,29 @@ export async function getMatch(id: number): Promise<Match | undefined> {
   return match || undefined;
 }
 
-export async function getMatchesByLeague(leagueId: number): Promise<Match[]> {
-  return await db.select().from(matches).where(eq(matches.leagueId, leagueId));
+export async function getMatchesByContext(ref: ContextRef): Promise<Match[]> {
+  const filter =
+    contextOf(ref) === "league"
+      ? eq(matches.leagueId, ref.leagueId!)
+      : eq(matches.clubId, ref.clubId!);
+  return await db.select().from(matches).where(filter);
 }
 
-export async function createMatch(match: InsertMatch & { createdBy: number }): Promise<Match> {
-  const [created] = await db.insert(matches).values(match as any).returning();
+export async function getMatchesByLeague(leagueId: number): Promise<Match[]> {
+  return await getMatchesByContext({ leagueId });
+}
+
+export async function getMatchesByClub(clubId: number): Promise<Match[]> {
+  return await getMatchesByContext({ clubId });
+}
+
+export async function createMatch(
+  match: (InsertMatch | InsertClubMatch) & { createdBy: number },
+): Promise<Match> {
+  const [created] = await db
+    .insert(matches)
+    .values({ ...match, seasonKey: seasonOf(match.date) } as any)
+    .returning();
   return created;
 }
 
@@ -61,10 +81,14 @@ export async function joinMatch(matchId: number, userId: number): Promise<MatchP
     throw new Error("Match not found");
   }
 
+  const contextFilter =
+    match.leagueId != null
+      ? and(eq(players.leagueId, match.leagueId), isNull(players.clubId))
+      : and(eq(players.clubId, match.clubId!), isNull(players.leagueId));
   const userPlayer = await db
     .select()
     .from(players)
-    .where(and(eq(players.userId, userId), eq(players.leagueId, match.leagueId)))
+    .where(and(eq(players.userId, userId), contextFilter))
     .limit(1);
 
   if (userPlayer.length === 0) {

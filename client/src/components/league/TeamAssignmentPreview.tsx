@@ -12,8 +12,9 @@ import { queryKeys } from "@/lib/queryKeys";
 import { useToast } from "@/hooks/use-toast";
 import AddPlayersToMatchModal from "./AddPlayersToMatchModal";
 import { isJoinableStatus } from "@shared/domain/matchLifecycle";
-import { teamsAreComplete, type MatchTeams } from "@shared/domain/teams";
+import { sideSizeOf, teamsAreComplete, type MatchTeams } from "@shared/domain/teams";
 import type { Match, User, Player } from "@shared/schema";
+import { requireLeagueId } from "@shared/domain/context";
 
 interface ParticipantWithUser {
   matchId: number;
@@ -56,7 +57,8 @@ export default function TeamAssignmentPreview({
   const accepted = participants.filter((participant) => participant.status === "accepted");
   const acceptedIds = accepted.map((participant) => participant.playerId);
   const canEdit = Boolean(user && league && user.id === league.createdBy && isJoinableStatus(match.status));
-  const complete = teamsAreComplete({ teamA, teamB }, acceptedIds);
+  const sideSize = sideSizeOf(match);
+  const complete = teamsAreComplete({ teamA, teamB }, acceptedIds, sideSize);
 
   useEffect(() => {
     setTeamA(match.matchTeams?.teamA ?? []);
@@ -69,7 +71,7 @@ export default function TeamAssignmentPreview({
       toast({ title: t("match.teamsSaved") });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.match(match.id) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(match.leagueId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(requireLeagueId(match)) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.matchParticipants(match.id) }),
       ]);
     },
@@ -83,6 +85,16 @@ export default function TeamAssignmentPreview({
   });
 
   const moveTo = (playerId: number, side: "A" | "B" | "none") => {
+    // A side never takes more than `sideSize`; the wrong size means deleting the match.
+    const target = side === "A" ? teamA : side === "B" ? teamB : [];
+    if (side !== "none" && !target.includes(playerId) && target.length >= sideSize) {
+      toast({
+        title: t("common.error"),
+        description: t("match.sideFull", { size: sideSize }),
+        variant: "destructive",
+      });
+      return;
+    }
     setTeamA((current) => current.filter((id) => id !== playerId));
     setTeamB((current) => current.filter((id) => id !== playerId));
     if (side === "A") setTeamA((current) => [...current, playerId]);
@@ -173,11 +185,15 @@ export default function TeamAssignmentPreview({
               {unassigned.map((participant) => renderPlayer(participant, "none"))}
             </div>
             <div className="space-y-2">
-              <p className="text-emerald-400 text-sm font-medium">{t("match.teamA")} ({teamA.length})</p>
+              <p className="text-emerald-400 text-sm font-medium">
+                {t("match.teamA")} ({teamA.length}/{sideSize})
+              </p>
               {accepted.filter((participant) => teamA.includes(participant.playerId)).map((participant) => renderPlayer(participant, "A"))}
             </div>
             <div className="space-y-2">
-              <p className="text-sky-400 text-sm font-medium">{t("match.teamB")} ({teamB.length})</p>
+              <p className="text-sky-400 text-sm font-medium">
+                {t("match.teamB")} ({teamB.length}/{sideSize})
+              </p>
               {accepted.filter((participant) => teamB.includes(participant.playerId)).map((participant) => renderPlayer(participant, "B"))}
             </div>
           </div>
@@ -193,7 +209,9 @@ export default function TeamAssignmentPreview({
               {saveMutation.isPending ? t("common.saving") : t("match.saveTeams")}
             </Button>
             {!complete && (
-              <p className="text-xs text-amber-400 text-center">{t("match.teamsRequiredHint")}</p>
+              <p className="text-xs text-amber-400 text-center">
+                {t("match.teamsExactHint", { size: sideSize })}
+              </p>
             )}
           </div>
         )}

@@ -66,13 +66,15 @@ describe("authorisation and membership", () => {
 
     const badCode = await request(app)
       .post("/api/leagues/NOPE01/join")
-      .set(auth(owner.token));
+      .set(auth(owner.token))
+      .send({ alias: "Nope" });
     expect(badCode.status).toBe(404);
     expect(badCode.body.code).toBe("INVALID_INVITE_CODE");
 
     const twice = await request(app)
       .post(`/api/leagues/${league.inviteCode}/join`)
-      .set(auth(owner.token));
+      .set(auth(owner.token))
+      .send({ alias: "Owner again" });
     expect(twice.status).toBe(409);
     expect(twice.body.code).toBe("ALREADY_IN_LEAGUE");
     expect(twice.body.leagueId).toBe(league.id);

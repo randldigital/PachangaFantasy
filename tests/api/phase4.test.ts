@@ -103,13 +103,15 @@ describe("phase 4 lineup integrity", () => {
     expect(notParticipant.status).toBe(400);
     expect(notParticipant.body.code).toBe("LINEUP_NOT_PARTICIPANT");
 
-    const outsiderStart = await startMatch(app, users[1].token, first.body.id);
+    const outsiderStart = await request(app)
+      .post(`/api/matches/${first.body.id}/start`)
+      .set("Authorization", `Bearer ${users[1].token}`);
     expect(outsiderStart.status).toBe(403);
   });
 
   it("lets more than ten players join and requires start before end", async () => {
     const { owner, users, league } = await createLeagueWithMembers(app, 11);
-    const matchResponse = await createOpenMatch(app, owner.token, league.id);
+    const matchResponse = await createOpenMatch(app, owner.token, league.id, 7);
     await joinAll(app, matchResponse.body.id, users);
 
     const detail = await request(app)

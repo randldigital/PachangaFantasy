@@ -20,6 +20,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
+import SeasonSwitcher, { ALL_SEASONS, defaultSeason } from "@/components/SeasonSwitcher";
+import UserAvatar from "@/components/UserAvatar";
 import type { User as AppUser } from "@shared/schema";
 
 interface ClasificacionSectionProps {
@@ -81,7 +83,7 @@ function getPositionColor(position: number) {
 function BoardRow({
   position,
   highlight,
-  initials,
+  userId,
   title,
   subtitle,
   value,
@@ -89,7 +91,7 @@ function BoardRow({
 }: {
   position: number;
   highlight: boolean;
-  initials: string;
+  userId: number | null;
   title: string;
   subtitle: string;
   value: number;
@@ -104,9 +106,7 @@ function BoardRow({
     >
       <div className="flex items-center space-x-4 min-w-0">
         {getPositionIcon(position)}
-        <Avatar className="w-10 h-10">
-          <AvatarFallback className="bg-slate-700 text-white">{initials}</AvatarFallback>
-        </Avatar>
+        <UserAvatar userId={userId} name={title} className="w-10 h-10" />
         <div className="min-w-0">
           <div className="flex items-center space-x-2">
             <span className="text-white font-medium truncate">{title}</span>
@@ -132,15 +132,24 @@ function BoardRow({
 export default function ClasificacionSection({ leagueId, currentUser, onPlayMatch }: ClasificacionSectionProps) {
   const { t } = useTranslation();
   const [sortKey, setSortKey] = useState<PlayerSortKey>("totalPoints");
+  const [season, setSeason] = useState<string | null>(null);
+
+  const { data: seasons = [] } = useQuery<string[]>({
+    queryKey: queryKeys.leagueSeasons(leagueId),
+    queryFn: () => api.get<string[]>(`/api/leagues/${leagueId}/seasons`),
+  });
+
+  const activeSeason = season ?? defaultSeason(seasons);
+  const seasonQuery = activeSeason === ALL_SEASONS ? "" : `?season=${encodeURIComponent(activeSeason)}`;
 
   const { data: players = [], isLoading: playersLoading } = useQuery<PlayerRanking[]>({
-    queryKey: queryKeys.leagueRankings(leagueId),
-    queryFn: () => api.get<PlayerRanking[]>(`/api/leagues/${leagueId}/rankings`),
+    queryKey: queryKeys.leagueRankings(leagueId, activeSeason),
+    queryFn: () => api.get<PlayerRanking[]>(`/api/leagues/${leagueId}/rankings${seasonQuery}`),
   });
 
   const { data: managers = [], isLoading: managersLoading } = useQuery<ManagerRanking[]>({
-    queryKey: queryKeys.leagueManagerRankings(leagueId),
-    queryFn: () => api.get<ManagerRanking[]>(`/api/leagues/${leagueId}/manager-rankings`),
+    queryKey: queryKeys.leagueManagerRankings(leagueId, activeSeason),
+    queryFn: () => api.get<ManagerRanking[]>(`/api/leagues/${leagueId}/manager-rankings${seasonQuery}`),
   });
 
   const sortedPlayers = useMemo(() => {
@@ -176,6 +185,8 @@ export default function ClasificacionSection({ leagueId, currentUser, onPlayMatc
 
   return (
     <div className="space-y-6">
+      <SeasonSwitcher seasons={seasons} value={activeSeason} onChange={setSeason} />
+
       {empty && (
         <Card className="bg-slate-800/50 border-slate-700">
           <CardContent className="p-8 text-center">
@@ -225,7 +236,7 @@ export default function ClasificacionSection({ leagueId, currentUser, onPlayMatc
                 <BoardRow
                   position={index + 1}
                   highlight={player.userId === currentUser?.id}
-                  initials={player.name?.[0]?.toUpperCase() || "?"}
+                  userId={player.userId}
                   title={player.name}
                   subtitle={t("clasificacion.playerDetail", {
                     goals: player.goals,
@@ -278,7 +289,7 @@ export default function ClasificacionSection({ leagueId, currentUser, onPlayMatc
                 key={manager.userId}
                 position={index + 1}
                 highlight={manager.userId === currentUser?.id}
-                initials={manager.username?.[0]?.toUpperCase() || "?"}
+                userId={manager.userId}
                 title={manager.username}
                 subtitle={t("clasificacion.points")}
                 value={manager.totalPoints}

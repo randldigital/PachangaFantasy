@@ -8,6 +8,8 @@ import {
   createOpenMatch,
   joinAllMatches,
   listPlayers,
+  fillMissingStats,
+  padMatchToCapacity,
   startMatch,
 } from "../helpers/fixtures";
 
@@ -26,7 +28,6 @@ describe("teams, admin stats, and assist validation", () => {
     const { owner, users, league } = await createLeagueWithMembers(app, 2);
     const match = (await createOpenMatch(app, owner.token, league.id)).body;
     await joinAllMatches(app, match.id, users);
-    const ids = (await listPlayers(app, owner.token, league.id)).map((player) => player.id);
 
     const withoutTeams = await request(app)
       .post(`/api/matches/${match.id}/start`)
@@ -34,12 +35,15 @@ describe("teams, admin stats, and assist validation", () => {
     expect(withoutTeams.status).toBe(400);
     expect(withoutTeams.body.code).toBe("TEAMS_REQUIRED");
 
+    const ids = await padMatchToCapacity(app, owner.token, match.id);
+    const teamA = ids.slice(0, 5);
+    const teamB = ids.slice(5);
     const saved = await request(app)
       .post(`/api/matches/${match.id}/teams`)
       .set(auth(owner.token))
-      .send({ teamA: [ids[0]], teamB: [ids[1]] });
+      .send({ teamA, teamB });
     expect(saved.status).toBe(200);
-    expect(saved.body.match.matchTeams).toEqual({ teamA: [ids[0]], teamB: [ids[1]] });
+    expect(saved.body.match.matchTeams).toEqual({ teamA, teamB });
 
     const started = await request(app)
       .post(`/api/matches/${match.id}/start`)
@@ -50,7 +54,7 @@ describe("teams, admin stats, and assist validation", () => {
     const locked = await request(app)
       .post(`/api/matches/${match.id}/teams`)
       .set(auth(owner.token))
-      .send({ teamA: [ids[1]], teamB: [ids[0]] });
+      .send({ teamA: teamB, teamB: teamA });
     expect(locked.status).toBe(400);
     expect(locked.body.code).toBe("TEAMS_LOCKED");
   });
@@ -67,6 +71,7 @@ describe("teams, admin stats, and assist validation", () => {
       .post(`/api/matches/${match.id}/end`)
       .set(auth(owner.token))
       .send({ teamAGoals: 1, teamBGoals: 0 });
+    await fillMissingStats(app, owner.token, match.id);
 
     const memberTryingAdmin = await request(app)
       .post(`/api/matches/${match.id}/stats`)
@@ -104,6 +109,7 @@ describe("teams, admin stats, and assist validation", () => {
       .post(`/api/matches/${match.id}/end`)
       .set(auth(owner.token))
       .send({ teamAGoals: 1, teamBGoals: 1 });
+    await fillMissingStats(app, owner.token, match.id);
 
     await request(app)
       .post(`/api/matches/${match.id}/stats`)

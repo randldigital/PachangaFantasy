@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
+import { DEFAULT_SIDE_SIZE, SIDE_SIZES, type SideSize } from "@shared/domain/teams";
 
 interface CreateMatchFormProps {
   leagueId: number;
@@ -18,14 +19,25 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    date: string;
+    time: string;
+    lineupBudget: number;
+    sideSize: SideSize;
+  }>({
     date: '',
     time: '',
-    lineupBudget: 100
+    lineupBudget: 100,
+    sideSize: DEFAULT_SIDE_SIZE
   });
 
   const createMatchMutation = useMutation({
-    mutationFn: async (data: { leagueId: number; date: string; lineupBudget: number }) => {
+    mutationFn: async (data: {
+      leagueId: number;
+      date: string;
+      lineupBudget: number;
+      sideSize: SideSize;
+    }) => {
       const response = await apiRequest('POST', '/api/matches', data);
       return response.json();
     },
@@ -56,7 +68,8 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
     createMatchMutation.mutate({
       leagueId,
       date: matchDate.toISOString(),
-      lineupBudget: formData.lineupBudget
+      lineupBudget: formData.lineupBudget,
+      sideSize: formData.sideSize
     });
   };
 
@@ -94,6 +107,28 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
             required
           />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-white">{t('match.sideSize')} *</Label>
+        <div className="grid grid-cols-3 gap-2">
+          {SIDE_SIZES.map((size) => (
+            <Button
+              key={size}
+              type="button"
+              variant={formData.sideSize === size ? 'default' : 'outline'}
+              className={
+                formData.sideSize === size
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'border-slate-600 text-slate-200 hover:bg-slate-700'
+              }
+              onClick={() => setFormData((prev) => ({ ...prev, sideSize: size }))}
+            >
+              {t('match.sideSizeOption', { size })}
+            </Button>
+          ))}
+        </div>
+        <p className="text-xs text-slate-400">{t('match.sideSizeHint')}</p>
       </div>
 
       <div className="space-y-2">

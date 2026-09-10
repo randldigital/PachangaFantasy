@@ -11,6 +11,7 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Overview from "@/pages/Overview";
 import LeagueHub from "@/pages/LeagueHub";
+import ClubHub from "@/pages/ClubHub";
 import NotFound from "@/pages/not-found";
 import "./lib/i18n";
 
@@ -39,6 +40,13 @@ function Router() {
         <ProtectedRoute>
           <Navbar />
           <LeagueHub />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/club/:id">
+        <ProtectedRoute>
+          <Navbar />
+          <ClubHub />
         </ProtectedRoute>
       </Route>
       

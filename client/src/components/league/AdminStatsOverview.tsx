@@ -10,6 +10,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { useToast } from "@/hooks/use-toast";
 import { Calculator, CheckCircle, Clock, Users, AlertTriangle } from "lucide-react";
 import SubmitMyStats from "./SubmitMyStats";
+import { requireLeagueId } from "@shared/domain/context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,10 +85,10 @@ export default function AdminStatsOverview({
       queryClient.invalidateQueries({ queryKey: queryKeys.matchStats(match.id) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.matchStatsStatus(match.id) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.matchRatings(match.id) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(match.leagueId) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.leaguePlayers(match.leagueId) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.leagueRankings(match.leagueId) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.leagueManagerRankings(match.leagueId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(requireLeagueId(match)) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaguePlayers(requireLeagueId(match)) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagueRankingsPrefix(requireLeagueId(match)) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagueManagerRankingsPrefix(requireLeagueId(match)) }),
     ]);
   };
 

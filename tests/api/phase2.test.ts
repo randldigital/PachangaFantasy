@@ -6,6 +6,7 @@ import {
   createLeagueWithMembers,
   createOpenMatch,
   registerUser,
+  fillMissingStats,
   startMatch,
   submitAllRatings,
   expectedPlayerMatchRating,
@@ -121,6 +122,7 @@ describe("phase 2 regressions", () => {
       .post(`/api/matches/${matchResponse.body.id}/end`)
       .set("Authorization", `Bearer ${owner.token}`)
       .send({ teamAGoals: 4, teamBGoals: 3 });
+    await fillMissingStats(app, owner.token, matchResponse.body.id);
 
     expect(ended.status).toBe(200);
     expect(ended.body.match.finalScore).toBe(7);
@@ -175,6 +177,7 @@ describe("phase 2 regressions", () => {
       .post(`/api/matches/${match.id}/end`)
       .set("Authorization", `Bearer ${owner.token}`)
       .send({ teamAGoals: 1, teamBGoals: 0 });
+    await fillMissingStats(app, owner.token, match.id);
 
     const nonParticipant = await request(app)
       .post(`/api/matches/${match.id}/stats`)
@@ -218,6 +221,7 @@ describe("phase 2 regressions", () => {
       .post(`/api/matches/${match.id}/end`)
       .set("Authorization", `Bearer ${owner.token}`)
       .send({ teamAGoals: 2, teamBGoals: 0 });
+    await fillMissingStats(app, owner.token, match.id);
     await request(app)
       .post(`/api/matches/${match.id}/stats`)
       .set("Authorization", `Bearer ${owner.token}`)
@@ -238,7 +242,7 @@ describe("phase 2 regressions", () => {
       .post(`/api/matches/${match.id}/calculate-scores`)
       .set("Authorization", `Bearer ${owner.token}`);
     expect(first.status).toBe(200);
-    expect(first.body.playerPoints).toHaveLength(2);
+    expect(first.body.playerPoints).toHaveLength(10);
     const scoredOwner = first.body.playerPoints.find(
       (row: { playerId: number; points: number }) => row.points === Math.max(...first.body.playerPoints.map((item: { points: number }) => item.points)),
     );
@@ -249,7 +253,7 @@ describe("phase 2 regressions", () => {
     const second = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)
       .set("Authorization", `Bearer ${owner.token}`);
-    expect(second.body.playerPoints).toHaveLength(2);
+    expect(second.body.playerPoints).toHaveLength(10);
     expect(second.body.playerPoints.find((row: { playerId: number }) => row.playerId === scoredOwner.playerId).points).toBe(scoredOwner.points);
 
     const rankings = await request(app)

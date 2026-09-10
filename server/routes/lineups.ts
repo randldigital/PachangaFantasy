@@ -9,6 +9,7 @@ import * as matchRepo from "../repos/matchRepo";
 import * as playerRepo from "../repos/playerRepo";
 import { lineupTotalCost, validateLineup } from "@shared/domain/lineup";
 import { isLineupEditable } from "@shared/domain/matchLifecycle";
+import { requireLeagueId } from "@shared/domain/context";
 import type { AuthRequest } from "../types";
 
 export function registerLineupRoutes(app: Express) {
@@ -22,7 +23,7 @@ export function registerLineupRoutes(app: Express) {
         return res.status(404).json({ message: "Match not found" });
       }
 
-      const league = await leagueRepo.getLeague(match.leagueId);
+      const league = await leagueRepo.getLeague(requireLeagueId(match));
       if (!league) {
         return res.status(404).json({ message: "League not found" });
       }
@@ -45,7 +46,7 @@ export function registerLineupRoutes(app: Express) {
 
       const participants = await matchRepo.getMatchParticipants(matchId);
       const participantIds = participants.map((participant) => participant.playerId);
-      const players = await playerRepo.getPlayersByLeague(match.leagueId);
+      const players = await playerRepo.getRosterFor(match);
       const violations = validateLineup({
         playerIds: parsed.data.playerIds,
         captainId: parsed.data.captainId,

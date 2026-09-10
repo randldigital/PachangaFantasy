@@ -29,7 +29,7 @@ describe("nine registered players plus one guest", () => {
     await resetTestSchema();
   });
 
-  it("lets a new account claim the guest by matching username on join", async () => {
+  it("turns a matching alias into a claim request the administrator must confirm", async () => {
     const { owner, league } = await createLeagueWithMembers(app, 1);
     const guest = await request(app)
       .post(`/api/players/${league.id}`)
@@ -51,13 +51,27 @@ describe("nine registered players plus one guest", () => {
     });
     expect(claimed.status).toBe(200);
 
-    const joined = await request(app)
+    const blocked = await request(app)
       .post(`/api/leagues/${league.inviteCode}/join`)
+      .set(auth(claimed.body.token))
+      .send({ alias: "Invitado" });
+    expect(blocked.status).toBe(409);
+    expect(blocked.body.code).toBe("CLAIM_PENDING");
+
+    // Membership is withheld until the administrator confirms.
+    const beforeConfirm = await request(app)
+      .get(`/api/leagues/${league.id}`)
       .set(auth(claimed.body.token));
-    expect(joined.status).toBe(200);
-    expect(joined.body.player.id).toBe(guest.body.id);
-    expect(joined.body.player.userId).toBe(claimed.body.user.id);
-    expect(joined.body.player.isExternal).toBe(false);
+    expect(beforeConfirm.status).toBe(404);
+
+    const resolved = await request(app)
+      .post(`/api/claim-requests/${blocked.body.requestId}/resolve`)
+      .set(auth(owner.token))
+      .send({ decision: "accept" });
+    expect(resolved.status).toBe(200);
+    expect(resolved.body.player.id).toBe(guest.body.id);
+    expect(resolved.body.player.userId).toBe(claimed.body.user.id);
+    expect(resolved.body.player.isExternal).toBe(false);
 
     const participants = await request(app)
       .get(`/api/matches/${match.id}/participants`)

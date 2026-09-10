@@ -1,11 +1,12 @@
 import type { Express, Response } from "express";
 import { submitStatsSchema } from "@shared/schema";
 import { logger } from "../logger";
-import { isLeagueAdmin, requireAuth } from "../middleware/auth";
-import { loadMatchMember, rejectUnlessAdmin } from "../middleware/access";
+import { requireAuth } from "../middleware/auth";
+import { isAdmin, loadMatchAccess, loadMatchMember, rejectUnlessAdmin } from "../middleware/access";
 import * as matchRepo from "../repos/matchRepo";
 import * as playerRepo from "../repos/playerRepo";
 import * as statsRepo from "../repos/statsRepo";
+import { isClosedStatus } from "@shared/domain/matchLifecycle";
 import { isStatsEditable } from "@shared/domain/stats";
 import type { AuthRequest } from "../types";
 
@@ -26,10 +27,10 @@ export function registerStatsRoutes(app: Express) {
   app.post("/api/matches/:matchId/stats", requireAuth, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.matchId);
-      const access = await loadMatchMember(req, res, matchId);
+      const access = await loadMatchAccess(req, res, matchId);
       if (!access) return;
 
-      if (access.match.status === "scored") {
+      if (access.match.status === "scored" || isClosedStatus(access.match.status)) {
         return res.status(400).json({
           message: "Statistics cannot be changed after the match is scored",
           code: "STATS_LOCKED",
@@ -48,7 +49,7 @@ export function registerStatsRoutes(app: Express) {
         return res.status(400).json({ message: "Invalid input", errors: parsed.error.issues });
       }
 
-      const ownPlayer = await playerRepo.checkUserAsPlayer(access.user.id, access.match.leagueId);
+      const ownPlayer = await playerRepo.checkUserAsPlayer(access.user.id, access.match);
       const targetPlayerId = parsed.data.playerId ?? ownPlayer?.id;
       if (!targetPlayerId) {
         return res.status(403).json({
@@ -58,13 +59,24 @@ export function registerStatsRoutes(app: Express) {
       }
 
       const targetPlayer = await playerRepo.getPlayer(targetPlayerId);
-      if (!targetPlayer || targetPlayer.leagueId !== access.match.leagueId) {
+      const sameContext =
+        access.context === "league"
+          ? targetPlayer?.leagueId === access.match.leagueId
+          : targetPlayer?.clubId === access.match.clubId;
+      if (!targetPlayer || !sameContext) {
         return res.status(404).json({ message: "Player not found" });
       }
 
-      const isAdmin = isLeagueAdmin(access.league, access.user.id);
+      if (access.context === "league" && parsed.data.minutes != null) {
+        return res.status(400).json({
+          message: "Minutes are only recorded on club matches",
+          code: "MINUTES_NOT_SUPPORTED",
+        });
+      }
+
+      const userIsAdmin = isAdmin(access.organisation, access.user.id);
       const isOwnPlayer = targetPlayer.userId === access.user.id;
-      if (!isOwnPlayer && !isAdmin) {
+      if (!isOwnPlayer && !userIsAdmin) {
         return res.status(403).json({
           message: "You can only submit your own statistics",
           code: "STATS_NOT_PARTICIPANT",
@@ -89,6 +101,7 @@ export function registerStatsRoutes(app: Express) {
         matchId,
         goals: parsed.data.goals,
         assists: parsed.data.assists,
+        ...(access.context === "club" ? { minutes: parsed.data.minutes ?? 0 } : {}),
       };
 
       const statReport = existing
@@ -109,7 +122,7 @@ export function registerStatsRoutes(app: Express) {
   app.get("/api/matches/:matchId/stats", requireAuth, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.matchId);
-      const access = await loadMatchMember(req, res, matchId);
+      const access = await loadMatchAccess(req, res, matchId);
       if (!access) return;
       const reports = await statsRepo.getStatReportsForMatch(matchId);
       res.json(reports);
@@ -122,7 +135,7 @@ export function registerStatsRoutes(app: Express) {
   app.get("/api/matches/:matchId/stats-status", requireAuth, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.matchId);
-      const access = await loadMatchMember(req, res, matchId);
+      const access = await loadMatchAccess(req, res, matchId);
       if (!access) return;
       const payload = await statsPayload(matchId);
       res.json(payload);

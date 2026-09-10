@@ -8,3 +8,4 @@ vite.config.ts.*
 coverage
 playwright-report
 test-results
+uploads

@@ -1,8 +1,22 @@
 import type { Express, Response } from "express";
-import { endMatchSchema, insertMatchSchema, saveTeamsSchema } from "@shared/schema";
+import {
+  clubResultSchema,
+  createMatchSchema,
+  endMatchSchema,
+  insertClubMatchSchema,
+  insertMatchSchema,
+  saveTeamsSchema,
+} from "@shared/schema";
 import { logger } from "../logger";
 import { isLeagueAdmin, requireAuth, requireUser } from "../middleware/auth";
-import { loadLeagueMember, loadMatchMember, rejectUnlessAdmin } from "../middleware/access";
+import {
+  isAdmin,
+  loadLeagueMember,
+  loadMatchAccess,
+  loadMatchMember,
+  rejectUnlessAdmin,
+} from "../middleware/access";
+import * as clubRepo from "../repos/clubRepo";
 import * as leagueRepo from "../repos/leagueRepo";
 import * as matchRepo from "../repos/matchRepo";
 import * as playerRepo from "../repos/playerRepo";
@@ -10,17 +24,55 @@ import * as ratingRepo from "../repos/ratingRepo";
 import * as scoreRepo from "../repos/scoreRepo";
 import * as userRepo from "../repos/userRepo";
 import {
+  canCloseMatch,
   canEndMatch,
   canStartMatch,
   hasActiveMatch,
   isJoinableStatus,
 } from "@shared/domain/matchLifecycle";
-import { teamsAreComplete, validateMatchTeams } from "@shared/domain/teams";
+import { matchCapacity, sideSizeOf, teamsAreComplete, validateMatchTeams } from "@shared/domain/teams";
 import type { AuthRequest } from "../types";
+
+/** Creating a Club Match: a date and an opponent name, with no Fantasy machinery. */
+async function createClubMatch(req: AuthRequest, res: Response) {
+  const parsed = insertClubMatchSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: "Invalid input", errors: parsed.error.issues });
+  }
+
+  const user = requireUser(req);
+  const club = await clubRepo.getClub(parsed.data.clubId);
+  if (!club) {
+    return res.status(404).json({ message: "Club not found" });
+  }
+  if (!isAdmin(club, user.id)) {
+    return res.status(403).json({ message: "Only club creator can create matches" });
+  }
+
+  const existing = await matchRepo.getMatchesByClub(club.id);
+  if (hasActiveMatch(existing)) {
+    return res.status(409).json({
+      message: "A club may have only one Open or Started match",
+      code: "MATCH_ALREADY_ACTIVE",
+    });
+  }
+
+  const match = await matchRepo.createMatch({ ...parsed.data, createdBy: user.id });
+  logger.info("Club creator created match", { club: club.id, match: match.id });
+  return res.json(match);
+}
 
 export function registerMatchRoutes(app: Express) {
   app.post("/api/matches", requireAuth, async (req: AuthRequest, res: Response) => {
     try {
+      const context = createMatchSchema.safeParse(req.body);
+      if (!context.success) {
+        return res.status(400).json({ message: "Invalid input", errors: context.error.issues });
+      }
+      if (req.body?.clubId != null) {
+        return await createClubMatch(req, res);
+      }
+
       const result = insertMatchSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ message: "Invalid input", errors: result.error.issues });
@@ -93,7 +145,7 @@ export function registerMatchRoutes(app: Express) {
   app.get("/api/matches/:id", requireAuth, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.id);
-      const access = await loadMatchMember(req, res, matchId);
+      const access = await loadMatchAccess(req, res, matchId);
       if (!access) return;
       const participants = await matchRepo.getMatchParticipants(matchId);
       res.json({ ...access.match, participants });
@@ -106,7 +158,7 @@ export function registerMatchRoutes(app: Express) {
   app.get("/api/matches/:id/recap", requireAuth, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.id);
-      const access = await loadMatchMember(req, res, matchId);
+      const access = await loadMatchAccess(req, res, matchId);
       if (!access) return;
       const recap = await scoreRepo.getMatchRecap(matchId);
       if (!recap) {
@@ -122,17 +174,18 @@ export function registerMatchRoutes(app: Express) {
   app.delete("/api/matches/:id", requireAuth, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.id);
-      const access = await loadMatchMember(req, res, matchId);
+      const access = await loadMatchAccess(req, res, matchId);
       if (!access) return;
 
-      if (rejectUnlessAdmin(res, access.league, access.user.id, "Only league creator can delete matches")) {
+      if (rejectUnlessAdmin(res, access.organisation, access.user.id, "Only league creator can delete matches")) {
         return;
       }
 
       await matchRepo.deleteMatch(matchId);
       logger.info("Match deleted", {
         match: matchId,
-        league: access.league.id,
+        context: access.context,
+        organisation: access.organisation.id,
         creator: access.user.username,
       });
       res.json({ message: "Match deleted successfully" });
@@ -145,10 +198,10 @@ export function registerMatchRoutes(app: Express) {
   app.post("/api/matches/:id/start", requireAuth, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.id);
-      const access = await loadMatchMember(req, res, matchId);
+      const access = await loadMatchAccess(req, res, matchId);
       if (!access) return;
 
-      if (rejectUnlessAdmin(res, access.league, access.user.id, "Only league creator can start matches")) {
+      if (rejectUnlessAdmin(res, access.organisation, access.user.id, "Only league creator can start matches")) {
         return;
       }
 
@@ -159,28 +212,36 @@ export function registerMatchRoutes(app: Express) {
         });
       }
 
-      const participants = await matchRepo.getMatchParticipants(matchId);
-      const participantIds = participants
-        .filter((participant) => participant.status === "accepted")
-        .map((participant) => participant.playerId);
-      const teamViolations = validateMatchTeams({
-        participantIds,
-        teamA: access.match.matchTeams?.teamA,
-        teamB: access.match.matchTeams?.teamB,
-      });
-      if (teamViolations.length > 0) {
-        return res.status(400).json({
-          message: teamViolations[0].message,
-          code: teamViolations[0].code,
-          errors: teamViolations,
+      // A Club match has no Team A/B, so there is nothing to validate before kick-off.
+      if (access.context === "league") {
+        const participants = await matchRepo.getMatchParticipants(matchId);
+        const participantIds = participants
+          .filter((participant) => participant.status === "accepted")
+          .map((participant) => participant.playerId);
+        const teamViolations = validateMatchTeams({
+          participantIds,
+          teamA: access.match.matchTeams?.teamA,
+          teamB: access.match.matchTeams?.teamB,
+          sideSize: sideSizeOf(access.match),
+          requireFullSides: true,
         });
+        if (teamViolations.length > 0) {
+          return res.status(400).json({
+            message: teamViolations[0].message,
+            code: teamViolations[0].code,
+            errors: teamViolations,
+          });
+        }
       }
 
       const updatedMatch = await matchRepo.updateMatch(matchId, { status: "started" });
-      await ratingRepo.snapshotMatchPlayerVm(matchId);
+      if (access.context === "league") {
+        await ratingRepo.snapshotMatchPlayerVm(matchId);
+      }
       logger.info("Match started", {
         match: matchId,
-        league: access.league.id,
+        context: access.context,
+        organisation: access.organisation.id,
         creator: access.user.username,
       });
       res.json({
@@ -241,10 +302,100 @@ export function registerMatchRoutes(app: Express) {
     }
   });
 
+  /**
+   * A Club Match ends by recording the opponent and the score. The opponent is a name,
+   * never a roster, so there is no Team A/B and no per-opponent statistics.
+   */
+  app.post("/api/matches/:id/club-result", requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const access = await loadMatchAccess(req, res, matchId);
+      if (!access) return;
+
+      if (access.context !== "club") {
+        return res.status(400).json({
+          message: "Only club matches record an opponent result",
+          code: "NOT_A_CLUB_MATCH",
+        });
+      }
+      if (rejectUnlessAdmin(res, access.organisation, access.user.id, "Only club creator can record the result")) {
+        return;
+      }
+      if (!canEndMatch(access.match.status)) {
+        return res.status(400).json({
+          message: "Start the match before recording the result",
+          code: "MATCH_NOT_ENDABLE",
+        });
+      }
+
+      const parsed = clubResultSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.issues });
+      }
+
+      const updated = await matchRepo.updateMatch(matchId, {
+        status: "completed",
+        opponentName: parsed.data.opponentName,
+        ourGoals: parsed.data.ourGoals,
+        opponentGoals: parsed.data.opponentGoals,
+        finalScore: parsed.data.ourGoals,
+      });
+      await ratingRepo.ensureRatingAssignments(matchId);
+      logger.info("Club match result recorded", {
+        match: matchId,
+        club: access.organisation.id,
+        ourGoals: parsed.data.ourGoals,
+        opponentGoals: parsed.data.opponentGoals,
+      });
+      res.json({
+        message: "Result recorded. Participants can now submit statistics and ratings.",
+        match: updated,
+      });
+    } catch (error) {
+      logger.error("Club result error", error);
+      res.status(500).json({ message: "Failed to record the club match result" });
+    }
+  });
+
+  /**
+   * Closing is a separate, explicit administrator action after scoring. A closed match is
+   * immutable: no late statistics, no late ratings, no recalculation.
+   */
+  app.post("/api/matches/:id/close", requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const access = await loadMatchAccess(req, res, matchId);
+      if (!access) return;
+
+      if (access.context !== "club") {
+        return res.status(400).json({
+          message: "Only club matches are closed explicitly",
+          code: "NOT_A_CLUB_MATCH",
+        });
+      }
+      if (rejectUnlessAdmin(res, access.organisation, access.user.id, "Only club creator can close matches")) {
+        return;
+      }
+      if (!canCloseMatch(access.match.status)) {
+        return res.status(400).json({
+          message: "Score the match before closing it",
+          code: "MATCH_NOT_CLOSEABLE",
+        });
+      }
+
+      const updated = await matchRepo.updateMatch(matchId, { status: "closed" });
+      logger.info("Club match closed", { match: matchId, club: access.organisation.id });
+      res.json({ message: "Match closed", match: updated });
+    } catch (error) {
+      logger.error("Close match error", error);
+      res.status(500).json({ message: "Failed to close the match" });
+    }
+  });
+
   app.get("/api/matches/:id/participants", requireAuth, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.id);
-      const access = await loadMatchMember(req, res, matchId);
+      const access = await loadMatchAccess(req, res, matchId);
       if (!access) return;
 
       const participants = await matchRepo.getMatchParticipants(matchId);
@@ -284,10 +435,10 @@ export function registerMatchRoutes(app: Express) {
         return res.status(400).json({ message: "playerIds array is required" });
       }
 
-      const access = await loadMatchMember(req, res, matchId);
+      const access = await loadMatchAccess(req, res, matchId);
       if (!access) return;
 
-      if (rejectUnlessAdmin(res, access.league, access.user.id, "Only league creator can add players to matches")) {
+      if (rejectUnlessAdmin(res, access.organisation, access.user.id, "Only league creator can add players to matches")) {
         return;
       }
 
@@ -304,8 +455,24 @@ export function registerMatchRoutes(app: Express) {
       const playersToAdd = [];
       for (const playerId of playerIds) {
         const player = await playerRepo.getPlayer(playerId);
-        if (player && player.leagueId === access.match.leagueId && !existingPlayerIds.includes(playerId)) {
+        const sameContext =
+          access.context === "league"
+            ? player?.leagueId === access.match.leagueId
+            : player?.clubId === access.match.clubId;
+        if (player && sameContext && !existingPlayerIds.includes(playerId)) {
           playersToAdd.push(player);
+        }
+      }
+
+      // A Club squad is not capped: only Fantasy sides have a fixed size.
+      if (access.context === "league") {
+        const capacity = matchCapacity(sideSizeOf(access.match));
+        if (existingPlayerIds.length + playersToAdd.length > capacity) {
+          return res.status(400).json({
+            message: `This match holds ${capacity} players`,
+            code: "MATCH_FULL",
+            capacity,
+          });
         }
       }
 
@@ -356,6 +523,7 @@ export function registerMatchRoutes(app: Express) {
         participantIds,
         teamA: parsed.data.teamA,
         teamB: parsed.data.teamB,
+        sideSize: sideSizeOf(access.match),
       });
       if (violations.length > 0) {
         return res.status(400).json({
@@ -371,7 +539,7 @@ export function registerMatchRoutes(app: Express) {
       res.json({
         message: "Teams saved",
         match: updated,
-        complete: teamsAreComplete(updated?.matchTeams, participantIds),
+        complete: teamsAreComplete(updated?.matchTeams, participantIds, sideSizeOf(access.match)),
       });
     } catch (error) {
       logger.error("Error assigning teams", error);
@@ -382,7 +550,7 @@ export function registerMatchRoutes(app: Express) {
   app.post("/api/matches/:id/join", requireAuth, async (req: AuthRequest, res: Response) => {
     try {
       const matchId = parseInt(req.params.id);
-      const access = await loadMatchMember(req, res, matchId);
+      const access = await loadMatchAccess(req, res, matchId);
       if (!access) return;
 
       if (!isJoinableStatus(access.match.status)) {
@@ -392,12 +560,25 @@ export function registerMatchRoutes(app: Express) {
         });
       }
 
-      const userAsPlayer = await playerRepo.checkUserAsPlayer(access.user.id, access.match.leagueId);
+      const userAsPlayer = await playerRepo.checkUserAsPlayer(access.user.id, access.match);
       if (!userAsPlayer) {
         return res.status(400).json({
           message: "You must be added as a player in this league first",
           needsPlayerRecord: true,
         });
+      }
+
+      if (access.context === "league") {
+        const capacity = matchCapacity(sideSizeOf(access.match));
+        const current = await matchRepo.getMatchParticipants(matchId);
+        const alreadyIn = current.some((participant) => participant.playerId === userAsPlayer.id);
+        if (!alreadyIn && current.length >= capacity) {
+          return res.status(400).json({
+            message: `This match holds ${capacity} players`,
+            code: "MATCH_FULL",
+            capacity,
+          });
+        }
       }
 
       const participant = await matchRepo.joinMatch(matchId, access.user.id);

@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import StatCounters from "./StatCounters";
 import { isStatsEditable } from "@shared/domain/stats";
 import type { Match, StatReport } from "@shared/schema";
+import { requireLeagueId } from "@shared/domain/context";
 
 interface SubmitMyStatsProps {
   match: Match;
@@ -56,7 +57,7 @@ export default function SubmitMyStats({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.matchStats(match.id) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.matchStatsStatus(match.id) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(match.leagueId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(requireLeagueId(match)) }),
       ]);
     },
     onError: (error: Error) => {

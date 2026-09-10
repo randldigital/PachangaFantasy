@@ -21,7 +21,7 @@ import {
   isJoinableStatus,
   normalizeMatchStatus,
 } from "@shared/domain/matchLifecycle";
-import { teamsAreComplete } from "@shared/domain/teams";
+import { matchCapacity, sideSizeOf, teamsAreComplete } from "@shared/domain/teams";
 import type { Match, League, User, Player } from "@shared/schema";
 
 const actionButtonClass = "w-full sm:w-auto";
@@ -85,6 +85,7 @@ export default function MatchContextHeader({
       teamsAreComplete(
         match.matchTeams,
         acceptedParticipants.map((participant) => participant.playerId),
+        sideSizeOf(match),
       ),
   );
 
@@ -181,13 +182,16 @@ export default function MatchContextHeader({
                 >
                   {t(`match.status.${normalizeMatchStatus(match.status)}`)}
                 </Badge>
+                <Badge variant="secondary" className="bg-slate-700 text-white font-medium">
+                  {t('match.sideSizeOption', { size: sideSizeOf(match) })}
+                </Badge>
                 <div className="flex items-center space-x-2 text-slate-300">
                   <Users className="w-4 h-4" />
                   <span className="text-sm">
                     {participantsLoading ? (
                       <Loader2 className="w-3 h-3 animate-spin" />
                     ) : (
-                      `${acceptedParticipants.length}`
+                      `${acceptedParticipants.length}/${matchCapacity(sideSizeOf(match))}`
                     )}
                   </span>
                 </div>

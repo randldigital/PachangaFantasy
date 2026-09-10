@@ -15,6 +15,7 @@ import { and, eq } from "drizzle-orm";
 import * as matchRepo from "./matchRepo";
 import * as playerRepo from "./playerRepo";
 import { assignMatchRatings, ratingsAreComplete } from "@shared/domain/ratingAssignments";
+import { assignClubRatings } from "@shared/domain/clubRatingAssignments";
 import type { RatingAssignment } from "@shared/domain/ratingAssignments";
 
 export async function snapshotMatchPlayerVm(matchId: number): Promise<MatchPlayerVm[]> {
@@ -28,7 +29,7 @@ export async function snapshotMatchPlayerVm(matchId: number): Promise<MatchPlaye
     return [];
   }
   const participants = await matchRepo.getMatchParticipants(matchId);
-  const roster = await playerRepo.getPlayersByLeague(match.leagueId);
+  const roster = await playerRepo.getRosterFor(match);
   const byId = new Map(roster.map((player) => [player.id, player]));
   const rows = participants
     .filter((participant) => participant.status === "accepted")
@@ -57,11 +58,15 @@ export async function ensureRatingAssignments(matchId: number): Promise<MatchRat
   }
 
   const match = await matchRepo.getMatch(matchId);
-  if (!match?.matchTeams) {
+  if (!match) {
+    return [];
+  }
+  const isClub = match.clubId != null;
+  if (!isClub && !match.matchTeams) {
     return [];
   }
   const participants = await matchRepo.getMatchParticipants(matchId);
-  const roster = await playerRepo.getPlayersByLeague(match.leagueId);
+  const roster = await playerRepo.getRosterFor(match);
   const accepted = participants.filter((participant) => participant.status === "accepted");
   const participantIds = accepted.map((participant) => participant.playerId);
   const voterPlayerIds = accepted
@@ -69,13 +74,15 @@ export async function ensureRatingAssignments(matchId: number): Promise<MatchRat
     .filter((player) => player?.userId != null)
     .map((player) => player!.id);
 
-  const generated = assignMatchRatings({
-    matchId,
-    teamA: match.matchTeams.teamA,
-    teamB: match.matchTeams.teamB,
-    voterPlayerIds,
-    participantIds,
-  });
+  const generated = isClub
+    ? assignClubRatings({ matchId, participantIds, voterPlayerIds })
+    : assignMatchRatings({
+        matchId,
+        teamA: match.matchTeams!.teamA,
+        teamB: match.matchTeams!.teamB,
+        voterPlayerIds,
+        participantIds,
+      });
   if (generated.length === 0) {
     return [];
   }
@@ -102,7 +109,7 @@ export async function voterPlayerIdsForMatch(matchId: number): Promise<number[]>
     return [];
   }
   const participants = await matchRepo.getMatchParticipants(matchId);
-  const roster = await playerRepo.getPlayersByLeague(match.leagueId);
+  const roster = await playerRepo.getRosterFor(match);
   return participants
     .filter((participant) => participant.status === "accepted")
     .map((participant) => roster.find((player) => player.id === participant.playerId))
@@ -180,5 +187,5 @@ export async function playerByUser(matchId: number, userId: number) {
   if (!match) {
     return undefined;
   }
-  return playerRepo.checkUserAsPlayer(userId, match.leagueId);
+  return playerRepo.checkUserAsPlayer(userId, match);
 }

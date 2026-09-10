@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import type { Match, Player } from "@shared/schema";
 import { isFinishedStatus, normalizeMatchStatus } from "@shared/domain/matchLifecycle";
+import { groupBySeason, seasonOf } from "@shared/domain/season";
 import MatchRecapPitch, { type MatchRecapPlayer } from "./MatchRecapPitch";
 
 interface MatchRecap {
@@ -93,6 +94,8 @@ export default function HistorialSection({
     .filter((match) => isFinishedStatus(match.status))
     .sort((a, b) => matchDate(b.date).getTime() - matchDate(a.date).getTime());
 
+  const seasons = groupBySeason(pastMatches, (match) => match.seasonKey ?? seasonOf(match.date));
+
   if (isLoading) {
     return (
       <Card className="bg-slate-800/50 border-slate-700">
@@ -131,8 +134,15 @@ export default function HistorialSection({
         <p className="text-slate-400 text-sm">{t("historial.subtitle")}</p>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
-          {pastMatches.map((match) => {
+        {seasons.map((group) => (
+        <div key={group.season} className="space-y-3">
+          <div className="flex items-center gap-3 pt-4 first:pt-0">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+              {t("season.heading", { season: group.season })}
+            </h4>
+            <div className="h-px flex-1 bg-slate-700" />
+          </div>
+          {group.items.map((match) => {
             const isExpanded = expandedMatches.has(match.id);
             const scored = normalizeMatchStatus(match.status) === "scored";
             const a = match.teamAGoals;
@@ -203,6 +213,7 @@ export default function HistorialSection({
             );
           })}
         </div>
+        ))}
       </CardContent>
     </Card>
   );

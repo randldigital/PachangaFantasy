@@ -20,6 +20,11 @@ export type StatsStatusInput = {
   reports: { playerId: number; goals?: number | null; assists?: number | null }[];
   expectedGoals: number | null;
   acknowledged: boolean;
+  /**
+   * Club matches compare participant goals against "our goals" as an administrator
+   * warning only, so a mismatch must not withhold scoring.
+   */
+  consistencyIsWarning?: boolean;
 };
 
 export type StatsStatus = {
@@ -82,7 +87,9 @@ export function statsSubmissionState(input: StatsStatusInput): StatsStatus {
 
   return {
     state,
-    canScore: complete && assistsOk && (goalsMatch || input.acknowledged),
+    canScore: input.consistencyIsWarning
+      ? complete
+      : complete && assistsOk && (goalsMatch || input.acknowledged),
     complete,
     consistent,
     acknowledged: input.acknowledged,

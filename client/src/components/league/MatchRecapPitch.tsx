@@ -24,6 +24,7 @@ interface MatchRecapPitchProps {
   players: MatchRecapPlayer[];
 }
 
+/** Slots are [distance from own goal %, across the pitch %], keeper first. */
 const FORMATIONS: Record<number, [number, number][]> = {
   1: [[20, 50]],
   2: [[16, 24], [34, 76]],
@@ -31,6 +32,23 @@ const FORMATIONS: Record<number, [number, number][]> = {
   4: [[12, 50], [24, 14], [24, 86], [36, 50]],
   5: [[11, 50], [23, 13], [23, 87], [36, 32], [36, 68]],
   6: [[11, 50], [23, 12], [23, 50], [23, 88], [36, 28], [36, 72]],
+  // 7v7 as 1-3-3.
+  7: [[10, 50], [21, 14], [21, 50], [21, 86], [37, 18], [37, 50], [37, 82]],
+  8: [[10, 50], [20, 14], [20, 38], [20, 62], [20, 86], [37, 22], [37, 50], [37, 78]],
+  9: [[10, 50], [19, 13], [19, 38], [19, 62], [19, 87], [30, 26], [30, 74], [40, 34], [40, 66]],
+  10: [
+    [9, 50],
+    [18, 12], [18, 37], [18, 63], [18, 88],
+    [29, 22], [29, 50], [29, 78],
+    [40, 34], [40, 66],
+  ],
+  // 11v11 as 1-4-3-3.
+  11: [
+    [9, 50],
+    [18, 12], [18, 37], [18, 63], [18, 88],
+    [28, 22], [28, 50], [28, 78],
+    [40, 16], [40, 50], [40, 84],
+  ],
 };
 
 function slotsForCount(count: number): [number, number][] {
@@ -40,9 +58,10 @@ function slotsForCount(count: number): [number, number][] {
   if (FORMATIONS[count]) {
     return FORMATIONS[count];
   }
-  const slots = [...FORMATIONS[6]];
-  for (let i = 6; i < count; i++) {
-    const fromGoal = 32 + ((i - 6) % 2) * 4;
+  const largest = Math.max(...Object.keys(FORMATIONS).map(Number));
+  const slots = [...FORMATIONS[largest]];
+  for (let i = largest; i < count; i++) {
+    const fromGoal = 32 + ((i - largest) % 2) * 4;
     const across = i % 2 === 0 ? 18 : 82;
     slots.push([Math.min(fromGoal, 38), across]);
   }

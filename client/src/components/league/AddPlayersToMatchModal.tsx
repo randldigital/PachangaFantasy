@@ -12,6 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
 import type { Player, Match } from "@shared/schema";
+import { requireLeagueId } from "@shared/domain/context";
 
 interface ParticipantWithUser {
   matchId: number;
@@ -70,7 +71,7 @@ export default function AddPlayersToMatchModal({
       
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: queryKeys.matchParticipants(match.id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(match.leagueId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(requireLeagueId(match)) });
       
       setSelectedPlayerIds([]);
       onClose();

@@ -65,6 +65,8 @@ import {
   joinAllMatches,
   listPlayers,
   registerUser,
+  fillMissingStats,
+  padMatchToCapacity,
   startMatch,
   submitAllRatings,
 } from "../helpers/fixtures";
@@ -139,9 +141,9 @@ describe("deep surface catalog", () => {
     const created = await request(app)
       .post("/api/leagues")
       .set(auth(registered.body.token))
-      .send({ name: "Parque", description: "Sunday" });
+      .send({ name: "Parque", description: "Sunday", alias: "Owner" });
     ok(created, "POST /api/leagues");
-    expect(created.body.inviteCode).toMatch(/^[A-Z0-9_-]{6}$/);
+    expect(created.body.inviteCode).toMatch(/^L-[A-Z0-9]{6}$/);
 
     const listed = await request(app).get("/api/leagues").set(auth(registered.body.token));
     ok(listed, "GET /api/leagues");
@@ -159,7 +161,8 @@ describe("deep surface catalog", () => {
     const joiner = (await registerUser(app, 90)).body;
     const joined = await request(app)
       .post(`/api/leagues/${league.inviteCode}/join`)
-      .set(auth(joiner.token));
+      .set(auth(joiner.token))
+      .send({ alias: "Joiner" });
     ok(joined, "POST /api/leagues/:inviteCode/join");
     expect(joined.body.league.id).toBe(league.id);
     expect(joined.body.player.userId).toBe(joiner.user.id);
@@ -197,17 +200,26 @@ describe("deep surface catalog", () => {
     ok(again, "POST /api/leagues/:leagueId/add-me-as-player already-player", 400);
   });
 
-  it("POST /api/leagues/:leagueId/add-me-as-player (repair unlink)", async () => {
+  it("POST /api/leagues/:leagueId/add-me-as-player (unlinked alias raises a claim)", async () => {
     const { owner, league } = await createLeagueWithMembers(app, 1);
     const roster = await listPlayers(app, owner.token, league.id);
     const own = roster.find((player) => player.userId === owner.user.id)!;
     await db.update(players).set({ userId: null }).where(eq(players.id, own.id));
 
-    const repaired = await request(app)
+    // Since 2.0 an unlinked player is never re-linked silently, even for the administrator.
+    const blocked = await request(app)
       .post(`/api/leagues/${league.id}/add-me-as-player`)
-      .set(auth(owner.token));
-    ok(repaired, "POST /api/leagues/:leagueId/add-me-as-player repair");
-    expect(repaired.body.userId).toBe(owner.user.id);
+      .set(auth(owner.token))
+      .send({ alias: own.name });
+    expect(blocked.status).toBe(409);
+    expect(blocked.body.code).toBe("CLAIM_PENDING");
+
+    const resolved = await request(app)
+      .post(`/api/claim-requests/${blocked.body.requestId}/resolve`)
+      .set(auth(owner.token))
+      .send({ decision: "accept" });
+    ok(resolved, "POST /api/claim-requests/:id/resolve");
+    expect(resolved.body.player.userId).toBe(owner.user.id);
   });
 
   it("valuation open, get, get-all, submit, close", async () => {
@@ -303,15 +315,16 @@ describe("deep surface catalog", () => {
     expect(blocked.status).toBe(400);
     expect(blocked.body.code).toBe("TEAMS_REQUIRED");
 
-    const roster = await listPlayers(app, owner.token, league.id);
-    const ids = roster.map((player) => player.id);
+    const ids = await padMatchToCapacity(app, owner.token, match.id);
+    const teamA = ids.slice(0, 5);
+    const teamB = ids.slice(5);
     const saved = await request(app)
       .post(`/api/matches/${match.id}/teams`)
       .set(auth(owner.token))
-      .send({ teamA: [ids[0]], teamB: [ids[1]] });
+      .send({ teamA, teamB });
     ok(saved, "POST /api/matches/:id/teams");
-    expect(saved.body.match.matchTeams.teamA).toEqual([ids[0]]);
-    expect(saved.body.match.matchTeams.teamB).toEqual([ids[1]]);
+    expect(saved.body.match.matchTeams.teamA).toEqual(teamA);
+    expect(saved.body.match.matchTeams.teamB).toEqual(teamB);
 
     ok(
       await request(app).post(`/api/matches/${match.id}/start`).set(auth(owner.token)),
@@ -363,6 +376,7 @@ describe("deep surface catalog", () => {
       .post(`/api/matches/${match.id}/end`)
       .set(auth(owner.token))
       .send({ teamAGoals: 2, teamBGoals: 0 });
+    await fillMissingStats(app, owner.token, match.id);
     ok(ended, "POST /api/matches/:id/end");
     expect(ended.body.match.finalScore).toBe(2);
 
@@ -387,7 +401,7 @@ describe("deep surface catalog", () => {
       .get(`/api/matches/${match.id}/stats`)
       .set(auth(owner.token));
     ok(reports, "GET /api/matches/:matchId/stats");
-    expect(reports.body).toHaveLength(5);
+    expect(reports.body).toHaveLength(10);
 
     const status = await request(app)
       .get(`/api/matches/${match.id}/stats-status`)
@@ -447,6 +461,7 @@ describe("deep surface catalog", () => {
       .post(`/api/matches/${match.id}/end`)
       .set(auth(owner.token))
       .send({ teamAGoals: 3, teamBGoals: 0 });
+    await fillMissingStats(app, owner.token, match.id);
 
     await request(app)
       .post(`/api/matches/${match.id}/stats`)

@@ -10,6 +10,7 @@ import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
 import { useToast } from "@/hooks/use-toast";
 import type { Match } from "@shared/schema";
+import { requireLeagueId } from "@shared/domain/context";
 
 export interface RatingsPayload {
   ratingsComplete: boolean;
@@ -71,7 +72,7 @@ export default function MatchRatings({ match, participants }: MatchRatingsProps)
       toast({ title: t("ratings.submitted") });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.matchRatings(match.id) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(match.leagueId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(requireLeagueId(match)) }),
       ]);
     },
     onError: (error: Error) => {

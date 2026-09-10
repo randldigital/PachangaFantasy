@@ -9,6 +9,7 @@ import {
   expectedPlayerMatchRating,
   joinAllMatches,
   listPlayers,
+  fillMissingStats,
   startMatch,
   submitAllRatings,
 } from "../helpers/fixtures";
@@ -35,6 +36,7 @@ describe("post-match dynamic Market Value", () => {
       .post(`/api/matches/${match.id}/end`)
       .set(auth(owner.token))
       .send({ teamAGoals: 2, teamBGoals: 0 });
+    await fillMissingStats(app, owner.token, match.id);
 
     await request(app)
       .post(`/api/matches/${match.id}/stats`)
@@ -78,6 +80,7 @@ describe("post-match dynamic Market Value", () => {
       .post(`/api/matches/${match.id}/end`)
       .set(auth(owner.token))
       .send({ teamAGoals: 2, teamBGoals: 0 });
+    await fillMissingStats(app, owner.token, match.id);
 
     await request(app)
       .post(`/api/matches/${match.id}/stats`)
@@ -125,6 +128,7 @@ describe("post-match dynamic Market Value", () => {
       .post(`/api/matches/${match.id}/end`)
       .set(auth(owner.token))
       .send({ teamAGoals: 2, teamBGoals: 0 });
+    await fillMissingStats(app, owner.token, match.id);
 
     await request(app)
       .post(`/api/matches/${match.id}/stats`)
@@ -160,7 +164,7 @@ describe("post-match dynamic Market Value", () => {
       vmAfter: number;
       performanceScore: number;
     }[];
-    expect(history).toHaveLength(2);
+    expect(history).toHaveLength(10);
     expect(history.some((row) => row.vmAfter !== row.vmBefore)).toBe(true);
 
     const afterPlayers = await listPlayers(app, owner.token, league.id);
@@ -176,7 +180,7 @@ describe("post-match dynamic Market Value", () => {
       ratingRepo.getPeerRatings(match.id),
     ]);
     const computed = computeMatchMarketValues({
-      participantIds: [ownerPlayer.id, otherPlayer.id],
+      participantIds: [...matchDetail.body.matchTeams.teamA, ...matchDetail.body.matchTeams.teamB],
       teamA: matchDetail.body.matchTeams.teamA,
       teamB: matchDetail.body.matchTeams.teamB,
       teamAGoals: matchDetail.body.teamAGoals,
@@ -209,7 +213,7 @@ describe("post-match dynamic Market Value", () => {
     const recap = await request(app).get(`/api/matches/${match.id}/recap`).set(auth(owner.token));
     expect(recap.status).toBe(200);
     expect(recap.body.teamAGoals).toBe(2);
-    expect(recap.body.players).toHaveLength(2);
+    expect(recap.body.players).toHaveLength(10);
     const ownerRecap = recap.body.players.find((row: { playerId: number }) => row.playerId === ownerPlayer.id);
     expect(ownerRecap.goals).toBe(2);
     expect(ownerRecap.assists).toBe(1);
@@ -220,14 +224,15 @@ describe("post-match dynamic Market Value", () => {
     expect(board.status).toBe(200);
     const ownerBoard = board.body.find((row: { playerId: number }) => row.playerId === ownerPlayer.id);
     const otherBoard = board.body.find((row: { playerId: number }) => row.playerId === otherPlayer.id);
-    const ownerWon =
-      (matchDetail.body.matchTeams.teamA.includes(ownerPlayer.id) && matchDetail.body.teamAGoals > matchDetail.body.teamBGoals) ||
-      (matchDetail.body.matchTeams.teamB.includes(ownerPlayer.id) && matchDetail.body.teamBGoals > matchDetail.body.teamAGoals);
+    const won = (playerId: number) =>
+      (matchDetail.body.matchTeams.teamA.includes(playerId) && matchDetail.body.teamAGoals > matchDetail.body.teamBGoals) ||
+      (matchDetail.body.matchTeams.teamB.includes(playerId) && matchDetail.body.teamBGoals > matchDetail.body.teamAGoals);
+    const ownerWon = won(ownerPlayer.id);
     expect(ownerBoard.goals).toBe(2);
     expect(ownerBoard.assists).toBe(1);
     expect(ownerBoard.matchesPlayed).toBe(1);
     expect(ownerBoard.victories).toBe(ownerWon ? 1 : 0);
-    expect(otherBoard.victories).toBe(ownerWon ? 0 : 1);
+    expect(otherBoard.victories).toBe(won(otherPlayer.id) ? 1 : 0);
     expect(ownerBoard.mvps + otherBoard.mvps).toBeGreaterThanOrEqual(1);
   });
 
@@ -248,6 +253,7 @@ describe("post-match dynamic Market Value", () => {
       .post(`/api/matches/${match.id}/end`)
       .set(auth(owner.token))
       .send({ teamAGoals: 1, teamBGoals: 0 });
+    await fillMissingStats(app, owner.token, match.id);
 
     const spectator = await request(app)
       .get(`/api/matches/${match.id}/ratings`)

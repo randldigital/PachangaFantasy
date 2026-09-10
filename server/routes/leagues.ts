@@ -1,5 +1,5 @@
 import type { Express, Response } from "express";
-import { insertLeagueSchema } from "@shared/schema";
+import { createLeagueSchema } from "@shared/schema";
 import { logger } from "../logger";
 import { isLeagueAdmin, isLeagueMember, requireAuth, requireUser } from "../middleware/auth";
 import * as leagueRepo from "../repos/leagueRepo";
@@ -9,7 +9,11 @@ import type { AuthRequest } from "../types";
 export function registerLeagueRoutes(app: Express) {
   app.post("/api/leagues", requireAuth, async (req: AuthRequest, res: Response) => {
     try {
-      const leagueData = insertLeagueSchema.parse(req.body);
+      const parsed = createLeagueSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.issues });
+      }
+      const { alias, ...leagueData } = parsed.data;
       const user = requireUser(req);
 
       logger.info(`Creating league for user ${user.username} (ID: ${user.id})`);
@@ -17,7 +21,7 @@ export function registerLeagueRoutes(app: Express) {
       logger.info(`League created: ${league.id}, now creating player record...`);
 
       const creatorPlayer = await playerRepo.createPlayer({
-        name: user.username,
+        name: alias,
         leagueId: league.id,
         userId: user.id,
         createdBy: user.id,

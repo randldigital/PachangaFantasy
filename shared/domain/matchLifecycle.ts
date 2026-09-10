@@ -1,4 +1,5 @@
-export type PersistedMatchStatus = "open" | "started" | "completed" | "scored";
+/** Club matches add a terminal `closed`; Fantasy matches stop at `scored`. */
+export type PersistedMatchStatus = "open" | "started" | "completed" | "scored" | "closed";
 
 export function normalizeMatchStatus(status: string | null | undefined): PersistedMatchStatus | string {
   if (status === "ready") {
@@ -22,7 +23,16 @@ export function isActiveMatchStatus(status: string | null | undefined): boolean 
 
 export function isFinishedStatus(status: string | null | undefined): boolean {
   const normalized = normalizeMatchStatus(status);
-  return normalized === "completed" || normalized === "scored";
+  return normalized === "completed" || normalized === "scored" || normalized === "closed";
+}
+
+/** A closed Club match rejects every further stat, rating and scoring write. */
+export function isClosedStatus(status: string | null | undefined): boolean {
+  return normalizeMatchStatus(status) === "closed";
+}
+
+export function canCloseMatch(status: string | null | undefined): boolean {
+  return normalizeMatchStatus(status) === "scored";
 }
 
 export function canStartMatch(status: string | null | undefined): boolean {

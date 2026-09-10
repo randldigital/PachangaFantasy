@@ -33,16 +33,17 @@ describe("core loop characterisation", () => {
     const leagueResponse = await request(app)
       .post("/api/leagues")
       .set("Authorization", `Bearer ${owner.token}`)
-      .send({ name: "Parque", description: "Sunday" });
+      .send({ name: "Parque", description: "Sunday", alias: owner.user.username });
 
     expect(leagueResponse.status).toBe(200);
-    expect(leagueResponse.body.inviteCode).toMatch(/^[A-Z0-9_-]{6}$/);
+    expect(leagueResponse.body.inviteCode).toMatch(/^L-[A-Z0-9]{6}$/);
     const league = leagueResponse.body;
 
     for (const member of users.slice(1)) {
       const join = await request(app)
         .post(`/api/leagues/${league.inviteCode}/join`)
-        .set("Authorization", `Bearer ${member.token}`);
+        .set("Authorization", `Bearer ${member.token}`)
+        .send({ alias: member.user.username });
       expect(join.status).toBe(200);
     }
 

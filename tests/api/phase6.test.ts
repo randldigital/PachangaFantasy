@@ -6,6 +6,7 @@ import { createApp } from "../../server/app";
 import {
   createLeagueWithMembers,
   createOpenMatch,
+  fillMissingStats,
   startMatch,
   submitAllRatings,
   expectedPlayerMatchRating,
@@ -75,6 +76,7 @@ describe("phase 6 scoring and leaderboards", () => {
       .post(`/api/matches/${match.id}/end`)
       .set("Authorization", `Bearer ${owner.token}`)
       .send({ teamAGoals: 5, teamBGoals: 0 });
+    await fillMissingStats(app, owner.token, match.id);
 
     const statsByUserId: Record<number, { goals: number; assists: number }> = {
       [owner.user.id]: { goals: 2, assists: 1 },
@@ -98,7 +100,7 @@ describe("phase 6 scoring and leaderboards", () => {
       .post(`/api/matches/${match.id}/calculate-scores`)
       .set("Authorization", `Bearer ${owner.token}`);
     expect(scored.status).toBe(200);
-    expect(scored.body.playerPoints).toHaveLength(5);
+    expect(scored.body.playerPoints).toHaveLength(10);
 
     const ownerPlayerRow = scored.body.playerPoints.find(
       (row: { playerId: number }) => row.playerId === eightPointPlayer,
@@ -185,6 +187,7 @@ describe("phase 6 scoring and leaderboards", () => {
       .post(`/api/matches/${match.id}/end`)
       .set("Authorization", `Bearer ${owner.token}`)
       .send({ teamAGoals: 0, teamBGoals: 0 });
+    await fillMissingStats(app, owner.token, match.id);
 
     for (const user of users) {
       await request(app)

@@ -5,6 +5,7 @@ import { createApp } from "../../server/app";
 import {
   createLeagueWithMembers,
   createOpenMatch,
+  fillMissingStats,
   startMatch,
   submitAllRatings,
 } from "../helpers/fixtures";
@@ -17,10 +18,12 @@ async function finishMatch(
   teamBGoals = 0,
 ) {
   await startMatch(app, token, matchId);
-  return request(app)
+  const ended = await request(app)
     .post(`/api/matches/${matchId}/end`)
     .set("Authorization", `Bearer ${token}`)
     .send({ teamAGoals, teamBGoals });
+  await fillMissingStats(app, token, matchId);
+  return ended;
 }
 
 describe("phase 5 statistics and validation", () => {
@@ -73,7 +76,7 @@ describe("phase 5 statistics and validation", () => {
     const listed = await request(app)
       .get(`/api/matches/${match.id}/stats`)
       .set("Authorization", `Bearer ${owner.token}`);
-    expect(listed.body).toHaveLength(2);
+    expect(listed.body).toHaveLength(10);
     expect(listed.body.every((row: { playerId: number }) => row.playerId)).toBe(true);
 
     const status = await request(app)

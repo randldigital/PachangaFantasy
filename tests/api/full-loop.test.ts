@@ -10,6 +10,7 @@ import {
   expectedPlayerMatchRating,
   joinAllMatches,
   listPlayers,
+  fillMissingStats,
   startMatch,
   submitAllRatings,
 } from "../helpers/fixtures";
@@ -77,6 +78,7 @@ describe("full loop", () => {
       .post(`/api/matches/${match.id}/end`)
       .set(auth(owner.token))
       .send({ teamAGoals: 2, teamBGoals: 0 });
+    await fillMissingStats(app, owner.token, match.id);
     expect(ended.status).toBe(200);
 
     const statsByUserId: Record<number, { goals: number; assists: number }> = {
@@ -135,5 +137,102 @@ describe("full loop", () => {
       .get(`/api/leagues/${league.id}/manager-rankings`)
       .set(auth(owner.token));
     expect(frozenManagers.body.every((row: { totalPoints: number }) => row.totalPoints === managerTotal)).toBe(true);
+  });
+
+  it("runs the same loop on a 7-a-side match, with capacity 14 and a five-player lineup", async () => {
+    const { owner, users, league } = await createLeagueWithMembers(app, 14);
+    const ids = (await listPlayers(app, owner.token, league.id)).map((player) => player.id);
+    expect(ids).toHaveLength(14);
+
+    const matchResponse = await createOpenMatch(app, owner.token, league.id, 7);
+    expect(matchResponse.status).toBe(200);
+    const match = matchResponse.body;
+    expect(match.sideSize).toBe(7);
+    await joinAllMatches(app, match.id, users);
+
+    const external = await request(app)
+      .post(`/api/players/${league.id}`)
+      .set(auth(owner.token))
+      .send({ name: "El Quinceavo", isExternal: true });
+    const overCapacity = await request(app)
+      .post(`/api/matches/${match.id}/add-players`)
+      .set(auth(owner.token))
+      .send({ playerIds: [external.body.id] });
+    expect(overCapacity.status).toBe(400);
+    expect(overCapacity.body.code).toBe("MATCH_FULL");
+    expect(overCapacity.body.capacity).toBe(14);
+
+    const ownerPlayer = (await listPlayers(app, owner.token, league.id)).find(
+      (player) => player.userId === owner.user.id,
+    )!;
+    const lineupIds = ids.slice(0, 5);
+    const saved = await request(app)
+      .post(`/api/matches/${match.id}/lineup`)
+      .set(auth(owner.token))
+      .send({ playerIds: lineupIds, captainId: lineupIds[0] });
+    expect(saved.status).toBe(200);
+    expect(saved.body.playerIds).toHaveLength(5);
+
+    const lopsided = await request(app)
+      .post(`/api/matches/${match.id}/teams`)
+      .set(auth(owner.token))
+      .send({ teamA: ids.slice(0, 8), teamB: ids.slice(8) });
+    expect(lopsided.status).toBe(400);
+    expect(lopsided.body.code).toBe("SIDE_OVER_CAPACITY");
+
+    const tooEarly = await request(app)
+      .post(`/api/matches/${match.id}/start`)
+      .set(auth(owner.token));
+    expect(tooEarly.status).toBe(400);
+    expect(tooEarly.body.code).toBe("TEAMS_REQUIRED");
+
+    expect((await startMatch(app, owner.token, match.id)).status).toBe(200);
+    const detail = await request(app).get(`/api/matches/${match.id}`).set(auth(owner.token));
+    expect(detail.body.sideSize).toBe(7);
+    expect(detail.body.matchTeams.teamA).toHaveLength(7);
+    expect(detail.body.matchTeams.teamB).toHaveLength(7);
+
+    const ended = await request(app)
+      .post(`/api/matches/${match.id}/end`)
+      .set(auth(owner.token))
+      .send({ teamAGoals: 3, teamBGoals: 1 });
+    expect(ended.status).toBe(200);
+
+    for (const user of users) {
+      const submitted = await request(app)
+        .post(`/api/matches/${match.id}/stats`)
+        .set(auth(user.token))
+        .send(user.user.id === owner.user.id ? { goals: 4, assists: 1 } : { goals: 0, assists: 0 });
+      expect(submitted.status).toBe(200);
+    }
+
+    await submitAllRatings(app, match.id, users);
+
+    const scored = await request(app)
+      .post(`/api/matches/${match.id}/calculate-scores`)
+      .set(auth(owner.token));
+    expect(scored.status).toBe(200);
+    expect(scored.body.playerPoints).toHaveLength(14);
+    const ownerRating = await expectedPlayerMatchRating(match.id, ownerPlayer.id, {
+      goals: 4,
+      assists: 1,
+    });
+    expect(
+      scored.body.playerPoints.find((row: { playerId: number }) => row.playerId === ownerPlayer.id)
+        .points,
+    ).toBe(ownerRating);
+
+    const playersBoard = await request(app)
+      .get(`/api/leagues/${league.id}/rankings`)
+      .set(auth(owner.token));
+    expect(
+      playersBoard.body.find((row: { playerId: number }) => row.playerId === ownerPlayer.id)
+        .totalPoints,
+    ).toBe(ownerRating);
+
+    const managersBoard = await request(app)
+      .get(`/api/leagues/${league.id}/manager-rankings`)
+      .set(auth(owner.token));
+    expect(managersBoard.body).toHaveLength(14);
   });
 });

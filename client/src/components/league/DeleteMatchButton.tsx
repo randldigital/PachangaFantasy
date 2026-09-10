@@ -55,8 +55,8 @@ export default function DeleteMatchButton({
       setOpen(false);
       queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(leagueId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.league(leagueId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.leagueRankings(leagueId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.leagueManagerRankings(leagueId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagueRankingsPrefix(leagueId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagueManagerRankingsPrefix(leagueId) });
       onMatchDeleted?.();
     },
     onError: (error: Error) => {

@@ -1,4 +1,5 @@
-export type RatingKind = "teammate" | "rival";
+/** Fantasy ballots split by side; Club ballots draw from one pool. */
+export type RatingKind = "teammate" | "rival" | "club";
 
 export type RatingAssignment = {
   raterPlayerId: number;

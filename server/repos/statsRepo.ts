@@ -11,7 +11,7 @@ export async function createStatReport(statReport: InsertStatReport): Promise<St
 
 export async function updateStatReport(
   reportId: number,
-  updates: Pick<InsertStatReport, "goals" | "assists">,
+  updates: Pick<InsertStatReport, "goals" | "assists" | "minutes">,
 ): Promise<StatReport | undefined> {
   const [updated] = await db
     .update(statReports)
@@ -49,11 +49,13 @@ export function matchStatsStatus(
   const participantPlayerIds = participants
     .filter((participant) => participant.status === "accepted")
     .map((participant) => participant.playerId);
+  const isClub = match.clubId != null;
 
   return statsSubmissionState({
     participantPlayerIds,
     reports,
-    expectedGoals: match.finalScore ?? null,
+    expectedGoals: isClub ? match.ourGoals ?? null : match.finalScore ?? null,
     acknowledged: match.statsAcknowledged,
+    consistencyIsWarning: isClub,
   });
 }

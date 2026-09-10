@@ -54,7 +54,8 @@ export async function resetTestSchema() {
       email text NOT NULL UNIQUE,
       password text NOT NULL,
       role text NOT NULL DEFAULT 'player',
-      league_id integer
+      league_id integer,
+      avatar_path text
     );
     CREATE TABLE IF NOT EXISTS leagues (
       id serial PRIMARY KEY,
@@ -67,10 +68,20 @@ export async function resetTestSchema() {
       scoring_baseline double precision NOT NULL DEFAULT 5,
       created_at timestamp DEFAULT now()
     );
+    CREATE TABLE IF NOT EXISTS clubs (
+      id serial PRIMARY KEY,
+      name text NOT NULL,
+      description text DEFAULT '',
+      invite_code text NOT NULL UNIQUE,
+      created_by integer NOT NULL,
+      participants jsonb NOT NULL DEFAULT '[]'::jsonb,
+      created_at timestamp DEFAULT now()
+    );
     CREATE TABLE IF NOT EXISTS players (
       id serial PRIMARY KEY,
       name text NOT NULL,
-      league_id integer NOT NULL,
+      league_id integer,
+      club_id integer,
       market_value integer DEFAULT 0,
       emoji text NOT NULL DEFAULT '⚽',
       is_external boolean DEFAULT false,
@@ -88,17 +99,32 @@ export async function resetTestSchema() {
     );
     CREATE TABLE IF NOT EXISTS matches (
       id serial PRIMARY KEY,
-      league_id integer NOT NULL,
+      league_id integer,
+      club_id integer,
       date timestamp NOT NULL,
       lineup_budget integer DEFAULT 100,
+      side_size integer NOT NULL DEFAULT 5,
       status text DEFAULT 'open',
       match_teams json,
       final_score integer,
       team_a_goals integer,
       team_b_goals integer,
+      opponent_name text,
+      our_goals integer,
+      opponent_goals integer,
       stats_acknowledged boolean NOT NULL DEFAULT false,
       created_by integer NOT NULL,
+      season_key text,
       created_at timestamp DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS player_claim_requests (
+      id serial PRIMARY KEY,
+      player_id integer NOT NULL,
+      user_id integer NOT NULL,
+      status text NOT NULL DEFAULT 'pending',
+      created_at timestamp DEFAULT now(),
+      resolved_at timestamp,
+      resolved_by integer
     );
     CREATE TABLE IF NOT EXISTS match_participants (
       match_id integer NOT NULL,
@@ -122,6 +148,7 @@ export async function resetTestSchema() {
       match_id integer NOT NULL,
       goals integer DEFAULT 0,
       assists integer DEFAULT 0,
+      minutes integer,
       created_at timestamp DEFAULT now()
     );
     CREATE TABLE IF NOT EXISTS player_match_points (
@@ -245,6 +272,28 @@ export async function resetTestSchema() {
   await client.unsafe(`ALTER TABLE stat_reports ALTER COLUMN player_id SET NOT NULL`);
   await client.unsafe(`ALTER TABLE player_match_points ALTER COLUMN points TYPE double precision USING points::double precision`);
   await client.unsafe(`ALTER TABLE manager_match_points ALTER COLUMN points TYPE double precision USING points::double precision`);
+  await client.unsafe(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_path text`);
+  await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS season_key text`);
+  await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS side_size integer NOT NULL DEFAULT 5`);
+  await client.unsafe(`ALTER TABLE leagues ALTER COLUMN invite_code TYPE text`);
+  await client.unsafe(`ALTER TABLE players ADD COLUMN IF NOT EXISTS club_id integer`);
+  await client.unsafe(`ALTER TABLE players ALTER COLUMN league_id DROP NOT NULL`);
+  await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS club_id integer`);
+  await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS opponent_name text`);
+  await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS our_goals integer`);
+  await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS opponent_goals integer`);
+  await client.unsafe(`ALTER TABLE matches ALTER COLUMN league_id DROP NOT NULL`);
+  await client.unsafe(`ALTER TABLE stat_reports ADD COLUMN IF NOT EXISTS minutes integer`);
+  await client.unsafe(`ALTER TABLE players DROP CONSTRAINT IF EXISTS players_league_xor_club`);
+  await client.unsafe(`ALTER TABLE players ADD CONSTRAINT players_league_xor_club CHECK ((league_id IS NULL) <> (club_id IS NULL))`);
+  await client.unsafe(`ALTER TABLE matches DROP CONSTRAINT IF EXISTS matches_league_xor_club`);
+  await client.unsafe(`ALTER TABLE matches ADD CONSTRAINT matches_league_xor_club CHECK ((league_id IS NULL) <> (club_id IS NULL))`);
+  await client.unsafe(`ALTER TABLE stat_reports DROP CONSTRAINT IF EXISTS stat_reports_minutes_range`);
+  await client.unsafe(`ALTER TABLE stat_reports ADD CONSTRAINT stat_reports_minutes_range CHECK (minutes IS NULL OR (minutes >= 0 AND minutes <= 120))`);
+  await client.unsafe(`CREATE INDEX IF NOT EXISTS matches_league_season ON matches (league_id, season_key)`);
+  await client.unsafe(`CREATE INDEX IF NOT EXISTS matches_club_season ON matches (club_id, season_key)`);
+  await client.unsafe(`CREATE INDEX IF NOT EXISTS players_club ON players (club_id)`);
+  await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS player_claim_requests_pending_pair ON player_claim_requests (player_id, user_id) WHERE status = 'pending'`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS stat_reports_match_player ON stat_reports (match_id, player_id)`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS player_match_points_match_player ON player_match_points (match_id, player_id)`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS player_market_value_history_match_player ON player_market_value_history (match_id, player_id)`);
@@ -264,8 +313,10 @@ export async function resetTestSchema() {
       match_participants,
       matches,
       tier_lists,
+      player_claim_requests,
       players,
       leagues,
+      clubs,
       users
     RESTART IDENTITY CASCADE
   `);

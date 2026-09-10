@@ -21,11 +21,12 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     name: '',
-    description: ''
+    description: '',
+    alias: ''
   });
 
   const createLeagueMutation = useMutation({
-    mutationFn: async (data: InsertLeague) => {
+    mutationFn: async (data: InsertLeague & { alias: string }) => {
       const response = await apiRequest('POST', '/api/leagues', data);
       return response.json();
     },
@@ -76,8 +77,17 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
       });
       return;
     }
-    
-    createLeagueMutation.mutate(formData);
+
+    if (!formData.alias.trim()) {
+      toast({
+        title: t('common.error'),
+        description: t("alias.required"),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    createLeagueMutation.mutate({ ...formData, alias: formData.alias.trim() });
   };
 
   const handleChange = (field: string, value: string) => {
@@ -127,9 +137,26 @@ export default function CreateLeagueForm({ onSuccess }: CreateLeagueFormProps) {
         )}
       </div>
 
+      <div className="space-y-2">
+        <Label htmlFor="alias" className="text-white">
+          {t('alias.label')} *
+        </Label>
+        <Input
+          id="alias"
+          type="text"
+          value={formData.alias}
+          onChange={(e) => handleChange('alias', e.target.value)}
+          placeholder={t('alias.placeholder')}
+          className="bg-slate-900 border-slate-600 text-white placeholder-slate-400"
+          maxLength={30}
+          required
+        />
+        <p className="text-xs text-slate-400">{t('alias.hint')}</p>
+      </div>
+
       <Button
         type="submit"
-        disabled={createLeagueMutation.isPending || !formData.name.trim()}
+        disabled={createLeagueMutation.isPending || !formData.name.trim() || !formData.alias.trim()}
         className="w-full bg-emerald-600 hover:bg-emerald-700"
       >
         {createLeagueMutation.isPending ? t('common.creating') : t('league.createLeague')}
