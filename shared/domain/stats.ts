@@ -11,7 +11,8 @@ export function isStatsEditable(status: string | null | undefined): boolean {
 export function pickStatsMatch<T extends { status: string | null }>(matches: T[]): T | undefined {
   return (
     matches.find((match) => normalizeMatchStatus(match.status) === "completed") ??
-    matches.find((match) => normalizeMatchStatus(match.status) === "scored")
+    matches.find((match) => normalizeMatchStatus(match.status) === "scored") ??
+    matches.find((match) => normalizeMatchStatus(match.status) === "closed")
   );
 }
 

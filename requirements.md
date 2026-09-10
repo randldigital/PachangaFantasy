@@ -1232,14 +1232,15 @@ A Club is a persistent real squad. Matches are **our Club versus an opponent tha
 - Individual stats: goals, assists, minutes (0–120).
 - Assigned peer ratings (registered voters only).
 - MVP (registered voters).
-- Player Ranking (season totals).
-- Match history, grouped by season, with Club aggregates P / W / D / L / GF / GA **per season**.
+- Player Ranking (season totals), sortable by points, goals, assists, minutes, Market Value, MVP awards and matches played.
+- Match history, grouped by season, with Club aggregates P / W / D / L / GF / GA **per season**, and an expandable recap of that day’s stats.
+- Valoración (S/A/B/C/D) and Market Value, using a Club adapter of the Fantasy VM formula.
 
 **[Implemented]**
 
 ### 23.2 Out of scope (do not build)
 
-Training, tactics, availability, positions, competitions/tournaments, opponent rosters, opponent Player entities, club-management ERP, Fantasy lineups, Market Value, Tier List, budget, Captain, Manager Points, Manager Leaderboard, Team A / Team B.
+Training, tactics, availability, positions, competitions/tournaments, opponent rosters, opponent Player entities, club-management ERP, Fantasy lineups, budget, Captain, Manager Points, Manager Leaderboard, Team A / Team B.
 
 ### 23.3 Membership
 
@@ -1289,15 +1290,26 @@ Player Points =
 
 ### 23.6 Ranking and history
 
-Ranking = **total contribution across the season** (sum of Match Player Points). Minutes and participation accumulate. Also persist, per season: matches played, wins, draws, losses, goals for, goals against (Club-level history) and per-Player minutes/goals/assists/peer/MVP/points.
+Ranking = **total contribution across the season** (sum of Match Player Points). Minutes and participation accumulate. Also persist, per season: matches played, wins, draws, losses, goals for, goals against (Club-level history) and per-Player minutes/goals/assists/peer/MVP/points/current Market Value.
 
-History list: grouped by season (1 Aug–31 Jul), date, opponent, result. **[Implemented]**
+History list: grouped by season (1 Aug–31 Jul), date, opponent, result. Expanding a finished match shows that day’s goals, assists, minutes, peer average, points, MVP and VM before→after. **[Implemented]**
+
+### 23.6a Club Market Value
+
+Club Valoración uses the same S/A/B/C/D close as a League (Section 7). After a Club match is scored, Market Value updates with the Fantasy weights and these Club-only inputs:
+
+- one squad (all accepted participants); there is no opponent roster
+- `opponentDifficulty = 1` and a neutral VM advantage (`ownAvgVm = oppAvgVm`)
+- `teamGoals = ourGoals`, `oppGoals = opponentGoals`
+- Club `scoringBaseline` advances from our/opponent goals
+
+This does **not** add result or MVP coefficients to Club Player Points.
 
 ### 23.7 Club UI, API and tests
 
 - Overview: Create Club, Join (one field, prefix routes). Cards: League vs Club.
-- `ClubHub` `/club/:id`: Roster, Clasificación (Player only), Historial, Estadísticas. No Lineup, no Valoración, no Team A/B.
-- Automated coverage: `tests/api/club-entity.test.ts`, `tests/api/club-match.test.ts` (full loop: create club → join alias → match → participants → result → stats+minutes → ratings+MVP → calculate → close → ranking + history by season), plus unit tests for assignments and the scoring formula.
+- `ClubHub` `/club/:id`: Roster, Clasificación (Player only), Historial, Valoración, Estadísticas. No Lineup, no Team A/B.
+- Automated coverage: `tests/api/club-entity.test.ts`, `tests/api/club-match.test.ts` (full loop: create club → join alias → match → participants → result → stats+minutes → ratings+MVP → calculate → close → ranking + history by season), `tests/api/club-valuation.test.ts`, plus unit tests for assignments, the scoring formula and the Club VM adapter.
 
 ---
 ## 24. Future Features

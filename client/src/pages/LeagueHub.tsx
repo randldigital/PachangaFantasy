@@ -229,7 +229,7 @@ export default function LeagueHub() {
           <TabsContent value="tierlist" className="mt-0">
             <TierListSection
               leagueId={leagueId}
-              league={league}
+              organisation={league}
               players={players}
               user={user || undefined}
               onAddPlayer={isAdmin ? () => setShowAddPlayer(true) : undefined}
@@ -239,7 +239,7 @@ export default function LeagueHub() {
           <TabsContent value="stats" className="mt-0">
             <StatsSection
               match={statsMatch}
-              league={league}
+              isAdmin={isAdmin}
               players={players}
               user={user || undefined}
               onGoToMatch={() => setActiveTab("lineup")}

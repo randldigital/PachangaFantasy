@@ -32,7 +32,8 @@ export const leagues = pgTable("leagues", {
 
 /**
  * A Club is the persistent real squad of Club Mode. It is a sibling of `leagues`, not a
- * flag on one: a Club has no tier list, no budget and no Fantasy managers.
+ * flag on one: no lineups, no Team A/B and no Fantasy managers. It does have valuation
+ * and Market Value (same S/A/B/C/D close as a League).
  */
 export const clubs = pgTable("clubs", {
   id: serial("id").primaryKey(),
@@ -40,7 +41,9 @@ export const clubs = pgTable("clubs", {
   description: text("description").default(""),
   inviteCode: text("invite_code").notNull().unique(),
   createdBy: integer("created_by").notNull(),
+  status: text("status").notNull().default("open"), // "open" | "voting" | "closed"
   participants: jsonb("participants").$type<number[]>().notNull().default([]),
+  scoringBaseline: doublePrecision("scoring_baseline").notNull().default(5),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -85,9 +88,11 @@ export const playerTierPlacementSchema = z.object({
 
 export type PlayerTierPlacementInput = z.infer<typeof playerTierPlacementSchema>;
 
+/** A tier list belongs to exactly one context: `leagueId` XOR `clubId` (DB check constraint). */
 export const tierLists = pgTable("tier_lists", {
   id: serial("id").primaryKey(),
-  leagueId: integer("league_id").notNull(),
+  leagueId: integer("league_id"),
+  clubId: integer("club_id"),
   userId: integer("user_id").notNull(),
   playerTiers: jsonb("player_tiers").$type<{ playerId: number; tier: ValuationTier }[]>().notNull(),
   submitted: boolean("submitted").default(false),
@@ -309,7 +314,9 @@ export const insertClubSchema = createInsertSchema(clubs).omit({
   id: true,
   inviteCode: true,
   createdBy: true,
+  status: true,
   participants: true,
+  scoringBaseline: true,
   createdAt: true,
 }).extend({
   name: z.string().min(1, "Name is required").max(25, "Name must be 25 characters or less"),

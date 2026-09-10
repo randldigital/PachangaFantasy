@@ -7,11 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
+import { invalidateMatchQueries, isClubMatch } from "@/lib/matchQueries";
 import { useToast } from "@/hooks/use-toast";
 import StatCounters from "./StatCounters";
 import { isStatsEditable } from "@shared/domain/stats";
+import { isClosedStatus } from "@shared/domain/matchLifecycle";
 import type { Match, StatReport } from "@shared/schema";
-import { requireLeagueId } from "@shared/domain/context";
 
 interface SubmitMyStatsProps {
   match: Match;
@@ -33,11 +34,14 @@ export default function SubmitMyStats({
   const queryClient = useQueryClient();
   const [goals, setGoals] = useState(existing?.goals ?? 0);
   const [assists, setAssists] = useState(existing?.assists ?? 0);
+  const [minutes, setMinutes] = useState(existing?.minutes ?? 0);
+  const clubMatch = isClubMatch(match);
 
   useEffect(() => {
     setGoals(existing?.goals ?? 0);
     setAssists(existing?.assists ?? 0);
-  }, [existing?.goals, existing?.assists]);
+    setMinutes(existing?.minutes ?? 0);
+  }, [existing?.goals, existing?.assists, existing?.minutes]);
 
   const editable = isStatsEditable(match.status) && !locked;
   const hasSubmitted = Boolean(existing);
@@ -48,16 +52,19 @@ export default function SubmitMyStats({
         goals,
         assists,
         playerId,
+        ...(clubMatch ? { minutes } : {}),
       }),
     onSuccess: async () => {
       toast({
         title: hasSubmitted ? t("stats.updated") : t("stats.submitted"),
-        description: t("stats.submittedDescription", { goals, assists }),
+        description: clubMatch
+          ? t("stats.submittedDescriptionClub", { goals, assists, minutes })
+          : t("stats.submittedDescription", { goals, assists }),
       });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.matchStats(match.id) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.matchStatsStatus(match.id) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(requireLeagueId(match)) }),
+        invalidateMatchQueries(queryClient, match),
       ]);
     },
     onError: (error: Error) => {
@@ -80,7 +87,13 @@ export default function SubmitMyStats({
         {hasSubmitted && (
           <div className="flex items-center gap-2 text-emerald-400 text-sm">
             <CheckCircle className="h-4 w-4" />
-            {t("stats.currentValues", { goals: existing?.goals ?? 0, assists: existing?.assists ?? 0 })}
+            {clubMatch
+              ? t("stats.currentValuesClub", {
+                  goals: existing?.goals ?? 0,
+                  assists: existing?.assists ?? 0,
+                  minutes: existing?.minutes ?? 0,
+                })
+              : t("stats.currentValues", { goals: existing?.goals ?? 0, assists: existing?.assists ?? 0 })}
           </div>
         )}
         <StatCounters
@@ -88,6 +101,8 @@ export default function SubmitMyStats({
           assists={assists}
           onGoalsChange={setGoals}
           onAssistsChange={setAssists}
+          minutes={clubMatch ? minutes : undefined}
+          onMinutesChange={clubMatch ? setMinutes : undefined}
           disabled={!editable || submitStatsMutation.isPending}
         />
         {editable ? (
@@ -104,7 +119,9 @@ export default function SubmitMyStats({
           </Button>
         ) : (
           <p className="text-sm text-slate-400">
-            {match.status === "scored" ? t("stats.lockedAfterScore") : t("stats.notYet")}
+            {match.status === "scored" || isClosedStatus(match.status)
+              ? t("stats.lockedAfterScore")
+              : t("stats.notYet")}
           </p>
         )}
       </CardContent>

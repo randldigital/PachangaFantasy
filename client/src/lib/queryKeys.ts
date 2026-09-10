@@ -28,9 +28,12 @@ export const queryKeys = {
   club: (id: number) => [`/api/clubs/${id}`] as const,
   clubPlayers: (clubId: number) => [`/api/clubs/${clubId}/players`] as const,
   clubMatches: (clubId: number) => [`/api/clubs/${clubId}/matches`] as const,
+  clubAggregates: (clubId: number) => [`/api/clubs/${clubId}/aggregates`] as const,
   clubRankings: (clubId: number, season?: string) =>
     [`/api/clubs/${clubId}/rankings`, season ?? "all"] as const,
   clubRankingsPrefix: (clubId: number) => [`/api/clubs/${clubId}/rankings`] as const,
   clubSeasons: (clubId: number) => [`/api/clubs/${clubId}/seasons`] as const,
   clubClaimRequests: (clubId: number) => [`/api/clubs/${clubId}/claim-requests`] as const,
+  clubTierList: (clubId: number) => [`/api/clubs/${clubId}/tierlist`] as const,
+  clubTierListsAll: (clubId: number) => [`/api/clubs/${clubId}/tierlist/all`] as const,
 };

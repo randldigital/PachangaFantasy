@@ -23,7 +23,8 @@ import type { Match } from "@shared/schema";
 
 interface DeleteMatchButtonProps {
   match: Match;
-  leagueId: number;
+  leagueId?: number;
+  clubId?: number;
   isLeagueCreator: boolean;
   onMatchDeleted?: () => void;
   className?: string;
@@ -32,6 +33,7 @@ interface DeleteMatchButtonProps {
 export default function DeleteMatchButton({
   match,
   leagueId,
+  clubId,
   isLeagueCreator,
   onMatchDeleted,
   className,
@@ -53,10 +55,18 @@ export default function DeleteMatchButton({
       });
 
       setOpen(false);
-      queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(leagueId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.league(leagueId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.leagueRankingsPrefix(leagueId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.leagueManagerRankingsPrefix(leagueId) });
+      if (leagueId != null) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(leagueId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.league(leagueId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.leagueRankingsPrefix(leagueId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.leagueManagerRankingsPrefix(leagueId) });
+      }
+      if (clubId != null) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.clubMatches(clubId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.club(clubId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.clubRankingsPrefix(clubId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.clubAggregates(clubId) });
+      }
       onMatchDeleted?.();
     },
     onError: (error: Error) => {

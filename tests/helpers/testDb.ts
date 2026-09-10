@@ -74,7 +74,9 @@ export async function resetTestSchema() {
       description text DEFAULT '',
       invite_code text NOT NULL UNIQUE,
       created_by integer NOT NULL,
+      status text NOT NULL DEFAULT 'open',
       participants jsonb NOT NULL DEFAULT '[]'::jsonb,
+      scoring_baseline double precision NOT NULL DEFAULT 5,
       created_at timestamp DEFAULT now()
     );
     CREATE TABLE IF NOT EXISTS players (
@@ -91,7 +93,8 @@ export async function resetTestSchema() {
     );
     CREATE TABLE IF NOT EXISTS tier_lists (
       id serial PRIMARY KEY,
-      league_id integer NOT NULL,
+      league_id integer,
+      club_id integer,
       user_id integer NOT NULL,
       player_tiers jsonb NOT NULL DEFAULT '[]'::jsonb,
       submitted boolean DEFAULT false,
@@ -284,10 +287,16 @@ export async function resetTestSchema() {
   await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS opponent_goals integer`);
   await client.unsafe(`ALTER TABLE matches ALTER COLUMN league_id DROP NOT NULL`);
   await client.unsafe(`ALTER TABLE stat_reports ADD COLUMN IF NOT EXISTS minutes integer`);
+  await client.unsafe(`ALTER TABLE clubs ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'open'`);
+  await client.unsafe(`ALTER TABLE clubs ADD COLUMN IF NOT EXISTS scoring_baseline double precision NOT NULL DEFAULT 5`);
+  await client.unsafe(`ALTER TABLE tier_lists ADD COLUMN IF NOT EXISTS club_id integer`);
+  await client.unsafe(`ALTER TABLE tier_lists ALTER COLUMN league_id DROP NOT NULL`);
   await client.unsafe(`ALTER TABLE players DROP CONSTRAINT IF EXISTS players_league_xor_club`);
   await client.unsafe(`ALTER TABLE players ADD CONSTRAINT players_league_xor_club CHECK ((league_id IS NULL) <> (club_id IS NULL))`);
   await client.unsafe(`ALTER TABLE matches DROP CONSTRAINT IF EXISTS matches_league_xor_club`);
   await client.unsafe(`ALTER TABLE matches ADD CONSTRAINT matches_league_xor_club CHECK ((league_id IS NULL) <> (club_id IS NULL))`);
+  await client.unsafe(`ALTER TABLE tier_lists DROP CONSTRAINT IF EXISTS tier_lists_league_xor_club`);
+  await client.unsafe(`ALTER TABLE tier_lists ADD CONSTRAINT tier_lists_league_xor_club CHECK ((league_id IS NULL) <> (club_id IS NULL))`);
   await client.unsafe(`ALTER TABLE stat_reports DROP CONSTRAINT IF EXISTS stat_reports_minutes_range`);
   await client.unsafe(`ALTER TABLE stat_reports ADD CONSTRAINT stat_reports_minutes_range CHECK (minutes IS NULL OR (minutes >= 0 AND minutes <= 120))`);
   await client.unsafe(`CREATE INDEX IF NOT EXISTS matches_league_season ON matches (league_id, season_key)`);

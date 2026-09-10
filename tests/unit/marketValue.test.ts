@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyMarketValueChange,
   expectedContribution,
+  computeClubMatchMarketValues,
   computeMatchMarketValues,
   mapPeerRating,
   nextScoringBaseline,
@@ -122,5 +123,46 @@ describe("computeMatchMarketValues", () => {
     const again = computeMatchMarketValues(input);
     expect(first).toEqual(again);
     expect(first.find((row) => row.playerId === 1)?.change.vmAfter).toBeGreaterThan(8);
+  });
+});
+
+describe("computeClubMatchMarketValues", () => {
+  const squad = {
+    participantIds: [1, 2, 3],
+    ourGoals: 2,
+    opponentGoals: 1,
+    baseline: 5,
+    preMatchVm: { 1: 18, 2: 18, 3: 18 },
+    stats: [
+      { playerId: 1, goals: 2, assists: 0 },
+      { playerId: 2, goals: 0, assists: 1 },
+      { playerId: 3, goals: 0, assists: 0 },
+    ],
+    mvpVotes: [
+      { voterPlayerId: 2, mvpPlayerId: 1 },
+      { voterPlayerId: 3, mvpPlayerId: 1 },
+    ],
+    peerRatings: [
+      { raterPlayerId: 2, rateePlayerId: 1, score: 9 },
+      { raterPlayerId: 3, rateePlayerId: 1, score: 8 },
+      { raterPlayerId: 1, rateePlayerId: 2, score: 6 },
+    ],
+  };
+
+  it("treats the opponent as equal VM so difficulty is 1", () => {
+    const rows = computeClubMatchMarketValues(squad);
+    expect(rows.every((row) => row.ownTeamAvgVm === row.oppTeamAvgVm)).toBe(true);
+    expect(opponentDifficulty(rows[0].ownTeamAvgVm, rows[0].oppTeamAvgVm)).toBe(1);
+  });
+
+  it("uses W/D/L at equal VM for the result term", () => {
+    const win = computeClubMatchMarketValues(squad);
+    const draw = computeClubMatchMarketValues({ ...squad, opponentGoals: 2 });
+    const loss = computeClubMatchMarketValues({ ...squad, opponentGoals: 3 });
+    expect(win[0].result).toBeCloseTo(resultComponent(2, 1, 18, 18));
+    expect(draw[0].result).toBeCloseTo(resultComponent(2, 2, 18, 18));
+    expect(loss[0].result).toBeCloseTo(resultComponent(2, 3, 18, 18));
+    expect(win[0].result).toBeGreaterThan(draw[0].result);
+    expect(draw[0].result).toBeGreaterThan(loss[0].result);
   });
 });

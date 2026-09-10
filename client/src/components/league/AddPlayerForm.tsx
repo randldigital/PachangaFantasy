@@ -25,16 +25,18 @@ const addPlayerSchema = z.object({
 type AddPlayerFormData = z.infer<typeof addPlayerSchema>;
 
 interface AddPlayerFormProps {
-  leagueId: string;
+  leagueId?: string;
+  clubId?: number;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function AddPlayerForm({ leagueId, isOpen, onClose }: AddPlayerFormProps) {
+export default function AddPlayerForm({ leagueId, clubId, isOpen, onClose }: AddPlayerFormProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const numericLeagueId = parseInt(leagueId, 10);
+  const numericLeagueId = leagueId ? parseInt(leagueId, 10) : undefined;
+  const isClub = clubId != null;
 
   const form = useForm<AddPlayerFormData>({
     resolver: zodResolver(addPlayerSchema),
@@ -47,14 +49,22 @@ export default function AddPlayerForm({ leagueId, isOpen, onClose }: AddPlayerFo
 
   const addPlayerMutation = useMutation({
     mutationFn: async (data: AddPlayerFormData) => {
-      return api.post<{ name: string }>(`/api/players/${numericLeagueId}`, {
+      const path = isClub
+        ? `/api/clubs/${clubId}/players`
+        : `/api/players/${numericLeagueId}`;
+      return api.post<{ name: string }>(path, {
         name: data.name,
         emoji: data.emoji,
         isExternal: data.isExternal,
       });
     },
     onSuccess: (player) => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.leaguePlayers(numericLeagueId) });
+      if (isClub && clubId != null) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.clubPlayers(clubId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.club(clubId) });
+      } else if (numericLeagueId != null) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.leaguePlayers(numericLeagueId) });
+      }
       toast({
         title: t("league.playerAdded"),
         description: t("league.playerAddedDescription", { name: player.name }),
@@ -82,7 +92,7 @@ export default function AddPlayerForm({ leagueId, isOpen, onClose }: AddPlayerFo
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
             <UserPlus className="h-5 w-5 text-blue-400" />
-            {t("league.addExternalPlayer")}
+            {t(isClub ? "club.addExternalPlayer" : "league.addExternalPlayer")}
           </DialogTitle>
         </DialogHeader>
 
@@ -135,7 +145,7 @@ export default function AddPlayerForm({ leagueId, isOpen, onClose }: AddPlayerFo
             <div className="bg-slate-700/50 p-3 rounded-lg border border-slate-600">
               <div className="flex items-center gap-2 text-slate-300">
                 <Users className="h-4 w-4" />
-                <span className="text-sm">{t("league.addExternalHint")}</span>
+                <span className="text-sm">{t(isClub ? "club.addExternalHint" : "league.addExternalHint")}</span>
               </div>
             </div>
 

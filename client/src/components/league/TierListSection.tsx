@@ -26,11 +26,18 @@ import {
   type PlayerTierPlacement,
   type ValuationTier,
 } from "@shared/domain/valuation";
-import type { League, Player, User, TierList } from "@shared/schema";
+import type { Player, User, TierList } from "@shared/schema";
+
+interface ValuationOrganisation {
+  createdBy: number;
+  participants?: number[] | null;
+  status: string;
+}
 
 interface TierListSectionProps {
-  leagueId: number;
-  league: League;
+  leagueId?: number;
+  clubId?: number;
+  organisation: ValuationOrganisation;
   players: Player[];
   user?: User;
   onAddPlayer?: () => void;
@@ -44,26 +51,37 @@ const TIER_STYLES: Record<ValuationTier, string> = {
   D: "border-red-500 bg-red-500 text-white",
 };
 
-export default function TierListSection({ leagueId, league, players, user, onAddPlayer }: TierListSectionProps) {
+export default function TierListSection({
+  leagueId,
+  clubId,
+  organisation,
+  players,
+  user,
+  onAddPlayer,
+}: TierListSectionProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [placements, setPlacements] = useState<Record<number, ValuationTier>>({});
   const [closeOpen, setCloseOpen] = useState(false);
 
-  const isAdmin = user?.id === league.createdBy;
-  const memberCount = Math.max(league.participants?.length ?? 0, 1);
-  const valuationOpen = league.status === "voting";
-  const valuationClosed = league.status === "closed";
+  const isClub = clubId != null;
+  const basePath = isClub ? `/api/clubs/${clubId}/tierlist` : `/api/tierlist/${leagueId}`;
+  const isAdmin = user?.id === organisation.createdBy;
+  const memberCount = Math.max(organisation.participants?.length ?? 0, 1);
+  const valuationOpen = organisation.status === "voting";
+  const valuationClosed = organisation.status === "closed";
 
   const { data: existingTierList, isLoading: tierListLoading } = useQuery<TierList | null>({
-    queryKey: queryKeys.tierList(leagueId),
-    queryFn: () => api.get<TierList | null>(`/api/tierlist/${leagueId}`),
+    queryKey: isClub ? queryKeys.clubTierList(clubId) : queryKeys.tierList(leagueId!),
+    queryFn: () => api.get<TierList | null>(basePath),
+    enabled: isClub || leagueId != null,
   });
 
   const { data: allTierLists = [] } = useQuery<TierList[]>({
-    queryKey: queryKeys.tierListsAll(leagueId),
-    queryFn: () => api.get<TierList[]>(`/api/tierlist/${leagueId}/all`),
+    queryKey: isClub ? queryKeys.clubTierListsAll(clubId) : queryKeys.tierListsAll(leagueId!),
+    queryFn: () => api.get<TierList[]>(`${basePath}/all`),
+    enabled: isClub || leagueId != null,
   });
 
   useEffect(() => {
@@ -81,17 +99,28 @@ export default function TierListSection({ leagueId, league, players, user, onAdd
   const fewVotes = submittedCount === 0 || submittedCount < Math.ceil(memberCount / 2);
 
   const invalidateValuation = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.tierList(leagueId) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.tierListsAll(leagueId) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.leaguePlayers(leagueId) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.league(leagueId) }),
-    ]);
+    if (isClub && clubId != null) {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.clubTierList(clubId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.clubTierListsAll(clubId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.clubPlayers(clubId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.club(clubId) }),
+      ]);
+      return;
+    }
+    if (leagueId != null) {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.tierList(leagueId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.tierListsAll(leagueId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.leaguePlayers(leagueId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.league(leagueId) }),
+      ]);
+    }
   };
 
   const submitMutation = useMutation({
     mutationFn: async (data: { playerTiers: PlayerTierPlacement[]; submitted: boolean }) => {
-      return api.post(`/api/tierlist/${leagueId}`, data);
+      return api.post(basePath, data);
     },
     onSuccess: () => {
       toast({
@@ -110,7 +139,7 @@ export default function TierListSection({ leagueId, league, players, user, onAdd
   });
 
   const openMutation = useMutation({
-    mutationFn: async () => api.post(`/api/tierlist/${leagueId}/open`),
+    mutationFn: async () => api.post(`${basePath}/open`),
     onSuccess: () => {
       toast({ title: t("tierlist.opened") });
       void invalidateValuation();
@@ -125,7 +154,7 @@ export default function TierListSection({ leagueId, league, players, user, onAdd
   });
 
   const closeMutation = useMutation({
-    mutationFn: async () => api.post(`/api/tierlist/${leagueId}/close`),
+    mutationFn: async () => api.post(`${basePath}/close`),
     onSuccess: () => {
       toast({ title: t("tierlist.closed") });
       setCloseOpen(false);
@@ -182,7 +211,9 @@ export default function TierListSection({ leagueId, league, players, user, onAdd
         <CardContent className="p-8 text-center">
           <Users className="w-12 h-12 text-slate-400 mx-auto mb-4" />
           <h3 className="text-white font-medium mb-2">{t("tierlist.noPlayers")}</h3>
-          <p className="text-slate-400 mb-4">{t("tierlist.noPlayersDescription")}</p>
+          <p className="text-slate-400 mb-4">
+            {t(isClub ? "tierlist.noPlayersDescriptionClub" : "tierlist.noPlayersDescription")}
+          </p>
           {onAddPlayer && (
             <Button onClick={onAddPlayer} className="bg-emerald-600 hover:bg-emerald-700 text-white">
               {t("tierlist.addPlayersCta")}

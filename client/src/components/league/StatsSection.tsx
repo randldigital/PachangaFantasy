@@ -9,11 +9,11 @@ import SubmitMyStats from "./SubmitMyStats";
 import MatchRatings from "./MatchRatings";
 import AdminStatsOverview, { type ParticipantDetail } from "./AdminStatsOverview";
 import type { StatsStatus } from "@shared/domain/stats";
-import type { League, Match, Player, StatReport, User } from "@shared/schema";
+import type { Match, Player, StatReport, User } from "@shared/schema";
 
 interface StatsSectionProps {
   match?: Match;
-  league: League;
+  isAdmin: boolean;
   players: Player[];
   user?: User;
   onGoToMatch?: () => void;
@@ -24,9 +24,8 @@ interface StatsStatusResponse {
   status: StatsStatus;
 }
 
-export default function StatsSection({ match, league, players, user, onGoToMatch }: StatsSectionProps) {
+export default function StatsSection({ match, isAdmin, players, user, onGoToMatch }: StatsSectionProps) {
   const { t } = useTranslation();
-  const isAdmin = Boolean(user && league.createdBy === user.id);
 
   const { data: participants = [] } = useQuery<ParticipantDetail[]>({
     queryKey: queryKeys.matchParticipants(match?.id || 0),

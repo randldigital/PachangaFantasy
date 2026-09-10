@@ -28,7 +28,8 @@ interface ClaimRequest {
 }
 
 interface RosterManagerDialogProps {
-  leagueId: number;
+  leagueId?: number;
+  clubId?: number;
   players: Player[];
   isOpen: boolean;
   onClose: () => void;
@@ -36,6 +37,7 @@ interface RosterManagerDialogProps {
 
 export default function RosterManagerDialog({
   leagueId,
+  clubId,
   players,
   isOpen,
   onClose,
@@ -45,17 +47,31 @@ export default function RosterManagerDialog({
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draftAlias, setDraftAlias] = useState("");
+  const isClub = clubId != null;
 
   const { data: claims = [] } = useQuery<ClaimRequest[]>({
-    queryKey: queryKeys.leagueClaimRequests(leagueId),
-    queryFn: () => api.get<ClaimRequest[]>(`/api/leagues/${leagueId}/claim-requests`),
-    enabled: isOpen,
+    queryKey: isClub ? queryKeys.clubClaimRequests(clubId) : queryKeys.leagueClaimRequests(leagueId!),
+    queryFn: () =>
+      api.get<ClaimRequest[]>(
+        isClub
+          ? `/api/clubs/${clubId}/claim-requests`
+          : `/api/leagues/${leagueId}/claim-requests`,
+      ),
+    enabled: isOpen && (isClub || leagueId != null),
   });
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: queryKeys.leaguePlayers(leagueId) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.leagueClaimRequests(leagueId) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.league(leagueId) });
+    if (isClub && clubId != null) {
+      queryClient.invalidateQueries({ queryKey: queryKeys.clubPlayers(clubId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.clubClaimRequests(clubId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.club(clubId) });
+      return;
+    }
+    if (leagueId != null) {
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaguePlayers(leagueId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagueClaimRequests(leagueId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.league(leagueId) });
+    }
   };
 
   const renameMutation = useMutation({

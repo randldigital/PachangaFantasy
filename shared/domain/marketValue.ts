@@ -304,3 +304,79 @@ export function computeMatchMarketValues(input: MarketValueMatchInput): MarketVa
     };
   });
 }
+
+export type ClubMarketValueMatchInput = {
+  participantIds: number[];
+  ourGoals: number;
+  opponentGoals: number;
+  baseline: number;
+  preMatchVm: Record<number, number>;
+  stats: MarketValuePlayerInput[];
+  mvpVotes: { voterPlayerId: number; mvpPlayerId: number }[];
+  peerRatings: { raterPlayerId: number; rateePlayerId: number; score: number }[];
+};
+
+/**
+ * Club Market Value uses the Fantasy weights, but there is no opponent roster:
+ * difficulty is 1 and the result term is W/D/L at equal VM (advantage 0).
+ */
+export function computeClubMatchMarketValues(
+  input: ClubMarketValueMatchInput,
+): MarketValuePlayerResult[] {
+  const statsByPlayer = new Map(input.stats.map((row) => [row.playerId, row]));
+  const squadAvg = averageVm(input.participantIds, input.preMatchVm);
+  const teamWeighted = input.participantIds.reduce((sum, id) => {
+    const row = statsByPlayer.get(id);
+    return sum + weightedOffense(row?.goals ?? 0, row?.assists ?? 0);
+  }, 0);
+
+  const mvp = mvpComponents(input.participantIds, input.mvpVotes);
+  const voteCounts = new Map<number, number>();
+  for (const vote of input.mvpVotes) {
+    voteCounts.set(vote.mvpPlayerId, (voteCounts.get(vote.mvpPlayerId) ?? 0) + 1);
+  }
+
+  return input.participantIds.map((playerId) => {
+    const row = statsByPlayer.get(playerId);
+    const vm = input.preMatchVm[playerId] ?? MIN_MARKET_VALUE;
+    const expected = expectedContribution(vm);
+    const adjusted = offensiveAdjusted({
+      weighted: weightedOffense(row?.goals ?? 0, row?.assists ?? 0),
+      teamWeighted,
+      teamGoals: input.ourGoals,
+      baseline: input.baseline,
+      ownAvgVm: squadAvg,
+      oppAvgVm: squadAvg,
+    });
+    const received = input.peerRatings
+      .filter((rating) => rating.rateePlayerId === playerId)
+      .map((rating) => rating.score);
+    const parts = {
+      mvp: mvp.get(playerId) ?? 0,
+      peer: peerComponent(received),
+      offensive: offensiveComponent(adjusted, expected),
+      result: resultComponent(input.ourGoals, input.opponentGoals, squadAvg, squadAvg),
+    };
+    const score = performanceScore(parts);
+    const change = applyMarketValueChange(vm, score);
+    const peerAverage =
+      received.length === 0
+        ? null
+        : received.reduce((sum, value) => sum + value, 0) / received.length;
+
+    return {
+      playerId,
+      team: "A",
+      ...parts,
+      performanceScore: score,
+      expectedContribution: expected,
+      adjustedContribution: adjusted,
+      mvpVotes: voteCounts.get(playerId) ?? 0,
+      peerAverage,
+      ownTeamAvgVm: squadAvg,
+      oppTeamAvgVm: squadAvg,
+      baseline: input.baseline,
+      change,
+    };
+  });
+}

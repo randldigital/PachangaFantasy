@@ -7,10 +7,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { api } from "@/lib/api";
 import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
+import { invalidateMatchQueries, isClubMatch, isRatingsPhase } from "@/lib/matchQueries";
 import { useToast } from "@/hooks/use-toast";
-import { Calculator, CheckCircle, Clock, Users, AlertTriangle } from "lucide-react";
+import { Calculator, CheckCircle, Clock, Lock, Users, AlertTriangle } from "lucide-react";
 import SubmitMyStats from "./SubmitMyStats";
-import { requireLeagueId } from "@shared/domain/context";
+import { canCloseMatch, isClosedStatus } from "@shared/domain/matchLifecycle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,27 +70,21 @@ export default function AdminStatsOverview({
   const queryClient = useQueryClient();
   const [forceOpen, setForceOpen] = useState(false);
 
+  const clubMatch = isClubMatch(match);
+
   const { data: ratingsPayload } = useQuery<{ ratingsComplete: boolean; submittedCount: number; voterCount: number }>({
     queryKey: queryKeys.matchRatings(match.id),
     queryFn: () =>
       api.get<{ ratingsComplete: boolean; submittedCount: number; voterCount: number }>(
         `/api/matches/${match.id}/ratings`,
       ),
-    enabled: match.status === "completed" || match.status === "scored",
+    enabled: isRatingsPhase(match.status),
   });
 
   const ratingsComplete = Boolean(ratingsPayload?.ratingsComplete);
 
   const invalidate = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.matchStats(match.id) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.matchStatsStatus(match.id) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.matchRatings(match.id) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(requireLeagueId(match)) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.leaguePlayers(requireLeagueId(match)) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.leagueRankingsPrefix(requireLeagueId(match)) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.leagueManagerRankingsPrefix(requireLeagueId(match)) }),
-    ]);
+    await invalidateMatchQueries(queryClient, match);
   };
 
   const calculateScoresMutation = useMutation({
@@ -131,12 +126,27 @@ export default function AdminStatsOverview({
     },
   });
 
+  const closeMutation = useMutation({
+    mutationFn: () => api.post(`/api/matches/${match.id}/close`),
+    onSuccess: () => {
+      toast({ title: t("stats.closed") });
+      invalidate();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("common.error"),
+        description: describeApiError(error, t),
+        variant: "destructive",
+      });
+    },
+  });
+
   if (!isLeagueCreator) {
     return null;
   }
 
   const accepted = participants.filter((participant) => participant.status === "accepted");
-  const scored = match.status === "scored";
+  const scored = match.status === "scored" || isClosedStatus(match.status);
   const difference = status.difference ?? 0;
 
   return (
@@ -160,7 +170,9 @@ export default function AdminStatsOverview({
       <CardContent className="space-y-4">
         <div className="bg-slate-900/50 p-3 rounded-lg space-y-1">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">{t("stats.expectedGoals")}</span>
+            <span className="text-slate-400">
+              {clubMatch ? t("club.ourGoals") : t("stats.expectedGoals")}
+            </span>
             <span className="text-white font-medium">{status.expectedTotal ?? "—"}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
@@ -202,7 +214,13 @@ export default function AdminStatsOverview({
                   </p>
                   {report && (
                     <p className="text-xs text-slate-400">
-                      {t("stats.currentValues", { goals: report.goals ?? 0, assists: report.assists ?? 0 })}
+                      {clubMatch
+                        ? t("stats.currentValuesClub", {
+                            goals: report.goals ?? 0,
+                            assists: report.assists ?? 0,
+                            minutes: report.minutes ?? 0,
+                          })
+                        : t("stats.currentValues", { goals: report.goals ?? 0, assists: report.assists ?? 0 })}
                     </p>
                   )}
                 </div>
@@ -250,11 +268,17 @@ export default function AdminStatsOverview({
           <Alert className="border-amber-600 bg-amber-900/20">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              {t("stats.inconsistentDetail", {
-                expected: status.expectedTotal ?? 0,
-                reported: status.reportedTotal,
-                difference: Math.abs(difference),
-              })}
+              {clubMatch
+                ? t("stats.clubInconsistentWarning", {
+                    expected: status.expectedTotal ?? 0,
+                    reported: status.reportedTotal,
+                    difference: Math.abs(difference),
+                  })
+                : t("stats.inconsistentDetail", {
+                    expected: status.expectedTotal ?? 0,
+                    reported: status.reportedTotal,
+                    difference: Math.abs(difference),
+                  })}
             </AlertDescription>
           </Alert>
         )}
@@ -278,7 +302,7 @@ export default function AdminStatsOverview({
           </Alert>
         )}
 
-        {status.state === "inconsistent" && status.assistsOk && !scored && (
+        {status.state === "inconsistent" && status.assistsOk && !scored && !clubMatch && (
           <Button
             variant="outline"
             onClick={() => acknowledgeMutation.mutate()}
@@ -308,13 +332,15 @@ export default function AdminStatsOverview({
             className="w-full bg-emerald-600 hover:bg-emerald-700"
           >
             <Calculator className="h-4 w-4 mr-2" />
-            {scored
-              ? t("stats.alreadyScored")
-              : calculateScoresMutation.isPending
-                ? t("stats.scoring")
-                : ratingsComplete
-                  ? t("stats.calculateScores")
-                  : t("stats.forceCalculate")}
+            {isClosedStatus(match.status)
+              ? t("stats.alreadyClosed")
+              : scored
+                ? t("stats.alreadyScored")
+                : calculateScoresMutation.isPending
+                  ? t("stats.scoring")
+                  : ratingsComplete
+                    ? t("stats.calculateScores")
+                    : t("stats.forceCalculate")}
           </Button>
           {!scored && !status.canScore && (
             <p className="text-xs text-slate-400 mt-2 text-center">
@@ -333,6 +359,20 @@ export default function AdminStatsOverview({
               })}
             </p>
           )}
+          {clubMatch && canCloseMatch(match.status) && (
+            <Button
+              onClick={() => closeMutation.mutate()}
+              disabled={closeMutation.isPending}
+              variant="outline"
+              className="w-full mt-2 border-slate-500 text-slate-200 hover:bg-slate-700"
+            >
+              <Lock className="h-4 w-4 mr-2" />
+              {closeMutation.isPending ? t("common.saving") : t("stats.closeMatch")}
+            </Button>
+          )}
+          {clubMatch && isClosedStatus(match.status) && (
+            <p className="text-xs text-slate-400 mt-2 text-center">{t("stats.closedNote")}</p>
+          )}
         </div>
 
         <AlertDialog open={forceOpen} onOpenChange={setForceOpen}>
@@ -340,10 +380,13 @@ export default function AdminStatsOverview({
             <AlertDialogHeader>
               <AlertDialogTitle>{t("stats.forceCalculateTitle")}</AlertDialogTitle>
               <AlertDialogDescription className="text-slate-300">
-                {t("stats.forceCalculateDescription", {
-                  submitted: ratingsPayload?.submittedCount ?? 0,
-                  total: ratingsPayload?.voterCount ?? 0,
-                })}
+                {t(
+                  clubMatch ? "stats.forceCalculateDescriptionClub" : "stats.forceCalculateDescription",
+                  {
+                    submitted: ratingsPayload?.submittedCount ?? 0,
+                    total: ratingsPayload?.voterCount ?? 0,
+                  },
+                )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

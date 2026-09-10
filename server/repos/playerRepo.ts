@@ -1,4 +1,4 @@
-import { players, leagues, type Player, type InsertPlayer } from "@shared/schema";
+import { players, leagues, clubs, type Player, type InsertPlayer } from "@shared/schema";
 import { db } from "../db";
 import { eq, and, isNull } from "drizzle-orm";
 import { uniqueLeaguePlayerName } from "@shared/domain/players";
@@ -49,7 +49,6 @@ export async function createPlayer(
     existing.map((item) => item.name),
   );
 
-  // Market Value is a Fantasy concept; Club players never carry one.
   let marketValue = 0;
   if (contextOf(ref) === "league") {
     const [league] = await db
@@ -57,6 +56,12 @@ export async function createPlayer(
       .from(leagues)
       .where(eq(leagues.id, player.leagueId!));
     marketValue = league?.status === "closed" ? DEFAULT_MARKET_VALUE : 0;
+  } else {
+    const [club] = await db
+      .select({ status: clubs.status })
+      .from(clubs)
+      .where(eq(clubs.id, player.clubId!));
+    marketValue = club?.status === "closed" ? DEFAULT_MARKET_VALUE : 0;
   }
 
   const [newPlayer] = await db

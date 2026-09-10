@@ -400,7 +400,10 @@ describe("club match", () => {
     expect(ownerRow.assists).toBe(1);
     expect(ownerRow.minutes).toBe(90);
     expect(ownerRow.matchesPlayed).toBe(1);
+    expect(ownerRow.marketValue).toBeGreaterThan(0);
+    expect(typeof ownerRow.mvps).toBe("number");
     expect(rankings.body[0].totalPoints).toBeGreaterThanOrEqual(ownerRow.totalPoints - 0.001);
+    expect(scored.body.marketValues).toHaveLength(squad.length);
 
     const emptySeason = await request(app)
       .get(`/api/clubs/${club.id}/rankings?season=1999/00`)
@@ -426,6 +429,8 @@ describe("club match", () => {
     );
     expect(ownerRecap.minutes).toBe(90);
     expect(ownerRecap.goals).toBe(2);
+    expect(ownerRecap.vmBefore).not.toBeNull();
+    expect(ownerRecap.vmAfter).not.toBeNull();
 
     const history = await request(app).get(`/api/clubs/${club.id}/matches`).set(auth(owner.token));
     expect(history.body).toHaveLength(1);

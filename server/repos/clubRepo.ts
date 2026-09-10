@@ -5,6 +5,7 @@ import { customAlphabet } from "nanoid";
 import { buildInviteCode, INVITE_ALPHABET, INVITE_BODY_LENGTH } from "@shared/domain/inviteCodes";
 import * as matchRepo from "./matchRepo";
 import * as playerRepo from "./playerRepo";
+import * as valuationRepo from "./valuationRepo";
 
 const inviteBody = customAlphabet(INVITE_ALPHABET, INVITE_BODY_LENGTH);
 
@@ -44,6 +45,7 @@ export async function deleteClub(id: number): Promise<void> {
     await matchRepo.deleteMatch(match.id);
   }
   await playerRepo.deletePlayersByClub(id);
+  await valuationRepo.deleteTierListsByClub(id);
   await db.delete(clubs).where(eq(clubs.id, id));
 }
 

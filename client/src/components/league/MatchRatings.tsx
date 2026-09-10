@@ -8,16 +8,16 @@ import { Slider } from "@/components/ui/slider";
 import { api } from "@/lib/api";
 import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
+import { invalidateMatchQueries, isClubMatch, isRatingsPhase } from "@/lib/matchQueries";
 import { useToast } from "@/hooks/use-toast";
 import type { Match } from "@shared/schema";
-import { requireLeagueId } from "@shared/domain/context";
 
 export interface RatingsPayload {
   ratingsComplete: boolean;
   voterCount: number;
   submittedCount: number;
   submittedVoterIds: number[];
-  assignments: { playerId: number; name: string; kind: "teammate" | "rival"; score: number | null }[];
+  assignments: { playerId: number; name: string; kind: "teammate" | "rival" | "club"; score: number | null }[];
   myBallot: { voterPlayerId: number; submitted: boolean; mvpPlayerId: number | null } | null;
   history: {
     playerId: number;
@@ -41,7 +41,7 @@ export default function MatchRatings({ match, participants }: MatchRatingsProps)
   const { data } = useQuery<RatingsPayload>({
     queryKey: queryKeys.matchRatings(match.id),
     queryFn: () => api.get<RatingsPayload>(`/api/matches/${match.id}/ratings`),
-    enabled: match.status === "completed" || match.status === "scored",
+    enabled: isRatingsPhase(match.status),
   });
 
   const [mvpPlayerId, setMvpPlayerId] = useState<number | "">("");
@@ -70,10 +70,7 @@ export default function MatchRatings({ match, participants }: MatchRatingsProps)
       }),
     onSuccess: async () => {
       toast({ title: t("ratings.submitted") });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.matchRatings(match.id) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(requireLeagueId(match)) }),
-      ]);
+      await invalidateMatchQueries(queryClient, match);
     },
     onError: (error: Error) => {
       toast({
@@ -84,11 +81,11 @@ export default function MatchRatings({ match, participants }: MatchRatingsProps)
     },
   });
 
-  if (match.status !== "completed" && match.status !== "scored") {
+  if (!isRatingsPhase(match.status)) {
     return null;
   }
 
-  if (match.status === "scored" && data?.history.length) {
+  if ((match.status === "scored" || match.status === "closed") && !isClubMatch(match) && data?.history.length) {
     return (
       <Card className="bg-slate-800/50 border-slate-700">
         <CardHeader>
