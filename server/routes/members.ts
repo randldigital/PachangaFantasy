@@ -1,5 +1,5 @@
 import type { Express, Response } from "express";
-import { joinOrganisationSchema } from "@shared/schema";
+import { joinOrganisationSchema, membershipSchema } from "@shared/schema";
 import { parseInviteCode } from "@shared/domain/inviteCodes";
 import type { ContextRef, MatchContext } from "@shared/domain/context";
 import { logger } from "../logger";
@@ -80,6 +80,14 @@ async function joinOrganisation(
     return res.status(409).json({
       message: `You are already a member of this ${words.noun}`,
       code: words.alreadyCode,
+      [words.idKey]: organisation.id,
+    });
+  }
+
+  if (organisation.joinOpen === false) {
+    return res.status(403).json({
+      message: `This ${words.noun} is not accepting new members`,
+      code: "MEMBERSHIP_CLOSED",
       [words.idKey]: organisation.id,
     });
   }
@@ -344,6 +352,36 @@ async function loadOrganisationById(
   return { context: expected, organisation };
 }
 
+async function setMembershipOpen(
+  req: AuthRequest,
+  res: Response,
+  context: MatchContext,
+) {
+  const loaded = await loadOrganisationById(parseInt(req.params.id), context, res);
+  if (!loaded) return;
+  const admin = requireUser(req);
+  if (!isAdmin(loaded.organisation, admin.id)) {
+    return res.status(403).json({
+      message: "Only the administrator can change membership",
+      code: "ADMIN_ONLY",
+    });
+  }
+  const parsed = membershipSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: "Invalid input", code: "VALIDATION_ERROR" });
+  }
+  const updated =
+    context === "league"
+      ? await leagueRepo.updateLeague(loaded.organisation.id, { joinOpen: parsed.data.joinOpen })
+      : await clubRepo.updateClub(loaded.organisation.id, { joinOpen: parsed.data.joinOpen });
+  if (!updated) {
+    return res.status(404).json({
+      message: context === "league" ? "League not found" : "Club not found",
+    });
+  }
+  return res.json(context === "league" ? { league: updated } : { club: updated });
+}
+
 export function registerMemberRoutes(app: Express) {
   app.get(
     "/api/leagues/:inviteCode/unlinked-players",
@@ -442,6 +480,24 @@ export function registerMemberRoutes(app: Express) {
       res.status(500).json({
         message: error instanceof Error ? error.message : "Failed to remove member",
       });
+    }
+  });
+
+  app.post("/api/leagues/:id/membership", requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      await setMembershipOpen(req, res, "league");
+    } catch (error) {
+      logger.error("League membership toggle error", error);
+      res.status(500).json({ message: "Failed to update membership" });
+    }
+  });
+
+  app.post("/api/clubs/:id/membership", requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      await setMembershipOpen(req, res, "club");
+    } catch (error) {
+      logger.error("Club membership toggle error", error);
+      res.status(500).json({ message: "Failed to update membership" });
     }
   });
 }

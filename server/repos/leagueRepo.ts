@@ -3,11 +3,12 @@ import { db } from "../db";
 import { eq, or, sql } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import { buildInviteCode, INVITE_ALPHABET, INVITE_BODY_LENGTH } from "@shared/domain/inviteCodes";
-
-const inviteBody = customAlphabet(INVITE_ALPHABET, INVITE_BODY_LENGTH);
+import * as billingRepo from "./billingRepo";
 import * as matchRepo from "./matchRepo";
 import * as valuationRepo from "./valuationRepo";
 import * as playerRepo from "./playerRepo";
+
+const inviteBody = customAlphabet(INVITE_ALPHABET, INVITE_BODY_LENGTH);
 
 export async function getLeague(id: number): Promise<League | undefined> {
   const [league] = await db.select().from(leagues).where(eq(leagues.id, id));
@@ -32,6 +33,7 @@ export async function createLeague(league: InsertLeague, createdBy: number): Pro
       createdAt: new Date(),
     })
     .returning();
+  await billingRepo.ensureBillingAccount({ type: "league", id: newLeague.id });
   return newLeague;
 }
 
@@ -54,6 +56,7 @@ export async function deleteLeague(id: number): Promise<void> {
   }
   await valuationRepo.deleteTierListsByLeague(id);
   await playerRepo.deletePlayersByLeague(id);
+  await billingRepo.deleteAccount({ type: "league", id });
   await db.delete(leagues).where(eq(leagues.id, id));
 }
 

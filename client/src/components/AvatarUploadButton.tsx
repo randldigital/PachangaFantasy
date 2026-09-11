@@ -11,6 +11,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { parseApiErrorBody, describeApiError } from "@/lib/apiError";
+import { apiUrl } from "@/lib/apiBase";
 import UserAvatar from "@/components/UserAvatar";
 
 export default function AvatarUploadButton() {
@@ -32,7 +33,7 @@ export default function AvatarUploadButton() {
       const body = new FormData();
       body.append("avatar", file);
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/users/me/avatar", {
+      const response = await fetch(apiUrl("/api/users/me/avatar"), {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body,
@@ -59,7 +60,7 @@ export default function AvatarUploadButton() {
     setUploading(true);
     try {
       const token = localStorage.getItem("token");
-      await fetch("/api/users/me/avatar", {
+      await fetch(apiUrl("/api/users/me/avatar"), {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         credentials: "include",

@@ -3,6 +3,7 @@ import { db } from "../db";
 import { eq, or, sql } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import { buildInviteCode, INVITE_ALPHABET, INVITE_BODY_LENGTH } from "@shared/domain/inviteCodes";
+import * as billingRepo from "./billingRepo";
 import * as matchRepo from "./matchRepo";
 import * as playerRepo from "./playerRepo";
 import * as valuationRepo from "./valuationRepo";
@@ -31,6 +32,7 @@ export async function createClub(club: InsertClub, createdBy: number): Promise<C
       createdAt: new Date(),
     })
     .returning();
+  await billingRepo.ensureBillingAccount({ type: "club", id: created.id });
   return created;
 }
 
@@ -46,6 +48,7 @@ export async function deleteClub(id: number): Promise<void> {
   }
   await playerRepo.deletePlayersByClub(id);
   await valuationRepo.deleteTierListsByClub(id);
+  await billingRepo.deleteAccount({ type: "club", id });
   await db.delete(clubs).where(eq(clubs.id, id));
 }
 

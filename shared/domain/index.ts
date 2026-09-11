@@ -13,3 +13,4 @@ export * from "./stats";
 export * from "./teams";
 export * from "./marketValue";
 export * from "./ratingAssignments";
+export * from "./entitlements";

@@ -10,12 +10,13 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
-  password: text("password").notNull(),
+  password: text("password"),
   // Vestigial: unused for authorisation. League admin is leagues.createdBy. Phase 2.
   role: text("role").notNull().default("player"), // "admin" | "player"
   // Vestigial: users may belong to many leagues. Phase 2.
   leagueId: integer("league_id"),
   avatarPath: text("avatar_path"),
+  emailVerifiedAt: timestamp("email_verified_at"),
 });
 
 export const leagues = pgTable("leagues", {
@@ -27,6 +28,7 @@ export const leagues = pgTable("leagues", {
   status: text("status").notNull().default("open"), // "open" | "voting" | "closed"
   participants: jsonb("participants").$type<number[]>().notNull().default([]),
   scoringBaseline: doublePrecision("scoring_baseline").notNull().default(5),
+  joinOpen: boolean("join_open").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -44,6 +46,7 @@ export const clubs = pgTable("clubs", {
   status: text("status").notNull().default("open"), // "open" | "voting" | "closed"
   participants: jsonb("participants").$type<number[]>().notNull().default([]),
   scoringBaseline: doublePrecision("scoring_baseline").notNull().default(5),
+  joinOpen: boolean("join_open").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -249,6 +252,63 @@ export const playerMarketValueHistory = pgTable("player_market_value_history", {
   matchPlayerUnique: uniqueIndex("player_market_value_history_match_player").on(table.matchId, table.playerId),
 }));
 
+export const emailVerificationTokens = pgTable("email_verification_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const authIdentities = pgTable("auth_identities", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  provider: text("provider").notNull(),
+  providerUserId: text("provider_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  providerUserUnique: uniqueIndex("auth_identities_provider_user").on(table.provider, table.providerUserId),
+}));
+
+export const plans = pgTable("plans", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+});
+
+export const billingAccounts = pgTable("billing_accounts", {
+  id: serial("id").primaryKey(),
+  subjectType: text("subject_type").$type<"user" | "league" | "club">().notNull(),
+  subjectId: integer("subject_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  subjectUnique: uniqueIndex("billing_accounts_subject").on(table.subjectType, table.subjectId),
+}));
+
+export const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  billingAccountId: integer("billing_account_id").notNull().references(() => billingAccounts.id),
+  planId: integer("plan_id").notNull().references(() => plans.id),
+  status: text("status").notNull().default("active"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  provider: text("provider"),
+  providerRef: text("provider_ref"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  accountUnique: uniqueIndex("subscriptions_billing_account").on(table.billingAccountId),
+}));
+
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  billingAccountId: integer("billing_account_id").notNull().references(() => billingAccounts.id),
+  provider: text("provider").notNull(),
+  providerRef: text("provider_ref"),
+  amountCents: integer("amount_cents").notNull().default(0),
+  currency: text("currency").notNull().default("eur"),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   email: true,
@@ -264,6 +324,7 @@ export const insertLeagueSchema = createInsertSchema(leagues).omit({
   status: true,
   participants: true,
   scoringBaseline: true,
+  joinOpen: true,
   createdAt: true,
 }).extend({
   name: z.string().min(1, "Name is required").max(25, "Name must be 25 characters or less"),
@@ -317,6 +378,7 @@ export const insertClubSchema = createInsertSchema(clubs).omit({
   status: true,
   participants: true,
   scoringBaseline: true,
+  joinOpen: true,
   createdAt: true,
 }).extend({
   name: z.string().min(1, "Name is required").max(25, "Name must be 25 characters or less"),
@@ -368,6 +430,20 @@ export const updateAliasSchema = z.object({
 
 export const resolveClaimSchema = z.object({
   decision: z.enum(["accept", "reject"]),
+});
+
+export const membershipSchema = z.object({
+  joinOpen: z.boolean(),
+});
+
+export const billingCheckoutSchema = z.object({
+  billingAccountId: z.number().int().positive(),
+  planCode: z.string().min(1),
+});
+
+export const billingSubjectQuerySchema = z.object({
+  type: z.enum(["user", "league", "club"]),
+  id: z.coerce.number().int().positive(),
 });
 
 // v0.2 Insert Schemas
@@ -507,3 +583,9 @@ export type MatchRatingAssignment = typeof matchRatingAssignments.$inferSelect;
 export type MatchMvpVote = typeof matchMvpVotes.$inferSelect;
 export type MatchPeerRating = typeof matchPeerRatings.$inferSelect;
 export type PlayerMarketValueHistory = typeof playerMarketValueHistory.$inferSelect;
+export type Plan = typeof plans.$inferSelect;
+export type BillingAccount = typeof billingAccounts.$inferSelect;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type Payment = typeof payments.$inferSelect;
+export type MembershipInput = z.infer<typeof membershipSchema>;
+export type BillingCheckoutInput = z.infer<typeof billingCheckoutSchema>;

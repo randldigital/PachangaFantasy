@@ -7,7 +7,7 @@ Private amateur-football fantasy for a group of friends who play together. Funct
 1. Copy `.env.example` to `.env` and set `DATABASE_URL` and `JWT_SECRET`.
 2. Create a PostgreSQL database.
 3. Install dependencies: `npm install`
-4. Apply schema: `npm run db:push` (or `npm run db:generate` then `npm run db:migrate`)
+4. Apply schema: `npm run db:push` (or apply `migrations/*.sql` in order — production notes in [`docs/deploy.md`](./docs/deploy.md))
 5. Optional demo data: `npm run db:seed`
 
 ## Run
@@ -29,3 +29,6 @@ See [`docs/testing.md`](./docs/testing.md). Pull requests run the same checks in
 ## Architecture
 
 See [`docs/architecture.md`](./docs/architecture.md). One frontend (React), one Express API, one PostgreSQL database, schema in `shared/schema.ts`.
+
+- [Deploy](./docs/deploy.md) — env, migrations, `STORAGE_DIR`
+- [Mobile](./docs/mobile.md) — same Vite client, later WebView wrap

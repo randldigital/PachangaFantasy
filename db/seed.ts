@@ -2,6 +2,7 @@ import "dotenv/config";
 import { eq } from "drizzle-orm";
 import { db } from "../server/db";
 import { users, leagues, players, matches, matchParticipants } from "@shared/schema";
+import * as billingRepo from "../server/repos/billingRepo";
 import bcrypt from "bcrypt";
 import { nanoid } from "nanoid";
 
@@ -24,12 +25,13 @@ async function seed() {
     email: DEMO_EMAIL,
     password,
     role: "player",
+    emailVerifiedAt: new Date(),
   }).returning();
 
   const members = await db.insert(users).values([
-    { username: "lucia", email: "lucia@pachanga.test", password, role: "player" },
-    { username: "miguel", email: "miguel@pachanga.test", password, role: "player" },
-    { username: "ana", email: "ana@pachanga.test", password, role: "player" },
+    { username: "lucia", email: "lucia@pachanga.test", password, role: "player", emailVerifiedAt: new Date() },
+    { username: "miguel", email: "miguel@pachanga.test", password, role: "player", emailVerifiedAt: new Date() },
+    { username: "ana", email: "ana@pachanga.test", password, role: "player", emailVerifiedAt: new Date() },
   ]).returning();
 
   const participantIds = [owner.id, ...members.map((member) => member.id)];
@@ -42,6 +44,7 @@ async function seed() {
     participants: participantIds,
     status: "closed",
   }).returning();
+  await billingRepo.ensureBillingAccount({ type: "league", id: league.id });
 
   const registeredPlayers = [
     { user: owner, name: "Carlos", value: 24 },

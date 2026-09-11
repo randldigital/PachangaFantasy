@@ -21,6 +21,9 @@ import PrimaryActionBanner from "@/components/league/PrimaryActionBanner";
 import AddPlayerForm from "@/components/league/AddPlayerForm";
 import DeleteLeagueButton from "@/components/league/DeleteLeagueButton";
 import LeaveOrganisationButton from "@/components/LeaveOrganisationButton";
+import MembershipJoinToggle from "@/components/MembershipJoinToggle";
+import PlanChip from "@/components/PlanChip";
+import AdSlot from "@/components/AdSlot";
 import RosterManagerDialog from "@/components/league/RosterManagerDialog";
 import { pickActiveMatch } from "@shared/domain/matchLifecycle";
 import { pickStatsMatch } from "@shared/domain/stats";
@@ -138,9 +141,11 @@ export default function LeagueHub() {
                   )}
                 </Button>
                 <DeleteLeagueButton league={league} isLeagueCreator={isAdmin} />
+                <MembershipJoinToggle kind="league" organisationId={league.id} joinOpen={league.joinOpen !== false} />
                 </>
               )}
               {!isAdmin && <LeaveOrganisationButton kind="league" organisationId={league.id} />}
+              <PlanChip type="league" id={league.id} />
               <Badge variant="secondary" className="bg-slate-700 text-white">
                 {league.inviteCode}
               </Badge>
@@ -153,6 +158,7 @@ export default function LeagueHub() {
         </div>
       </div>
 
+      <AdSlot slot="hub.sidebar" />
       <PrimaryActionBanner
         league={league}
         matches={matches}

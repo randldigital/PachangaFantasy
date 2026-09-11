@@ -9,9 +9,11 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Navbar from "@/components/Navbar";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import VerifyEmail from "@/pages/VerifyEmail";
 import Overview from "@/pages/Overview";
 import LeagueHub from "@/pages/LeagueHub";
 import ClubHub from "@/pages/ClubHub";
+import Billing from "@/pages/Billing";
 import NotFound from "@/pages/not-found";
 import "./lib/i18n";
 
@@ -20,6 +22,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
+      <Route path="/verify" component={VerifyEmail} />
       
       {/* Protected Routes */}
       <Route path="/overview">
@@ -49,6 +52,20 @@ function Router() {
           <ClubHub />
         </ProtectedRoute>
       </Route>
+
+      <Route path="/billing">
+        <ProtectedRoute>
+          <Navbar />
+          <Billing />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/plans">
+        <ProtectedRoute>
+          <Navbar />
+          <Billing />
+        </ProtectedRoute>
+      </Route>
       
       <Route path="/">
         <ProtectedRoute>
@@ -67,7 +84,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
-          <div className="min-h-screen bg-primary text-text-primary">
+          <div className="min-h-screen bg-primary text-text-primary pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
             <Toaster />
             <Router />
           </div>

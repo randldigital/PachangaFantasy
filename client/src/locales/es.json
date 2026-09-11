@@ -7,7 +7,8 @@
     "myLeagues": "Mis Ligas",
     "createLeague": "Crear Liga",
     "logout": "Cerrar Sesión",
-    "welcome": "Hola, {{name}}"
+    "welcome": "Hola, {{name}}",
+    "billing": "Facturación"
   },
   "auth": {
     "login": "Iniciar Sesión",
@@ -17,10 +18,21 @@
     "password": "Contraseña",
     "noAccount": "¿No tienes cuenta? Regístrate",
     "hasAccount": "¿Ya tienes cuenta? Inicia sesión",
-    "loginButton": "Iniciar Sesión",
-    "registerButton": "Registrarse",
+    "loginButton": "Entrar",
+    "registerButton": "Crear cuenta",
     "invalidCredentials": "El correo o la contraseña no son correctos",
-    "registerFailed": "No se pudo crear la cuenta. Prueba con otro correo o nombre."
+    "registerFailed": "No se pudo crear la cuenta. Prueba con otro correo o nombre.",
+    "loginSubtitle": "Entra a tus ligas y clubs.",
+    "registerSubtitle": "Crea una cuenta. Te enviaremos un enlace de confirmación.",
+    "continueGoogle": "Continuar con Google",
+    "verifyTitle": "Revisa tu correo",
+    "verifyPending": "Hemos enviado un enlace de confirmación a {{email}}. Ábrelo para terminar de crear la cuenta.",
+    "verifyWorking": "Confirmando tu correo…",
+    "verifyFailed": "Ese enlace no es válido o ha caducado.",
+    "verifyResent": "Si la cuenta existe, hemos enviado otro correo.",
+    "resendVerification": "Reenviar correo de confirmación",
+    "backToLogin": "Volver a entrar",
+    "emailNotConfigured": "No se pueden crear cuentas hasta que el correo esté configurado."
   },
   "dashboard": {
     "title": "Mi Dashboard",
@@ -292,7 +304,16 @@
     "CLAIM_ALREADY_RESOLVED": "Esta solicitud ya está resuelta.",
     "MATCH_FULL": "Este partido ya está completo.",
     "SIDE_OVER_CAPACITY": "Un equipo tiene más jugadores de los que permite el tamaño del partido.",
-    "SIDE_INCOMPLETE": "Cada equipo necesita el número exacto de jugadores para empezar."
+    "SIDE_INCOMPLETE": "Cada equipo necesita el número exacto de jugadores para empezar.",
+    "MEMBERSHIP_CLOSED": "Este grupo no admite miembros nuevos.",
+    "EMAIL_NOT_CONFIGURED": "El envío de correo aún no está configurado.",
+    "EMAIL_NOT_VERIFIED": "Confirma tu correo antes de entrar.",
+    "EMAIL_VERIFICATION_REQUIRED": "Revisa tu correo para confirmar la cuenta.",
+    "INVALID_VERIFICATION_TOKEN": "Ese enlace no es válido o ha caducado.",
+    "GOOGLE_NOT_CONFIGURED": "El acceso con Google no está disponible.",
+    "PAYMENTS_DISABLED": "Los pagos aún no están abiertos.",
+    "PAYMENTS_PROVIDER_NOT_CONFIGURED": "El pago aún no está conectado.",
+    "ENTITLEMENT_REQUIRED": "Tu plan actual no incluye eso."
   },
   "match": {
     "noActiveMatch": "No hay partidos activos",
@@ -606,7 +627,10 @@
     "removeTitle": "¿Quitar a este miembro?",
     "removeDescription": "\"{{name}}\" sigue en la plantilla, el historial y la clasificación, pero se desvincula la cuenta. Cualquiera puede reclamar ese nombre; volver a entrar necesita tu confirmación.",
     "removing": "Quitando...",
-    "removed": "Miembro quitado"
+    "removed": "Miembro quitado",
+    "joinOpenLabel": "Aceptar miembros nuevos",
+    "joinOpen": "Altas abiertas",
+    "joinClosed": "Altas cerradas"
   },
   "season": {
     "label": "Temporada",
@@ -677,6 +701,28 @@
       "historial": "Historial",
       "valoracion": "Valoración",
       "stats": "Estadísticas"
+    }
+  },
+  "billing": {
+    "title": "Planes y facturación",
+    "subtitle": "Consulta el plan de tu cuenta, ligas y clubs. El pago aún no está abierto.",
+    "currentPlan": "Plan actual",
+    "subject": "Sujeto",
+    "status": "Estado",
+    "periodEnd": "El periodo actual termina",
+    "paymentsOff": "Los pagos no están activados. Puedes ver los planes; no se cobrará nada.",
+    "comingSoon": "Próximamente",
+    "included": "Incluido",
+    "currentCta": "Plan actual",
+    "upgradeCta": "Mejorar",
+    "features": {
+      "league.core": "Ligas fantasy",
+      "club.core": "Modo club",
+      "match.core": "Partidos",
+      "lineup.core": "Alineaciones",
+      "valuation.core": "Valoración y valor de mercado",
+      "claims.core": "Reclamaciones y plantilla",
+      "org.plus_placeholder": "Plus (aún no se vende)"
     }
   }
 }

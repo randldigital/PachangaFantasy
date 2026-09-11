@@ -1,0 +1,16 @@
+{
+  "name": "Pachanga",
+  "short_name": "Pachanga",
+  "display": "standalone",
+  "start_url": "/",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

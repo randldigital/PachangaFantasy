@@ -16,6 +16,7 @@ export interface Organisation {
   name: string;
   createdBy: number;
   participants: number[] | null;
+  joinOpen?: boolean;
 }
 
 export function isMember(organisation: Organisation, userId: number): boolean {

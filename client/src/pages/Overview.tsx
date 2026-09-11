@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import CreateLeagueForm from "@/components/league/CreateLeagueForm";
 import CreateClubForm from "@/components/club/CreateClubForm";
 import JoinForm from "@/components/JoinForm";
+import AdSlot from "@/components/AdSlot";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import type { Club, League } from "@shared/schema";
@@ -70,6 +71,7 @@ export default function Overview() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-wrap justify-between items-center gap-3 mb-8">
           <h2 className="text-3xl font-bold text-white">{t("overview.title")}</h2>
+          <AdSlot slot="overview.banner" />
           <div className="flex flex-wrap gap-3">
             <Dialog open={showJoin} onOpenChange={setShowJoin}>
               <DialogTrigger asChild>

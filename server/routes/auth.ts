@@ -1,17 +1,68 @@
 import type { Express, Response } from "express";
-import jwt from "jsonwebtoken";
 import { insertUserSchema, loginSchema } from "@shared/schema";
-import { env } from "../env";
+import type { User } from "@shared/schema";
+import {
+  adsEnabled,
+  env,
+  googleConfigured,
+  paymentsEnabled,
+  publicUrl,
+} from "../env";
+import { logger } from "../logger";
+import { getMailer, isMailConfigured } from "../mail/mailer";
 import { requireAuth, requireUser } from "../middleware/auth";
 import * as userRepo from "../repos/userRepo";
+import * as verifyRepo from "../repos/verifyRepo";
 import type { AuthRequest } from "../types";
 
+const resendAt = new Map<number, number>();
+const RESEND_COOLDOWN_MS = 60_000;
+
+function publicUser(user: User) {
+  return { ...user, password: undefined };
+}
+
+function verifyLink(rawToken: string): string {
+  const origin = publicUrl() || `http://localhost:${env.PORT}`;
+  return `${origin}/verify?token=${encodeURIComponent(rawToken)}`;
+}
+
+async function sendVerificationEmail(user: User, rawToken: string) {
+  const link = verifyLink(rawToken);
+  await getMailer().sendMail({
+    to: user.email,
+    subject: "Confirm your Pachanga email",
+    text: `Confirm your email by opening this link:\n${link}\n`,
+    html: `<p>Confirm your email by opening this link:</p><p><a href="${link}">${link}</a></p>`,
+  });
+}
+
+function issueToken(user: User) {
+  return userRepo.signUserToken(user);
+}
+
 export function registerAuthRoutes(app: Express) {
+  app.get("/api/auth/features", (_req, res: Response) => {
+    res.json({
+      google: googleConfigured(),
+      payments: paymentsEnabled(),
+      ads: adsEnabled(),
+      email: isMailConfigured(),
+    });
+  });
+
   app.post("/api/auth/register", async (req, res: Response) => {
     try {
       const incoming = { ...(req.body as Record<string, unknown>) };
       delete incoming.role;
       const userData = insertUserSchema.parse(incoming);
+
+      if (!isMailConfigured()) {
+        return res.status(503).json({
+          message: "Email delivery is not configured",
+          code: "EMAIL_NOT_CONFIGURED",
+        });
+      }
 
       const existingUser = await userRepo.getUserByEmail(userData.email);
       if (existingUser) {
@@ -19,10 +70,17 @@ export function registerAuthRoutes(app: Express) {
       }
 
       const user = await userRepo.createUser(userData);
-      const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, { expiresIn: "7d" });
+      const rawToken = await verifyRepo.issueVerificationToken(user.id);
+      await sendVerificationEmail(user, rawToken);
+      resendAt.set(user.id, Date.now());
 
-      res.json({ user: { ...user, password: undefined }, token });
-    } catch {
+      res.status(201).json({
+        message: "Check your email to verify the account",
+        code: "EMAIL_VERIFICATION_REQUIRED",
+        email: user.email,
+      });
+    } catch (error) {
+      logger.error("Register error", error);
       res.status(400).json({ message: "Invalid input" });
     }
   });
@@ -35,15 +93,103 @@ export function registerAuthRoutes(app: Express) {
       if (!result) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
+      if (!result.user.emailVerifiedAt) {
+        return res.status(403).json({
+          message: "Verify your email before signing in",
+          code: "EMAIL_NOT_VERIFIED",
+          email: result.user.email,
+        });
+      }
 
-      res.json({ user: { ...result.user, password: undefined }, token: result.token });
+      res.json({ user: publicUser(result.user), token: result.token });
     } catch {
       res.status(400).json({ message: "Invalid input" });
     }
   });
 
+  app.get("/api/auth/verify", async (req, res: Response) => {
+    const token = typeof req.query.token === "string" ? req.query.token : "";
+    if (!token) {
+      return res.status(400).json({
+        message: "Missing verification token",
+        code: "INVALID_VERIFICATION_TOKEN",
+      });
+    }
+    const consumed = await verifyRepo.consumeVerificationToken(token);
+    if (!consumed) {
+      return res.status(400).json({
+        message: "Invalid or expired verification token",
+        code: "INVALID_VERIFICATION_TOKEN",
+      });
+    }
+    const user = await userRepo.markEmailVerified(consumed.userId);
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid or expired verification token",
+        code: "INVALID_VERIFICATION_TOKEN",
+      });
+    }
+    res.json({ user: publicUser(user), token: issueToken(user) });
+  });
+
+  app.post("/api/auth/resend-verification", async (req, res: Response) => {
+    try {
+      const email = typeof req.body?.email === "string" ? req.body.email : "";
+      if (!email) {
+        return res.status(400).json({ message: "Invalid input" });
+      }
+      if (!isMailConfigured()) {
+        return res.status(503).json({
+          message: "Email delivery is not configured",
+          code: "EMAIL_NOT_CONFIGURED",
+        });
+      }
+      const user = await userRepo.getUserByEmail(email);
+      if (!user || user.emailVerifiedAt) {
+        return res.json({ ok: true });
+      }
+      const last = resendAt.get(user.id) ?? 0;
+      if (Date.now() - last < RESEND_COOLDOWN_MS) {
+        return res.json({ ok: true });
+      }
+      const rawToken = await verifyRepo.issueVerificationToken(user.id);
+      await sendVerificationEmail(user, rawToken);
+      resendAt.set(user.id, Date.now());
+      res.json({ ok: true });
+    } catch (error) {
+      logger.error("Resend verification error", error);
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  app.get("/api/auth/google", (_req, res: Response) => {
+    if (!googleConfigured()) {
+      return res.status(501).json({
+        message: "Google sign-in is not configured",
+        code: "GOOGLE_NOT_CONFIGURED",
+      });
+    }
+    res.status(501).json({
+      message: "Google sign-in is not configured",
+      code: "GOOGLE_NOT_CONFIGURED",
+    });
+  });
+
+  app.get("/api/auth/google/callback", (_req, res: Response) => {
+    if (!googleConfigured()) {
+      return res.status(501).json({
+        message: "Google sign-in is not configured",
+        code: "GOOGLE_NOT_CONFIGURED",
+      });
+    }
+    res.status(501).json({
+      message: "Google sign-in is not configured",
+      code: "GOOGLE_NOT_CONFIGURED",
+    });
+  });
+
   app.get("/api/auth/me", requireAuth, async (req: AuthRequest, res: Response) => {
     const user = requireUser(req);
-    res.json({ user: { ...user, password: undefined } });
+    res.json({ user: publicUser(user) });
   });
 }

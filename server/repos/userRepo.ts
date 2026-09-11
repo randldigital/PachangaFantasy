@@ -24,17 +24,38 @@ export async function getUserByUsername(username: string): Promise<User | undefi
   return user || undefined;
 }
 
-export async function createUser(insertUser: InsertUser): Promise<User> {
-  const hashedPassword = await bcrypt.hash(insertUser.password, 10);
+export function createUser(insertUser: InsertUser): Promise<User> {
+  return createVerifiedUser(insertUser, false);
+}
+
+export async function createVerifiedUser(
+  insertUser: InsertUser,
+  verified: boolean,
+): Promise<User> {
+  const password = insertUser.password;
+  if (!password) {
+    throw new Error("Password required");
+  }
+  const hashedPassword = await bcrypt.hash(password, 10);
   const [user] = await db
     .insert(users)
     .values({
       username: insertUser.username,
       email: insertUser.email,
       password: hashedPassword,
+      emailVerifiedAt: verified ? new Date() : null,
     })
     .returning();
   return user;
+}
+
+export async function markEmailVerified(userId: number): Promise<User | undefined> {
+  const [updated] = await db
+    .update(users)
+    .set({ emailVerifiedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning();
+  return updated || undefined;
 }
 
 export async function setAvatarPath(
@@ -54,7 +75,7 @@ export async function authenticateUser(
   password: string,
 ): Promise<{ user: User; token: string } | null> {
   const user = await getUserByEmail(email);
-  if (!user) {
+  if (!user || !user.password) {
     return null;
   }
 
@@ -63,11 +84,9 @@ export async function authenticateUser(
     return null;
   }
 
-  const token = jwt.sign(
-    { userId: user.id, email: user.email },
-    env.JWT_SECRET,
-    { expiresIn: "7d" },
-  );
+  return { user, token: signUserToken(user) };
+}
 
-  return { user, token };
+export function signUserToken(user: { id: number; email: string }): string {
+  return jwt.sign({ userId: user.id, email: user.email }, env.JWT_SECRET, { expiresIn: "7d" });
 }

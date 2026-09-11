@@ -2,21 +2,31 @@ import type { Express } from "express";
 import request from "supertest";
 import * as ratingRepo from "../../server/repos/ratingRepo";
 import { meanPeerScore, mvpPlayerIds, playerMatchRating } from "@shared/domain/scoring";
+import { testMailer } from "./mailer";
 
 export async function registerUser(
   app: Express,
   index: number,
   extras: Record<string, unknown> = {},
 ) {
+  const email =
+    typeof extras.email === "string" ? extras.email : `player${index}@pachanga.test`;
   const response = await request(app)
     .post("/api/auth/register")
     .send({
       username: `player${index}`,
-      email: `player${index}@pachanga.test`,
+      email,
       password: "secret1",
       ...extras,
     });
-  return response;
+  if (response.status !== 201) {
+    return response;
+  }
+  const token = testMailer.lastTokenFor(email);
+  if (!token) {
+    return response;
+  }
+  return request(app).get("/api/auth/verify").query({ token });
 }
 
 export async function createLeagueWithMembers(app: Express, memberCount = 2) {

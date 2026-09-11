@@ -1,6 +1,6 @@
 # Pachanga Fantasy — Functional Requirements
 
-**Status:** Functional baseline, version **2.0**
+**Status:** Functional baseline, version **2.1**
 **Document type:** Functional specification (not an architecture document)
 **Audience:** Developers, testers and AI agents implementing or modifying Pachanga Fantasy
 
@@ -11,7 +11,8 @@
 | **Shared** | User, avatar, alias, membership in many contexts, invite codes, Player belongs to League xor Club, claim requests, seasons | 1–4, 3.3, 7–8 |
 | **Fantasy League** | The existing dual-role loop: 5/7/11 real sides, lineup of five, Team A/B, valuation, Market Value, Manager/Player scoring, force-score, rankings and history by season | 5–22 |
 | **Club Mode** | A separate experience: one real squad versus an opponent name and score. No lineup, no Market Value, no Team A/B | 23 |
-| **Cross-cutting** | Future features, technical notes, acceptance | 24–26 |
+| **Public-ready** | Email verification, membership close, billing accounts, `/billing`, optional Google/payments/ads | 3.4, 7.4, 24 |
+| **Cross-cutting** | Future features, technical notes, acceptance | 25–27 |
 
 ---
 
@@ -55,6 +56,16 @@ These extend Phase 0. They are product rules, not recommendations.
 | **P2.7** | Club Player Points = peer average + goals×3 + assists×2 + minutes component (max 5 at 90 minutes). **Club result weight** and **Club MVP weight** require product confirmation and must not be invented; persist W/D/L and MVP for history only until confirmed. |
 | **P2.8** | Club force-score fills missing **incoming assigned** ratings with **6.5**; existing objective stats still count. After score or force, scoring is definitive. Admin **close** is a separate action (`scored` → `closed`). |
 
+### Phase 2.1 decisions (11 September 2026)
+
+| ID | Decision |
+|---|---|
+| **P2.1.1** | **New accounts must verify email** before they receive a session. Existing 2.0 users are backfilled as verified. If SMTP is unset, register returns `503 EMAIL_NOT_CONFIGURED`. |
+| **P2.1.2** | League/Club **valuation `status` is not membership**. `joinOpen` (default true) closes join; invite codes still resolve. Closed join returns `403 MEMBERSHIP_CLOSED`. |
+| **P2.1.3** | Subscriptions belong to a **billing account** whose subject is a User **or** a League **or** a Club. Org-first: every League and Club is seeded on `free`. Members inherit that org plan in that context. A personal User account exists for later SKUs and does not upgrade leagues they merely joined. |
+| **P2.1.4** | `free` includes every current 2.0 football feature. Paid gates are **server-side** (`requireEntitlement`). Google, payments and ads stay off until env is set. Ads have **no** HTTP stub; `/api/auth/features` reports `ads: false` and `AdSlot` renders nothing. |
+| **P2.1.5** | One React/Vite client is the future mobile UI. Do not add a second frontend. |
+
 ### How to read the status markers
 
 Throughout this document, rules are marked so that a reader can tell intent from reality:
@@ -70,7 +81,7 @@ A rule without a marker is a product principle rather than a testable behaviour.
 
 ### Documentation used to produce this file
 
-This document was derived from the in-repository project narrative (`replit.md`, `COMPREHENSIVE_DOCUMENTATION.md`, `db/README.md`, the original feature briefs in `attached_assets/`) and from a direct reading of the current source code (`shared/schema.ts`, `server/routes.ts`, `server/storage.ts`, and the React client). Where the narrative and the code disagree, the code was treated as evidence of *what exists*, and this document states *what should be true*.
+This document was derived from in-repository historical notes and from a direct reading of the current source code (`shared/schema.ts` and the React client). Where the narrative and the code disagree, the code was treated as evidence of *what exists*, and this document states *what should be true*.
 
 ---
 
@@ -232,13 +243,19 @@ The user's journey, end to end.
 
 A new user must be able to create an account. **[Implemented]**
 
-The functional requirement is that the application can identify the user persistently and associate them with leagues, clubs, player identities, match participation, fantasy lineups, statistics and rankings. The authentication mechanism itself is a technical detail and is deliberately not specified here (see Section 25).
+The functional requirement is that the application can identify the user persistently and associate them with leagues, clubs, player identities, match participation, fantasy lineups, statistics and rankings. The authentication mechanism itself is a technical detail and is deliberately not specified here (see Section 26).
 
 Current collected data: a display name, an email address and a password. Rules in force:
 
 - The password must be at least 6 characters. **[Implemented]**
 - An email address may only be used by one account. **[Implemented]**
 - Registration must not silently succeed with an empty password. **[Implemented]**
+- **New accounts must verify email** before a session JWT is issued. Register does not log the user in. If SMTP is unset, register returns `503 EMAIL_NOT_CONFIGURED`. **[Implemented]** (P2.1.1)
+- Users that already existed before 2.1 are treated as verified (`email_verified_at` backfill). **[Implemented]**
+
+Display names (usernames) need not be unique as football identity. The alias inside a League or Club must be unique in that context, compared case-insensitively. **[Implemented]**
+
+Users are not auto-created as Players from their username on join. They supply an alias (Section 3.3). **[Implemented]**
 
 Display names (usernames) need not be unique as football identity. The alias inside a League or Club must be unique in that context, compared case-insensitively. **[Implemented]**
 
@@ -247,6 +264,8 @@ Users are not auto-created as Players from their username on join. They supply a
 ### 4.2 Login
 
 An existing user must be able to authenticate and recover their application context. **[Implemented]**
+
+Unverified accounts are rejected at login with `403 EMAIL_NOT_VERIFIED`. **[Implemented]**
 
 After login the user is taken directly to their league context. There must be no unnecessary intermediate screens between logging in and seeing either their leagues or the two actions that create one.
 
@@ -358,6 +377,7 @@ A registered user joins a league by entering its invite code **and an alias**. T
 1. Enter an invite code (`L-XXXXXX` or a legacy 6-character League code) and an alias.
 2. The system resolves the corresponding league (`L-` and legacy only; `C-` never hits leagues).
 3. If the alias matches an unlinked Player, join is **blocked** with `CLAIM_PENDING` until the administrator resolves it (Section 3.3).
+4. If `joinOpen` is false, join is **blocked** with `403 MEMBERSHIP_CLOSED`. The invite still resolves (wrong codes still 404). Listing unlinked players by invite still works. **[Implemented]** (P2.1.2)
 4. If the alias is free, the user becomes a **League Member** and a **Player** under that alias.
 5. The user gains access to the league's functionality.
 
@@ -1322,7 +1342,39 @@ This does **not** add result or MVP coefficients to Club Player Points.
 - Automated coverage: `tests/api/club-entity.test.ts`, `tests/api/club-match.test.ts` (full loop: create club → join alias → match → participants → result → stats+minutes → ratings+MVP → calculate → close → ranking + history by season), `tests/api/club-valuation.test.ts`, plus unit tests for assignments, the scoring formula and the Club VM adapter.
 
 ---
-## 24. Future Features
+## 24. Public-ready foundations (2.1)
+
+These are product rules for a public deployment. They do **not** change Fantasy or Club football scoring.
+
+### 24.1 Email and Google
+
+- Register creates an unverified user and emails a verification link. **[Implemented]**
+- Google OAuth routes exist and return `501 GOOGLE_NOT_CONFIGURED` until both client id and secret are set. The UI shows “Continue with Google” only when `/api/auth/features` reports `google: true`. **[Implemented]**
+
+### 24.2 Membership close
+
+The administrator of a League or Club may close or reopen join (`joinOpen`) independently of valuation `status`. **[Implemented]**
+
+### 24.3 Billing accounts and `/billing`
+
+Subscriptions are owned by a **billing account** for a User, a League or a Club — not hard-wired to `users.id`. Every League and Club is provisioned on the seeded `free` plan. Members inherit that org’s entitlements in that context. **[Implemented]**
+
+`free` includes every current 2.0 feature. A catalog-only `plus` plan exists for comparison and for a server-side placeholder gate (`org.plus_placeholder`); football routes are not locked behind payment. **[Implemented]**
+
+`/billing` (and `/plans`) shows the current plan, catalog cards, a feature comparison, status, and an upgrade control. While `PAYMENTS_ENABLED` is false, checkout and the webhook return `501 PAYMENTS_DISABLED` and the page does not charge. **[Implemented]**
+
+Paid gates must be enforced on the server (`requireEntitlement` / `403 ENTITLEMENT_REQUIRED`), not only by hiding UI. **[Implemented]**
+
+### 24.4 Ads
+
+`/api/auth/features` reports `ads: false` unless `ADS_ENABLED`. `AdSlot` renders nothing. There is no ads HTTP endpoint and no ads `501`. **[Implemented]**
+
+### 24.5 Single client
+
+The React/Vite responsive client is the only UI and the future mobile UI. Do not add a second frontend. **[Implemented]**
+
+---
+## 25. Future Features
 
 The following are **`Future / Not required for the current core loop`**.
 
@@ -1346,7 +1398,7 @@ They are recorded so they are not lost, not because they are committed. **A futu
 
 ---
 
-## 25. Lightweight Technical Recommendations
+## 26. Lightweight Technical Recommendations
 
 This document is functional. This section is deliberately short and contains no schemas, endpoint catalogues or architecture diagrams; those belong in separate technical documentation.
 
@@ -1415,7 +1467,7 @@ Where an operation has no functional counterpart in this document, question whet
 
 ---
 
-## 26. Acceptance Criteria / Functional Validation Checklist
+## 27. Acceptance Criteria / Functional Validation Checklist
 
 ### 26.1 Worked examples
 

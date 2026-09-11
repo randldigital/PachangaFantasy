@@ -2,9 +2,11 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import { registerRoutes } from "./routes";
 import { AppError, toErrorBody } from "./errors";
 import { logger } from "./logger";
+import { corsMiddleware } from "./cors";
 
 export function createApp(): Express {
   const app = express();
+  app.use(corsMiddleware);
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 

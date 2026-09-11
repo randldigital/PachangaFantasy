@@ -18,3 +18,74 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+function readFlag(name: string): boolean {
+  const value = (process.env[name] ?? "").trim().toLowerCase();
+  return value === "true" || value === "1" || value === "yes";
+}
+
+/** Optional settings are read live so tests can toggle flags without re-importing. */
+export function publicUrl(): string {
+  return (process.env.PUBLIC_URL ?? "").replace(/\/$/, "");
+}
+
+export function storageDir(): string {
+  const value = (process.env.STORAGE_DIR ?? "").trim();
+  return value || "uploads";
+}
+
+export function smtpHost(): string {
+  return (process.env.SMTP_HOST ?? "").trim();
+}
+
+export function smtpPort(): number {
+  const raw = (process.env.SMTP_PORT ?? "").trim();
+  if (!raw) return 587;
+  const port = Number(raw);
+  return Number.isFinite(port) && port > 0 ? port : 587;
+}
+
+export function smtpUser(): string {
+  return process.env.SMTP_USER ?? "";
+}
+
+export function smtpPass(): string {
+  return process.env.SMTP_PASS ?? "";
+}
+
+export function smtpFrom(): string {
+  const from = (process.env.SMTP_FROM ?? "").trim();
+  return from || "Pachanga <noreply@localhost>";
+}
+
+export function googleClientId(): string {
+  return (process.env.GOOGLE_CLIENT_ID ?? "").trim();
+}
+
+export function googleClientSecret(): string {
+  return (process.env.GOOGLE_CLIENT_SECRET ?? "").trim();
+}
+
+export function googleConfigured(): boolean {
+  return Boolean(googleClientId() && googleClientSecret());
+}
+
+export function paymentsEnabled(): boolean {
+  return readFlag("PAYMENTS_ENABLED");
+}
+
+export function adsEnabled(): boolean {
+  return readFlag("ADS_ENABLED");
+}
+
+export function defaultPlanCode(): string {
+  const value = (process.env.FEATURE_DEFAULT_PLAN ?? "").trim();
+  return value || "free";
+}
+
+export function corsOrigins(): string[] {
+  return (process.env.CORS_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}

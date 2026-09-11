@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { testMailer } from "./mailer";
 
 const TEST_SCHEMA = process.env.TEST_SCHEMA || "pachanga_test";
 
@@ -52,10 +53,11 @@ export async function resetTestSchema() {
       id serial PRIMARY KEY,
       username text NOT NULL UNIQUE,
       email text NOT NULL UNIQUE,
-      password text NOT NULL,
+      password text,
       role text NOT NULL DEFAULT 'player',
       league_id integer,
-      avatar_path text
+      avatar_path text,
+      email_verified_at timestamp
     );
     CREATE TABLE IF NOT EXISTS leagues (
       id serial PRIMARY KEY,
@@ -66,6 +68,7 @@ export async function resetTestSchema() {
       status text NOT NULL DEFAULT 'open',
       participants jsonb NOT NULL DEFAULT '[]'::jsonb,
       scoring_baseline double precision NOT NULL DEFAULT 5,
+      join_open boolean NOT NULL DEFAULT true,
       created_at timestamp DEFAULT now()
     );
     CREATE TABLE IF NOT EXISTS clubs (
@@ -77,6 +80,7 @@ export async function resetTestSchema() {
       status text NOT NULL DEFAULT 'open',
       participants jsonb NOT NULL DEFAULT '[]'::jsonb,
       scoring_baseline double precision NOT NULL DEFAULT 5,
+      join_open boolean NOT NULL DEFAULT true,
       created_at timestamp DEFAULT now()
     );
     CREATE TABLE IF NOT EXISTS players (
@@ -230,6 +234,51 @@ export async function resetTestSchema() {
       breakdown jsonb NOT NULL,
       created_at timestamp DEFAULT now()
     );
+    CREATE TABLE IF NOT EXISTS email_verification_tokens (
+      id serial PRIMARY KEY,
+      user_id integer NOT NULL,
+      token_hash text NOT NULL UNIQUE,
+      expires_at timestamp NOT NULL,
+      created_at timestamp DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS auth_identities (
+      id serial PRIMARY KEY,
+      user_id integer NOT NULL,
+      provider text NOT NULL,
+      provider_user_id text NOT NULL,
+      created_at timestamp DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS plans (
+      id serial PRIMARY KEY,
+      code text NOT NULL UNIQUE,
+      name text NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS billing_accounts (
+      id serial PRIMARY KEY,
+      subject_type text NOT NULL,
+      subject_id integer NOT NULL,
+      created_at timestamp DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id serial PRIMARY KEY,
+      billing_account_id integer NOT NULL,
+      plan_id integer NOT NULL,
+      status text NOT NULL DEFAULT 'active',
+      current_period_end timestamp,
+      provider text,
+      provider_ref text,
+      created_at timestamp DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS payments (
+      id serial PRIMARY KEY,
+      billing_account_id integer NOT NULL,
+      provider text NOT NULL,
+      provider_ref text,
+      amount_cents integer NOT NULL DEFAULT 0,
+      currency text NOT NULL DEFAULT 'eur',
+      status text NOT NULL DEFAULT 'pending',
+      created_at timestamp DEFAULT now()
+    );
   `);
 
   await client.unsafe(`ALTER TABLE players DROP COLUMN IF EXISTS position`);
@@ -306,9 +355,22 @@ export async function resetTestSchema() {
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS stat_reports_match_player ON stat_reports (match_id, player_id)`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS player_match_points_match_player ON player_match_points (match_id, player_id)`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS player_market_value_history_match_player ON player_market_value_history (match_id, player_id)`);
+  await client.unsafe(`ALTER TABLE users ALTER COLUMN password DROP NOT NULL`);
+  await client.unsafe(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at timestamp`);
+  await client.unsafe(`ALTER TABLE leagues ADD COLUMN IF NOT EXISTS join_open boolean NOT NULL DEFAULT true`);
+  await client.unsafe(`ALTER TABLE clubs ADD COLUMN IF NOT EXISTS join_open boolean NOT NULL DEFAULT true`);
+  await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS auth_identities_provider_user ON auth_identities (provider, provider_user_id)`);
+  await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS billing_accounts_subject ON billing_accounts (subject_type, subject_id)`);
+  await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_billing_account ON subscriptions (billing_account_id)`);
 
   await client.unsafe(`
     TRUNCATE TABLE
+      payments,
+      subscriptions,
+      billing_accounts,
+      plans,
+      email_verification_tokens,
+      auth_identities,
       player_market_value_history,
       match_peer_ratings,
       match_mvp_votes,
@@ -329,6 +391,9 @@ export async function resetTestSchema() {
       users
     RESTART IDENTITY CASCADE
   `);
+
+  await client.unsafe(`INSERT INTO plans (code, name) VALUES ('free', 'Free'), ('plus', 'Plus')`);
+  testMailer.reset();
 
   await client.end();
 }

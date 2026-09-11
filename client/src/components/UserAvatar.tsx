@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { apiUrl } from "@/lib/apiBase";
 
 /** Avatar endpoints require a bearer token, so the image is fetched into an object URL. */
 export function useAvatarUrl(userId: number | null | undefined): string | undefined {
@@ -16,7 +17,7 @@ export function useAvatarUrl(userId: number | null | undefined): string | undefi
     let cancelled = false;
     const token = localStorage.getItem("token");
 
-    fetch(`/api/users/${userId}/avatar`, {
+    fetch(apiUrl(`/api/users/${userId}/avatar`), {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       credentials: "include",
     })

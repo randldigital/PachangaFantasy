@@ -49,7 +49,7 @@ export async function createPlayer(
     existing.map((item) => item.name),
   );
 
-  let marketValue = 0;
+  let marketValue: number;
   if (contextOf(ref) === "league") {
     const [league] = await db
       .select({ status: leagues.status })

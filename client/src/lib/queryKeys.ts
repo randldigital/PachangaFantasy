@@ -38,4 +38,8 @@ export const queryKeys = {
   clubTierListsAll: (clubId: number) => [`/api/clubs/${clubId}/tierlist/all`] as const,
   unlinkedPlayers: (inviteCode: string) =>
     [`/api/${inviteCode.startsWith("C-") ? "clubs" : "leagues"}/${inviteCode}/unlinked-players`] as const,
+  authFeatures: ["/api/auth/features"] as const,
+  billingOverview: ["/api/billing/overview"] as const,
+  billingPlans: ["/api/billing/plans"] as const,
+  billingSubject: (type: string, id: number) => [`/api/billing/subject/${type}/${id}`] as const,
 };

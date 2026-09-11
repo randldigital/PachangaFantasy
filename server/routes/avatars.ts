@@ -3,6 +3,7 @@ import path from "node:path";
 import type { Express, Response } from "express";
 import multer from "multer";
 import sharp from "sharp";
+import { storageDir } from "../env";
 import { logger } from "../logger";
 import { requireAuth, requireUser } from "../middleware/auth";
 import * as userRepo from "../repos/userRepo";
@@ -13,7 +14,7 @@ export const AVATAR_MAX_BYTES = 80 * 1024;
 const UPLOAD_LIMIT_BYTES = 8 * 1024 * 1024;
 const QUALITY_STEPS = [70, 60, 50, 40, 30];
 
-export const AVATAR_DIR = path.resolve(process.cwd(), "uploads", "avatars");
+export const AVATAR_DIR = path.resolve(process.cwd(), storageDir(), "avatars");
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -81,7 +82,7 @@ export function registerAvatarRoutes(app: Express) {
         }
 
         await fs.mkdir(AVATAR_DIR, { recursive: true });
-        const relativePath = path.join("uploads", "avatars", `${user.id}.jpg`);
+        const relativePath = path.join(storageDir(), "avatars", `${user.id}.jpg`);
         await fs.writeFile(avatarFile(user.id), compressed);
         await userRepo.setAvatarPath(user.id, relativePath);
 

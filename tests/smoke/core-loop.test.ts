@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import { ensureTestDatabase, resetTestSchema } from "../helpers/testDb";
 import { createApp } from "../../server/app";
+import { registerUser } from "../helpers/fixtures";
 
 describe("core loop characterisation", () => {
   const app = createApp();
@@ -17,13 +18,7 @@ describe("core loop characterisation", () => {
   it("register → create league → join → create match → join match → save lineup", async () => {
     const users = [];
     for (let index = 0; index < 5; index += 1) {
-      const response = await request(app)
-        .post("/api/auth/register")
-        .send({
-          username: `player${index}`,
-          email: `player${index}@pachanga.test`,
-          password: "secret1",
-        });
+      const response = await registerUser(app, index);
       expect(response.status).toBe(200);
       expect(response.body.token).toBeTruthy();
       users.push(response.body);
@@ -87,14 +82,11 @@ describe("core loop characterisation", () => {
     expect(lineupResponse.body.playerIds).toEqual(selected);
     expect(lineupResponse.body.captainId).toBe(selected[0]);
 
-    const outsider = await request(app)
-      .post("/api/auth/register")
-      .send({
-        username: "outsider",
-        email: "outsider@pachanga.test",
-        password: "secret1",
-        role: "admin",
-      });
+    const outsider = await registerUser(app, 90, {
+      username: "outsider",
+      email: "outsider@pachanga.test",
+      role: "admin",
+    });
     expect(outsider.body.user.role).toBe("player");
 
     const hidden = await request(app)

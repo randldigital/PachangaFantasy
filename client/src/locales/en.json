@@ -7,7 +7,8 @@
     "myLeagues": "My Leagues",
     "createLeague": "Create League",
     "logout": "Logout",
-    "welcome": "Welcome, {{name}}"
+    "welcome": "Welcome, {{name}}",
+    "billing": "Billing"
   },
   "auth": {
     "login": "Login",
@@ -17,10 +18,21 @@
     "password": "Password",
     "noAccount": "Don't have an account? Register",
     "hasAccount": "Already have an account? Login",
-    "loginButton": "Login",
-    "registerButton": "Register",
+    "loginButton": "Sign in",
+    "registerButton": "Create account",
     "invalidCredentials": "Email or password is incorrect",
-    "registerFailed": "Could not create the account. Try a different email or username."
+    "registerFailed": "Could not create the account. Try a different email or username.",
+    "loginSubtitle": "Sign in to your leagues and clubs.",
+    "registerSubtitle": "Create an account. We will email you a confirmation link.",
+    "continueGoogle": "Continue with Google",
+    "verifyTitle": "Check your email",
+    "verifyPending": "We sent a confirmation link to {{email}}. Open it to finish creating the account.",
+    "verifyWorking": "Confirming your email…",
+    "verifyFailed": "That confirmation link is invalid or has expired.",
+    "verifyResent": "If the account exists, we sent another email.",
+    "resendVerification": "Resend confirmation email",
+    "backToLogin": "Back to sign in",
+    "emailNotConfigured": "New accounts cannot be created until email delivery is configured."
   },
   "dashboard": {
     "title": "My Dashboard",
@@ -295,7 +307,16 @@
     "CLAIM_ALREADY_RESOLVED": "This claim has already been resolved.",
     "MATCH_FULL": "This match is already full.",
     "SIDE_OVER_CAPACITY": "A side has more players than the match size allows.",
-    "SIDE_INCOMPLETE": "Both sides need the exact number of players before starting."
+    "SIDE_INCOMPLETE": "Both sides need the exact number of players before starting.",
+    "MEMBERSHIP_CLOSED": "This group is not accepting new members.",
+    "EMAIL_NOT_CONFIGURED": "Email delivery is not configured yet.",
+    "EMAIL_NOT_VERIFIED": "Verify your email before signing in.",
+    "EMAIL_VERIFICATION_REQUIRED": "Check your email to confirm the account.",
+    "INVALID_VERIFICATION_TOKEN": "That confirmation link is invalid or has expired.",
+    "GOOGLE_NOT_CONFIGURED": "Google sign-in is not available.",
+    "PAYMENTS_DISABLED": "Payments are not open yet.",
+    "PAYMENTS_PROVIDER_NOT_CONFIGURED": "Checkout is not connected yet.",
+    "ENTITLEMENT_REQUIRED": "Your current plan does not include that."
   },
   "match": {
     "noActiveMatch": "No active matches",
@@ -601,15 +622,18 @@
   "membership": {
     "leave": "Leave",
     "leaveTitle": "Leave this group?",
-    "leaveDescription": "Your name stays on the roster, history and rankings. The account is unlinked, so you or someone else can claim that name later. Coming back needs administrator approval.",
+    "leaveDescription": "Your name stays on the roster, history and ranking. The account is unlinked so you or someone else can claim that name later. Coming back needs the administrator's confirmation.",
     "leaving": "Leaving...",
     "left": "You left",
-    "leftDescription": "Your player is still on the roster and can be claimed.",
+    "leftDescription": "Your player stays on the roster and can be claimed.",
     "remove": "Remove",
     "removeTitle": "Remove this member?",
-    "removeDescription": "\"{{name}}\" stays on the roster, history and rankings, but the account is unlinked. Anyone can claim that name; joining again needs your approval.",
+    "removeDescription": "\"{{name}}\" stays on the roster, history and ranking, but the account is unlinked. Anyone can claim that name; joining again needs your confirmation.",
     "removing": "Removing...",
-    "removed": "Member removed"
+    "removed": "Member removed",
+    "joinOpenLabel": "Accept new members",
+    "joinOpen": "Join open",
+    "joinClosed": "Join closed"
   },
   "season": {
     "label": "Season",
@@ -680,6 +704,28 @@
       "historial": "History",
       "valoracion": "Valuation",
       "stats": "Statistics"
+    }
+  },
+  "billing": {
+    "title": "Plans and billing",
+    "subtitle": "See the current plan for your account, leagues and clubs. Checkout is not open yet.",
+    "currentPlan": "Current plan",
+    "subject": "Subject",
+    "status": "Status",
+    "periodEnd": "Current period ends",
+    "paymentsOff": "Payments are not enabled. You can browse plans; nothing will be charged.",
+    "comingSoon": "Coming soon",
+    "included": "Included",
+    "currentCta": "Current plan",
+    "upgradeCta": "Upgrade",
+    "features": {
+      "league.core": "Fantasy leagues",
+      "club.core": "Club mode",
+      "match.core": "Matches",
+      "lineup.core": "Lineups",
+      "valuation.core": "Valuation and market value",
+      "claims.core": "Claims and roster",
+      "org.plus_placeholder": "Plus placeholder (not sold yet)"
     }
   }
 }

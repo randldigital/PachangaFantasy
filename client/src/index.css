@@ -67,6 +67,10 @@
     @apply font-sans antialiased bg-background text-foreground;
     background-color: hsl(0, 0%, 7%);
     color: hsl(0, 0%, 88%);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 }
 

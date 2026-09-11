@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, Trophy } from "lucide-react";
+import { LogOut, Trophy, CreditCard } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import AvatarUploadButton from "@/components/AvatarUploadButton";
@@ -25,6 +25,12 @@ export default function Navbar() {
             <LanguageSwitcher />
             {user && (
               <>
+                <Link href="/billing">
+                  <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white">
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">{t("nav.billing")}</span>
+                  </Button>
+                </Link>
                 <AvatarUploadButton />
                 <span className="text-sm text-text-secondary hidden sm:inline">
                   {t("nav.welcome", { name: user.username })}

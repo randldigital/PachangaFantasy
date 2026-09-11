@@ -12,6 +12,9 @@ import ClubHistorialSection from "@/components/club/ClubHistorialSection";
 import ClubMatchBanner from "@/components/club/ClubMatchBanner";
 import DeleteClubButton from "@/components/club/DeleteClubButton";
 import LeaveOrganisationButton from "@/components/LeaveOrganisationButton";
+import MembershipJoinToggle from "@/components/MembershipJoinToggle";
+import PlanChip from "@/components/PlanChip";
+import AdSlot from "@/components/AdSlot";
 import AddPlayerForm from "@/components/league/AddPlayerForm";
 import RosterManagerDialog from "@/components/league/RosterManagerDialog";
 import StatsSection from "@/components/league/StatsSection";
@@ -138,9 +141,11 @@ export default function ClubHub() {
                 )}
               </Button>
               <DeleteClubButton club={club} isClubCreator={isAdmin} />
+              <MembershipJoinToggle kind="club" organisationId={club.id} joinOpen={club.joinOpen !== false} />
             </div>
           )}
           {!isAdmin && <LeaveOrganisationButton kind="club" organisationId={club.id} />}
+          <PlanChip type="club" id={club.id} />
           <div className="flex items-center gap-2 text-slate-400 text-sm ml-auto">
             <Users className="w-4 h-4" />
             <span>
@@ -151,6 +156,7 @@ export default function ClubHub() {
           </div>
         </div>
 
+        <AdSlot slot="hub.sidebar" />
         <ClubMatchBanner
           club={club}
           match={bannerMatch}

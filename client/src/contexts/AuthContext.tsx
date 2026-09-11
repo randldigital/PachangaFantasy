@@ -8,7 +8,7 @@ import type { User, InsertUser } from '@shared/schema';
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: InsertUser) => Promise<void>;
+  register: (userData: InsertUser) => Promise<{ email: string }>;
   logout: () => void;
   loading: boolean;
 }
@@ -28,10 +28,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     retry: false,
   });
 
-  // Handle authentication errors
   useEffect(() => {
     if (error && token) {
-      console.log('Auth query error, clearing token:', error);
       setToken(null);
       localStorage.removeItem('token');
     }
@@ -42,7 +40,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return api.post<AuthPayload>('/api/auth/login', { email, password });
     },
     onSuccess: (data) => {
-      console.log('Login successful, setting token');
       localStorage.setItem('token', data.token);
       setToken(data.token);
       queryClient.setQueryData(queryKeys.me, data);
@@ -52,14 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (userData: InsertUser) => {
-      return api.post<AuthPayload>('/api/auth/register', userData);
-    },
-    onSuccess: (data) => {
-      console.log('Register successful, setting token');
-      localStorage.setItem('token', data.token);
-      setToken(data.token);
-      queryClient.setQueryData(queryKeys.me, data);
-      queryClient.invalidateQueries({ queryKey: queryKeys.me });
+      return api.post<{ email: string; code: string }>('/api/auth/register', userData);
     },
   });
 
@@ -68,27 +58,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (userData: InsertUser) => {
-    await registerMutation.mutateAsync(userData);
+    const result = await registerMutation.mutateAsync(userData);
+    return { email: result.email };
   };
 
   const logout = () => {
-    console.log('Logging out, clearing all auth state');
     localStorage.removeItem('token');
     setToken(null);
     queryClient.clear();
   };
 
-  // Add token to API requests
   useEffect(() => {
     if (token) {
-      // Store token for apiRequest function to use
       localStorage.setItem('token', token);
     } else {
       localStorage.removeItem('token');
     }
   }, [token]);
 
-  // Handle case where token exists but user fetch returns null (server restart)
   useEffect(() => {
     if (token && user === null && !isLoading) {
       setToken(null);
