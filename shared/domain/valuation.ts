@@ -1,6 +1,8 @@
 export type ValuationTier = "S" | "A" | "B" | "C" | "D";
+export type ValuationStar = 1 | 2 | 3 | 4 | 5;
 
 export const VALUATION_TIERS: ValuationTier[] = ["S", "A", "B", "C", "D"];
+export const VALUATION_STARS: ValuationStar[] = [1, 2, 3, 4, 5];
 
 export const TIER_VALUES: Record<ValuationTier, number> = {
   S: 30,
@@ -9,6 +11,33 @@ export const TIER_VALUES: Record<ValuationTier, number> = {
   C: 12,
   D: 8,
 };
+
+export const STAR_TO_TIER: Record<ValuationStar, ValuationTier> = {
+  5: "S",
+  4: "A",
+  3: "B",
+  2: "C",
+  1: "D",
+};
+
+export const TIER_TO_STAR: Record<ValuationTier, ValuationStar> = {
+  S: 5,
+  A: 4,
+  B: 3,
+  C: 2,
+  D: 1,
+};
+
+export function starFromTier(tier: ValuationTier): ValuationStar {
+  return TIER_TO_STAR[tier];
+}
+
+export function tierFromStar(star: number): ValuationTier | null {
+  if (star === 1 || star === 2 || star === 3 || star === 4 || star === 5) {
+    return STAR_TO_TIER[star];
+  }
+  return null;
+}
 
 export const DEFAULT_MARKET_VALUE = TIER_VALUES.B;
 

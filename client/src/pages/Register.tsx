@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema, type InsertUser } from "@shared/schema";
+import { registerUserSchema, type RegisterUserInput } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,15 +22,19 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
-  const form = useForm<InsertUser>({
-    resolver: zodResolver(insertUserSchema),
-    defaultValues: { username: "", email: "", password: "" },
+  const form = useForm<RegisterUserInput>({
+    resolver: zodResolver(registerUserSchema),
+    defaultValues: { username: "", email: "", password: "", confirmPassword: "" },
   });
 
-  const onSubmit = async (data: InsertUser) => {
+  const onSubmit = async (data: RegisterUserInput) => {
     setIsLoading(true);
     try {
-      const result = await registerUser(data);
+      const result = await registerUser({
+        username: data.username,
+        email: data.email,
+        password: data.password,
+      });
       setPendingEmail(result.email);
     } catch (error) {
       toast({
@@ -88,6 +92,18 @@ export default function Register() {
           <Input id="password" type="password" autoComplete="new-password" {...form.register("password")} />
           {form.formState.errors.password && (
             <p className="text-red-400 text-sm">{form.formState.errors.password.message}</p>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword">{t("auth.confirmPassword")}</Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            {...form.register("confirmPassword")}
+          />
+          {form.formState.errors.confirmPassword && (
+            <p className="text-red-400 text-sm">{t("auth.passwordMismatch")}</p>
           )}
         </div>
         <Button type="submit" disabled={isLoading} className="w-full bg-accent-blue text-white">

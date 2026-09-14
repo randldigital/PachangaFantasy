@@ -16,6 +16,18 @@
     "email": "Email",
     "username": "Username",
     "password": "Password",
+    "confirmPassword": "Confirm password",
+    "passwordMismatch": "Passwords do not match",
+    "forgotPassword": "Forgot password?",
+    "forgotTitle": "Reset your password",
+    "forgotSubtitle": "Enter your email and we will send a reset link if an account exists.",
+    "forgotButton": "Send reset link",
+    "forgotSent": "If an account exists for that email, we sent a reset link.",
+    "resetTitle": "Choose a new password",
+    "resetSubtitle": "Enter a new password for your account.",
+    "resetButton": "Save new password",
+    "resetSuccess": "Your password was updated. Sign in with the new one.",
+    "resetFailed": "That reset link is invalid or has expired.",
     "noAccount": "Don't have an account? Register",
     "hasAccount": "Already have an account? Login",
     "loginButton": "Sign in",
@@ -177,7 +189,7 @@
     },
     "submit_valuation": {
       "title": "Submit your valuation",
-      "description": "Tap a tier for every player, then send it.",
+      "description": "Give every player 1–5 stars, then send it.",
       "cta": "Go to Valuation"
     },
     "wait_for_valuation": {
@@ -313,10 +325,12 @@
     "EMAIL_NOT_VERIFIED": "Verify your email before signing in.",
     "EMAIL_VERIFICATION_REQUIRED": "Check your email to confirm the account.",
     "INVALID_VERIFICATION_TOKEN": "That confirmation link is invalid or has expired.",
+    "INVALID_RESET_TOKEN": "That reset link is invalid or has expired.",
     "GOOGLE_NOT_CONFIGURED": "Google sign-in is not available.",
     "PAYMENTS_DISABLED": "Payments are not open yet.",
     "PAYMENTS_PROVIDER_NOT_CONFIGURED": "Checkout is not connected yet.",
-    "ENTITLEMENT_REQUIRED": "Your current plan does not include that."
+    "ENTITLEMENT_REQUIRED": "Your current plan does not include that.",
+    "ANALYTICS_LOCKED": "That access code is not valid."
   },
   "match": {
     "noActiveMatch": "No active matches",
@@ -484,9 +498,11 @@
     "noPlayersDescription": "Add players to the league first",
     "noPlayersDescriptionClub": "Add players to the club first",
     "addPlayersCta": "Add a player",
-    "submitBlocked": "Place every player in a tier ({{count}} left)",
+    "submitBlocked": "Rate every player ({{count}} left)",
     "marketValue": "Market Value",
-    "placeInTier": "Tap a tier for each player. Several players can share a tier.",
+    "placeInTier": "Give each player 1–5 stars. Several players can share a rating.",
+    "starGroupLabel": "Rating for {{name}}",
+    "starLabel": "{{stars}} stars",
     "notOpen": "The administrator has not opened valuation yet",
     "votingClosed": "Valuation is closed. Market Values below are stored on the server.",
     "reset": "Reset",
@@ -500,8 +516,8 @@
     "closeAnyway": "Close anyway",
     "opened": "Valuation is open",
     "closed": "Market Values have been calculated",
-    "unplaced": "Needs a tier",
-    "editWhileOpen": "You can change your tiers and submit again until the administrator closes valuation."
+    "unplaced": "Needs a rating",
+    "editWhileOpen": "You can change your ratings and submit again until the administrator closes valuation."
   },
   "ratings": {
     "title": "Match ratings",
@@ -727,5 +743,41 @@
       "claims.core": "Claims and roster",
       "org.plus_placeholder": "Plus placeholder (not sold yet)"
     }
+  },
+  "analytics": {
+    "title": "Pachanga in numbers",
+    "subtitle": "Live activity across Fantasy leagues and Clubs.",
+    "passcodeLabel": "Access code",
+    "unlock": "View dashboard",
+    "heroAccounts": "Accounts",
+    "heroAccountsHint": "{{pending}} still confirming email",
+    "heroCompetitions": "Competitions",
+    "heroCompetitionsHint": "{{valuating}} have started valuation",
+    "heroMatches": "Matches played",
+    "heroMatchesHint": "{{inProgress}} in progress",
+    "heroRatings": "Community ratings",
+    "heroRatingsHint": "Peer scores and Player of the Match votes",
+    "last30": "+{{count}} in 30 days",
+    "engagementTitle": "The loop",
+    "valuations": "Valuations submitted",
+    "lineups": "Lineups saved",
+    "statReports": "Match stats recorded",
+    "activeGroups": "Groups that have played",
+    "window": "{{seven}} in 7 days · {{thirty}} in 30 days",
+    "mixTitle": "Product mix",
+    "players": "Players",
+    "fantasy": "Fantasy",
+    "club": "Club",
+    "linkedPlayers": "Linked players",
+    "guestPlayers": "Guest players",
+    "pulseTitle": "Recent activity",
+    "pulseEmpty": "No recent activity yet.",
+    "pulseFantasyCompetition": "Fantasy competition · {{count}} members",
+    "pulseClubCompetition": "Club · {{count}} members",
+    "pulseFantasyMatch": "Fantasy match · {{status}}",
+    "pulseClubMatch": "Club match · {{status}}",
+    "pulseValuation": "Valuation submitted",
+    "pulseToday": "today",
+    "pulseDaysAgo": "{{count}} days ago"
   }
 }

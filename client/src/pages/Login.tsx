@@ -83,6 +83,11 @@ export default function Login() {
               <p className="text-red-400 text-sm">{form.formState.errors.password.message}</p>
             )}
           </div>
+          <p className="text-right text-sm">
+            <Link href="/forgot" className="text-accent-blue hover:text-accent-green">
+              {t("auth.forgotPassword")}
+            </Link>
+          </p>
           <Button type="submit" disabled={isLoading} className="w-full bg-accent-blue text-white">
             {isLoading ? t("common.loading") : t("auth.loginButton")}
           </Button>

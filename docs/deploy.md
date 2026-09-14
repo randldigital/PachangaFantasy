@@ -23,6 +23,7 @@ Copy `.env.example` to `.env`. Boot needs:
 | `ADS_ENABLED` | `false` | `GET /api/auth/features` reports `ads: false`; ad slots render nothing |
 | `FEATURE_DEFAULT_PLAN` | `free` | Used when a billing account has no active subscription |
 | `CORS_ORIGINS` | empty | Same-origin only. Set a comma-separated list when a packaged WebView calls the API |
+| `ANALYTICS_PASSCODE` | `2026` | Unlocks `GET /analytics` (no nav link). Send as `X-Analytics-Passcode`. Change this in production. |
 
 Treat `false`, `0`, and empty as off for boolean flags. Only `true` / `1` / `yes` turn them on.
 
@@ -36,7 +37,10 @@ If this server’s Drizzle journal is incomplete (typical after a 1.0 → 2.0 co
 psql "$DATABASE_URL" -f migrations/0014_membership_join_open.sql
 psql "$DATABASE_URL" -f migrations/0015_auth_email_identities.sql
 psql "$DATABASE_URL" -f migrations/0016_billing_accounts.sql
+psql "$DATABASE_URL" -f migrations/0017_password_reset_tokens.sql
 ```
+
+The traction dashboard is only at `/analytics`. It is not linked from the product. Unlock with `ANALYTICS_PASSCODE` (default `2026`). The page shows aggregates only — no emails, usernames, or invite codes.
 
 ## Build and run
 

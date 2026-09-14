@@ -5,10 +5,13 @@ import { LogOut, Trophy, CreditCard } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import AvatarUploadButton from "@/components/AvatarUploadButton";
+import { isPaymentsEnabled, useAuthFeatures } from "@/lib/features";
 
 export default function Navbar() {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
+  const { data: features } = useAuthFeatures();
+  const showBilling = isPaymentsEnabled(features);
 
   return (
     <nav className="bg-card border-b border-border">
@@ -25,12 +28,14 @@ export default function Navbar() {
             <LanguageSwitcher />
             {user && (
               <>
-                <Link href="/billing">
-                  <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white">
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">{t("nav.billing")}</span>
-                  </Button>
-                </Link>
+                {showBilling ? (
+                  <Link href="/billing">
+                    <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white">
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      <span className="hidden sm:inline">{t("nav.billing")}</span>
+                    </Button>
+                  </Link>
+                ) : null}
                 <AvatarUploadButton />
                 <span className="text-sm text-text-secondary hidden sm:inline">
                   {t("nav.welcome", { name: user.username })}

@@ -22,11 +22,11 @@ import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
 import {
-  VALUATION_TIERS,
   type PlayerTierPlacement,
   type ValuationTier,
 } from "@shared/domain/valuation";
 import type { Player, User, TierList } from "@shared/schema";
+import StarRating from "@/components/league/StarRating";
 
 interface ValuationOrganisation {
   createdBy: number;
@@ -42,14 +42,6 @@ interface TierListSectionProps {
   user?: User;
   onAddPlayer?: () => void;
 }
-
-const TIER_STYLES: Record<ValuationTier, string> = {
-  S: "border-yellow-500 bg-yellow-500 text-slate-900",
-  A: "border-emerald-500 bg-emerald-500 text-slate-900",
-  B: "border-blue-500 bg-blue-500 text-white",
-  C: "border-purple-500 bg-purple-500 text-white",
-  D: "border-red-500 bg-red-500 text-white",
-};
 
 export default function TierListSection({
   leagueId,
@@ -363,16 +355,6 @@ export default function TierListSection({
                 )}
               >
                 <div className="flex items-center space-x-3 min-w-0">
-                  {tier && (
-                    <div
-                      className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0",
-                        TIER_STYLES[tier],
-                      )}
-                    >
-                      {tier}
-                    </div>
-                  )}
                   <div className="text-2xl">{player.emoji || "👤"}</div>
                   <div className="min-w-0">
                     <div className="text-white font-medium truncate">{player.name}</div>
@@ -383,27 +365,14 @@ export default function TierListSection({
                 </div>
 
                 {valuationOpen ? (
-                  <div className="flex flex-wrap gap-1">
-                    {VALUATION_TIERS.map((option) => (
-                      <Button
-                        key={option}
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          setPlacements((current) => ({ ...current, [player.id]: option }))
-                        }
-                        className={cn(
-                          "w-10 px-0",
-                          tier === option
-                            ? TIER_STYLES[option]
-                            : "border-slate-600 text-slate-300 hover:bg-slate-700",
-                        )}
-                      >
-                        {option}
-                      </Button>
-                    ))}
-                  </div>
+                  <StarRating
+                    value={tier}
+                    label={t("tierlist.starGroupLabel", { name: player.name })}
+                    starLabel={(star) => t("tierlist.starLabel", { stars: star })}
+                    onChange={(next) =>
+                      setPlacements((current) => ({ ...current, [player.id]: next }))
+                    }
+                  />
                 ) : (
                   <div className="text-right">
                     <div className="text-emerald-400 font-bold">${player.marketValue ?? 0}</div>

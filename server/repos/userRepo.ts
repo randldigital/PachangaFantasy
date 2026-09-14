@@ -58,6 +58,19 @@ export async function markEmailVerified(userId: number): Promise<User | undefine
   return updated || undefined;
 }
 
+export async function setPassword(
+  userId: number,
+  password: string,
+): Promise<User | undefined> {
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const [updated] = await db
+    .update(users)
+    .set({ password: hashedPassword })
+    .where(eq(users.id, userId))
+    .returning();
+  return updated || undefined;
+}
+
 export async function setAvatarPath(
   userId: number,
   avatarPath: string | null,

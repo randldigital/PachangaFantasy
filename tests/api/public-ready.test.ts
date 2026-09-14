@@ -7,6 +7,7 @@ import {
 } from "@shared/domain/entitlements";
 import { createApp } from "../../server/app";
 import * as billingRepo from "../../server/repos/billingRepo";
+import * as passwordResetRepo from "../../server/repos/passwordResetRepo";
 import { ensureTestDatabase, resetTestSchema } from "../helpers/testDb";
 import { auth, createLeagueWithMembers, registerUser } from "../helpers/fixtures";
 import { installTestMailer, testMailer, uninstallTestMailer } from "../helpers/mailer";
@@ -72,6 +73,84 @@ describe("2.1 auth, membership and billing", () => {
     });
     expect(login.status).toBe(200);
     expect(login.body.token).toBeTruthy();
+  });
+
+  it("accepts confirmPassword on register and ignores it on the API", async () => {
+    const registered = await request(app).post("/api/auth/register").send({
+      username: "confirm",
+      email: "confirm@pachanga.test",
+      password: "secret1",
+      confirmPassword: "secret1",
+    });
+    expect(registered.status).toBe(201);
+    expect(registered.body.code).toBe("EMAIL_VERIFICATION_REQUIRED");
+  });
+
+  it("rejects forgot-password when mail is not configured", async () => {
+    uninstallTestMailer();
+    const response = await request(app).post("/api/auth/forgot-password").send({
+      email: "pending@pachanga.test",
+    });
+    expect(response.status).toBe(503);
+    expect(response.body.code).toBe("EMAIL_NOT_CONFIGURED");
+  });
+
+  it("emails a reset link that changes the password without issuing a session", async () => {
+    const user = await registerUser(app, 0);
+    expect(user.status).toBe(200);
+    const email = "player0@pachanga.test";
+
+    const unknown = await request(app).post("/api/auth/forgot-password").send({
+      email: "nobody@pachanga.test",
+    });
+    expect(unknown.status).toBe(200);
+    expect(testMailer.sent.some((message) => message.to === "nobody@pachanga.test")).toBe(false);
+
+    const forgot = await request(app).post("/api/auth/forgot-password").send({ email });
+    expect(forgot.status).toBe(200);
+    const token = testMailer.lastTokenFor(email);
+    expect(token).toBeTruthy();
+
+    const reset = await request(app).post("/api/auth/reset-password").send({
+      token,
+      password: "secret2",
+      confirmPassword: "secret2",
+    });
+    expect(reset.status).toBe(200);
+    expect(reset.body.token).toBeUndefined();
+
+    const oldLogin = await request(app).post("/api/auth/login").send({
+      email,
+      password: "secret1",
+    });
+    expect(oldLogin.status).toBe(401);
+
+    const newLogin = await request(app).post("/api/auth/login").send({
+      email,
+      password: "secret2",
+    });
+    expect(newLogin.status).toBe(200);
+    expect(newLogin.body.token).toBeTruthy();
+  });
+
+  it("rejects invalid and expired reset tokens", async () => {
+    const invalid = await request(app).post("/api/auth/reset-password").send({
+      token: "deadbeef",
+      password: "secret2",
+      confirmPassword: "secret2",
+    });
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.code).toBe("INVALID_RESET_TOKEN");
+
+    const user = await registerUser(app, 0);
+    const expiredToken = await passwordResetRepo.issueResetToken(user.body.user.id, -1000);
+    const expired = await request(app).post("/api/auth/reset-password").send({
+      token: expiredToken,
+      password: "secret2",
+      confirmPassword: "secret2",
+    });
+    expect(expired.status).toBe(400);
+    expect(expired.body.code).toBe("INVALID_RESET_TOKEN");
   });
 
   it("lets a backfilled verified user log in", async () => {

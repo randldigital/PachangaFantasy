@@ -1,5 +1,5 @@
 import type { Express, Response } from "express";
-import { insertUserSchema, loginSchema } from "@shared/schema";
+import { insertUserSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "@shared/schema";
 import type { User } from "@shared/schema";
 import {
   adsEnabled,
@@ -13,18 +13,27 @@ import { getMailer, isMailConfigured } from "../mail/mailer";
 import { requireAuth, requireUser } from "../middleware/auth";
 import * as userRepo from "../repos/userRepo";
 import * as verifyRepo from "../repos/verifyRepo";
+import * as passwordResetRepo from "../repos/passwordResetRepo";
 import type { AuthRequest } from "../types";
 
 const resendAt = new Map<number, number>();
+const resetAt = new Map<number, number>();
 const RESEND_COOLDOWN_MS = 60_000;
 
 function publicUser(user: User) {
   return { ...user, password: undefined };
 }
 
+function appOrigin(): string {
+  return publicUrl() || `http://localhost:${env.PORT}`;
+}
+
 function verifyLink(rawToken: string): string {
-  const origin = publicUrl() || `http://localhost:${env.PORT}`;
-  return `${origin}/verify?token=${encodeURIComponent(rawToken)}`;
+  return `${appOrigin()}/verify?token=${encodeURIComponent(rawToken)}`;
+}
+
+function resetLink(rawToken: string): string {
+  return `${appOrigin()}/reset?token=${encodeURIComponent(rawToken)}`;
 }
 
 async function sendVerificationEmail(user: User, rawToken: string) {
@@ -34,6 +43,16 @@ async function sendVerificationEmail(user: User, rawToken: string) {
     subject: "Confirm your Pachanga email",
     text: `Confirm your email by opening this link:\n${link}\n`,
     html: `<p>Confirm your email by opening this link:</p><p><a href="${link}">${link}</a></p>`,
+  });
+}
+
+async function sendPasswordResetEmail(user: User, rawToken: string) {
+  const link = resetLink(rawToken);
+  await getMailer().sendMail({
+    to: user.email,
+    subject: "Reset your Pachanga password",
+    text: `Reset your password by opening this link:\n${link}\n`,
+    html: `<p>Reset your password by opening this link:</p><p><a href="${link}">${link}</a></p>`,
   });
 }
 
@@ -158,6 +177,55 @@ export function registerAuthRoutes(app: Express) {
       res.json({ ok: true });
     } catch (error) {
       logger.error("Resend verification error", error);
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  app.post("/api/auth/forgot-password", async (req, res: Response) => {
+    try {
+      const { email } = forgotPasswordSchema.parse(req.body);
+      if (!isMailConfigured()) {
+        return res.status(503).json({
+          message: "Email delivery is not configured",
+          code: "EMAIL_NOT_CONFIGURED",
+        });
+      }
+      const user = await userRepo.getUserByEmail(email);
+      if (user?.password) {
+        const last = resetAt.get(user.id) ?? 0;
+        if (Date.now() - last >= RESEND_COOLDOWN_MS) {
+          const rawToken = await passwordResetRepo.issueResetToken(user.id);
+          await sendPasswordResetEmail(user, rawToken);
+          resetAt.set(user.id, Date.now());
+        }
+      }
+      res.json({ ok: true });
+    } catch (error) {
+      logger.error("Forgot password error", error);
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res: Response) => {
+    try {
+      const { token, password } = resetPasswordSchema.parse(req.body);
+      const consumed = await passwordResetRepo.consumeResetToken(token);
+      if (!consumed) {
+        return res.status(400).json({
+          message: "Invalid or expired reset token",
+          code: "INVALID_RESET_TOKEN",
+        });
+      }
+      const user = await userRepo.setPassword(consumed.userId, password);
+      if (!user) {
+        return res.status(400).json({
+          message: "Invalid or expired reset token",
+          code: "INVALID_RESET_TOKEN",
+        });
+      }
+      res.json({ ok: true });
+    } catch (error) {
+      logger.error("Reset password error", error);
       res.status(400).json({ message: "Invalid input" });
     }
   });

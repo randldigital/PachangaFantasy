@@ -6,7 +6,7 @@ import {
   FEATURE_PLUS_PLACEHOLDER,
   hasEntitlement,
 } from "@shared/domain/entitlements";
-import { isAdsEnabled as adsFromFeatures } from "../../client/src/lib/features";
+import { isAdsEnabled as adsFromFeatures, isPaymentsEnabled } from "../../client/src/lib/features";
 
 describe("apiBase", () => {
   it("leaves same-origin paths unchanged when the prefix is empty", () => {
@@ -33,5 +33,13 @@ describe("ads flag", () => {
   it("does not render ads when the feature is off", () => {
     expect(adsFromFeatures({ ads: false })).toBe(false);
     expect(adsFromFeatures({ ads: true })).toBe(true);
+  });
+});
+
+describe("payments flag", () => {
+  it("hides billing when payments are off", () => {
+    expect(isPaymentsEnabled({ payments: false })).toBe(false);
+    expect(isPaymentsEnabled({ payments: true })).toBe(true);
+    expect(isPaymentsEnabled(undefined)).toBe(false);
   });
 });

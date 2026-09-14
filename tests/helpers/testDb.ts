@@ -241,6 +241,13 @@ export async function resetTestSchema() {
       expires_at timestamp NOT NULL,
       created_at timestamp DEFAULT now()
     );
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id serial PRIMARY KEY,
+      user_id integer NOT NULL,
+      token_hash text NOT NULL UNIQUE,
+      expires_at timestamp NOT NULL,
+      created_at timestamp DEFAULT now()
+    );
     CREATE TABLE IF NOT EXISTS auth_identities (
       id serial PRIMARY KEY,
       user_id integer NOT NULL,
@@ -370,6 +377,7 @@ export async function resetTestSchema() {
       billing_accounts,
       plans,
       email_verification_tokens,
+      password_reset_tokens,
       auth_identities,
       player_market_value_history,
       match_peer_ratings,

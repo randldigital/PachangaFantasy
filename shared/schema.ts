@@ -260,6 +260,14 @@ export const emailVerificationTokens = pgTable("email_verification_tokens", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const authIdentities = pgTable("auth_identities", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
@@ -316,6 +324,26 @@ export const insertUserSchema = createInsertSchema(users).pick({
 }).extend({
   password: z.string().min(6, "Password must be at least 6 characters"),
 }).strip();
+
+export const registerUserSchema = insertUserSchema.extend({
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
 
 export const insertLeagueSchema = createInsertSchema(leagues).omit({
   id: true,
@@ -546,6 +574,9 @@ export const submitRatingsSchema = z.object({
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type RegisterUserInput = z.infer<typeof registerUserSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertLeague = z.infer<typeof insertLeagueSchema>;
 export type League = typeof leagues.$inferSelect;

@@ -78,6 +78,11 @@ export function adsEnabled(): boolean {
   return readFlag("ADS_ENABLED");
 }
 
+export function analyticsPasscode(): string {
+  const value = (process.env.ANALYTICS_PASSCODE ?? "").trim();
+  return value || "2026";
+}
+
 export function defaultPlanCode(): string {
   const value = (process.env.FEATURE_DEFAULT_PLAN ?? "").trim();
   return value || "free";

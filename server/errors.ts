@@ -13,7 +13,8 @@ export type ErrorCode =
   | "PAYMENTS_DISABLED"
   | "PAYMENTS_PROVIDER_NOT_CONFIGURED"
   | "MEMBERSHIP_CLOSED"
-  | "ENTITLEMENT_REQUIRED";
+  | "ENTITLEMENT_REQUIRED"
+  | "ANALYTICS_LOCKED";
 
 export class AppError extends Error {
   readonly status: number;

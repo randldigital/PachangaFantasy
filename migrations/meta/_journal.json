@@ -120,6 +120,13 @@
       "when": 1788883000000,
       "tag": "0016_billing_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788884000000,
+      "tag": "0017_password_reset_tokens",
+      "breakpoints": true
     }
   ]
 }

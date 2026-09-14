@@ -1,17 +1,9 @@
-import { createHash, randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { emailVerificationTokens } from "@shared/schema";
 import { db } from "../db";
+import { hashToken, newRawToken } from "./tokenCrypto";
 
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
-
-export function hashToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
-export function newRawToken(): string {
-  return randomBytes(32).toString("hex");
-}
 
 export async function issueVerificationToken(userId: number): Promise<string> {
   await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, userId));

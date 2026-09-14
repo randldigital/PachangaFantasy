@@ -10,10 +10,13 @@ import Navbar from "@/components/Navbar";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import VerifyEmail from "@/pages/VerifyEmail";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import Overview from "@/pages/Overview";
 import LeagueHub from "@/pages/LeagueHub";
 import ClubHub from "@/pages/ClubHub";
 import Billing from "@/pages/Billing";
+import Analytics from "@/pages/Analytics";
 import NotFound from "@/pages/not-found";
 import "./lib/i18n";
 
@@ -23,6 +26,9 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/verify" component={VerifyEmail} />
+      <Route path="/forgot" component={ForgotPassword} />
+      <Route path="/reset" component={ResetPassword} />
+      <Route path="/analytics" component={Analytics} />
       
       {/* Protected Routes */}
       <Route path="/overview">

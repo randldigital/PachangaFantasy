@@ -3,9 +3,12 @@ import { lineupCanSave } from "@shared/domain/lineup";
 import {
   DEFAULT_MARKET_VALUE,
   TIER_VALUES,
+  VALUATION_TIERS,
   isValuationComplete,
   lineupCostFromValues,
   marketValuesFromTierSubmissions,
+  starFromTier,
+  tierFromStar,
   trimmedAverage,
   type PlayerTierPlacement,
 } from "@shared/domain/valuation";
@@ -20,6 +23,19 @@ describe("valuation", () => {
   it("maps S/A/B/C/D to 30/24/18/12/8", () => {
     expect(TIER_VALUES).toEqual({ S: 30, A: 24, B: 18, C: 12, D: 8 });
     expect(DEFAULT_MARKET_VALUE).toBe(18);
+  });
+
+  it("maps 1–5 stars onto D–S and back", () => {
+    expect(tierFromStar(5)).toBe("S");
+    expect(tierFromStar(4)).toBe("A");
+    expect(tierFromStar(3)).toBe("B");
+    expect(tierFromStar(2)).toBe("C");
+    expect(tierFromStar(1)).toBe("D");
+    expect(tierFromStar(0)).toBeNull();
+    expect(tierFromStar(6)).toBeNull();
+    for (const tier of VALUATION_TIERS) {
+      expect(tierFromStar(starFromTier(tier))).toBe(tier);
+    }
   });
 
   it("uses a trimmed mean when a player has more than two votes", () => {

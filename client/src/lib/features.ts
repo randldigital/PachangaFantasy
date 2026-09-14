@@ -20,3 +20,7 @@ export function useAuthFeatures() {
 export function isAdsEnabled(features: { ads?: boolean } | null | undefined): boolean {
   return Boolean(features?.ads);
 }
+
+export function isPaymentsEnabled(features: { payments?: boolean } | null | undefined): boolean {
+  return Boolean(features?.payments);
+}

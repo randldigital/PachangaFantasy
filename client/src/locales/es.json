@@ -16,6 +16,18 @@
     "email": "Correo electrónico",
     "username": "Nombre de usuario",
     "password": "Contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "forgotPassword": "¿Olvidaste la contraseña?",
+    "forgotTitle": "Restablece tu contraseña",
+    "forgotSubtitle": "Escribe tu correo y te enviaremos un enlace si existe una cuenta.",
+    "forgotButton": "Enviar enlace",
+    "forgotSent": "Si existe una cuenta con ese correo, hemos enviado un enlace.",
+    "resetTitle": "Elige una contraseña nueva",
+    "resetSubtitle": "Introduce una contraseña nueva para tu cuenta.",
+    "resetButton": "Guardar contraseña",
+    "resetSuccess": "Tu contraseña se ha actualizado. Entra con la nueva.",
+    "resetFailed": "Ese enlace no es válido o ha caducado.",
     "noAccount": "¿No tienes cuenta? Regístrate",
     "hasAccount": "¿Ya tienes cuenta? Inicia sesión",
     "loginButton": "Entrar",
@@ -174,7 +186,7 @@
     },
     "submit_valuation": {
       "title": "Envía tu valoración",
-      "description": "Toca un nivel para cada jugador y envíala.",
+      "description": "Dale a cada jugador de 1 a 5 estrellas y envíala.",
       "cta": "Ir a Valoración"
     },
     "wait_for_valuation": {
@@ -310,10 +322,12 @@
     "EMAIL_NOT_VERIFIED": "Confirma tu correo antes de entrar.",
     "EMAIL_VERIFICATION_REQUIRED": "Revisa tu correo para confirmar la cuenta.",
     "INVALID_VERIFICATION_TOKEN": "Ese enlace no es válido o ha caducado.",
+    "INVALID_RESET_TOKEN": "Ese enlace no es válido o ha caducado.",
     "GOOGLE_NOT_CONFIGURED": "El acceso con Google no está disponible.",
     "PAYMENTS_DISABLED": "Los pagos aún no están abiertos.",
     "PAYMENTS_PROVIDER_NOT_CONFIGURED": "El pago aún no está conectado.",
-    "ENTITLEMENT_REQUIRED": "Tu plan actual no incluye eso."
+    "ENTITLEMENT_REQUIRED": "Tu plan actual no incluye eso.",
+    "ANALYTICS_LOCKED": "Ese código no es válido."
   },
   "match": {
     "noActiveMatch": "No hay partidos activos",
@@ -481,9 +495,11 @@
     "noPlayersDescription": "Agrega jugadores a la liga primero",
     "noPlayersDescriptionClub": "Agrega jugadores al club primero",
     "addPlayersCta": "Añadir un jugador",
-    "submitBlocked": "Coloca a todos los jugadores en un nivel (faltan {{count}})",
+    "submitBlocked": "Valora a todos los jugadores (faltan {{count}})",
     "marketValue": "Valor de Mercado",
-    "placeInTier": "Toca un nivel para cada jugador. Varios pueden compartir nivel.",
+    "placeInTier": "Dale a cada jugador de 1 a 5 estrellas. Varios pueden compartir la misma nota.",
+    "starGroupLabel": "Valoración de {{name}}",
+    "starLabel": "{{stars}} estrellas",
     "notOpen": "El administrador aún no ha abierto la valoración",
     "votingClosed": "La valoración está cerrada. Los valores de mercado de abajo están guardados en el servidor.",
     "reset": "Restablecer",
@@ -497,8 +513,8 @@
     "closeAnyway": "Cerrar de todos modos",
     "opened": "La valoración está abierta",
     "closed": "Se han calculado los valores de mercado",
-    "unplaced": "Falta un nivel",
-    "editWhileOpen": "Puedes cambiar los niveles y volver a enviarlos hasta que el administrador cierre la valoración."
+    "unplaced": "Falta una valoración",
+    "editWhileOpen": "Puedes cambiar las valoraciones y volver a enviarlas hasta que el administrador cierre la valoración."
   },
   "ratings": {
     "title": "Valoraciones del partido",
@@ -724,5 +740,41 @@
       "claims.core": "Reclamaciones y plantilla",
       "org.plus_placeholder": "Plus (aún no se vende)"
     }
+  },
+  "analytics": {
+    "title": "Pachanga en cifras",
+    "subtitle": "Actividad real en ligas Fantasy y clubs.",
+    "passcodeLabel": "Código de acceso",
+    "unlock": "Ver el panel",
+    "heroAccounts": "Cuentas",
+    "heroAccountsHint": "{{pending}} aún confirmando el correo",
+    "heroCompetitions": "Competiciones",
+    "heroCompetitionsHint": "{{valuating}} han empezado la valoración",
+    "heroMatches": "Partidos jugados",
+    "heroMatchesHint": "{{inProgress}} en curso",
+    "heroRatings": "Valoraciones de la comunidad",
+    "heroRatingsHint": "Notas entre jugadores y votos al MVP",
+    "last30": "+{{count}} en 30 días",
+    "engagementTitle": "El ciclo",
+    "valuations": "Valoraciones enviadas",
+    "lineups": "Alineaciones guardadas",
+    "statReports": "Estadísticas de partido",
+    "activeGroups": "Grupos que ya han jugado",
+    "window": "{{seven}} en 7 días · {{thirty}} en 30 días",
+    "mixTitle": "Mix de producto",
+    "players": "Jugadores",
+    "fantasy": "Fantasy",
+    "club": "Club",
+    "linkedPlayers": "Jugadores vinculados",
+    "guestPlayers": "Jugadores invitados",
+    "pulseTitle": "Actividad reciente",
+    "pulseEmpty": "Aún no hay actividad reciente.",
+    "pulseFantasyCompetition": "Competición Fantasy · {{count}} miembros",
+    "pulseClubCompetition": "Club · {{count}} miembros",
+    "pulseFantasyMatch": "Partido Fantasy · {{status}}",
+    "pulseClubMatch": "Partido de club · {{status}}",
+    "pulseValuation": "Valoración enviada",
+    "pulseToday": "hoy",
+    "pulseDaysAgo": "hace {{count}} días"
   }
 }

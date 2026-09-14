@@ -29,7 +29,7 @@ These close Appendix A. They are product rules, not recommendations. Revisit the
 | ID | Decision |
 |---|---|
 | **P0.1** | Default match budget remains **100**. Market Values use a fixed tier scale of **S = 30, A = 24, B = 18, C = 12, D = 8**. A five-player average (all B) costs 90; an all-S lineup costs 150 and is illegal. Budget input range is **50–200**. |
-| **P0.2** | Valuation is a **genuine S/A/B/C/D tier list**. Multiple players may share a tier. A strict total ordering is not required. |
+| **P0.2** | Valuation is a **genuine S/A/B/C/D tier list**. The member-facing control is **1–5 stars** mapped 1:1 onto those tiers (**5 = S, 4 = A, 3 = B, 2 = C, 1 = D**). Multiple players may share a tier. A strict total ordering is not required. |
 | **P0.3** | A player with no votes, or added after valuation closed, receives **B (18)** — the mid-tier default. Nobody is free. |
 | **P0.4** | A member's valuation is complete when every current league player has a tier. The administrator may close with any number of submissions (warn if few). Valuation may **reopen at any time**; new values apply only to matches that are still Open. |
 | **P0.5** | Lineups and joining **lock when the administrator starts the match**. Ending the match is too late — results are already known. Scheduled kick-off time is not the lock. |
@@ -248,10 +248,12 @@ The functional requirement is that the application can identify the user persist
 Current collected data: a display name, an email address and a password. Rules in force:
 
 - The password must be at least 6 characters. **[Implemented]**
+- Registration requires confirming the password. **[Implemented]**
 - An email address may only be used by one account. **[Implemented]**
 - Registration must not silently succeed with an empty password. **[Implemented]**
 - **New accounts must verify email** before a session JWT is issued. Register does not log the user in. If SMTP is unset, register returns `503 EMAIL_NOT_CONFIGURED`. **[Implemented]** (P2.1.1)
 - Users that already existed before 2.1 are treated as verified (`email_verified_at` backfill). **[Implemented]**
+- Password recovery is sent by email. Reset does not log the user in. **[Implemented]**
 
 Display names (usernames) need not be unique as football identity. The alias inside a League or Club must be unique in that context, compared case-insensitively. **[Implemented]**
 
@@ -266,6 +268,8 @@ Users are not auto-created as Players from their username on join. They supply a
 An existing user must be able to authenticate and recover their application context. **[Implemented]**
 
 Unverified accounts are rejected at login with `403 EMAIL_NOT_VERIFIED`. **[Implemented]**
+
+Forgot password is available from login. A valid reset link sets a new password and returns the user to sign in. **[Implemented]**
 
 After login the user is taken directly to their league context. There must be no unnecessary intermediate screens between logging in and seeing either their leagues or the two actions that create one.
 
@@ -476,9 +480,11 @@ That is the requirement. **Drag-and-drop is not the requirement** — it is one 
 
 **S · A · B · C · D**
 
+The member-facing control is **1–5 stars** mapped 1:1 onto those tiers (**5 = S, 4 = A, 3 = B, 2 = C, 1 = D**). The stored model and Market Value scale remain S/A/B/C/D.
+
 Multiple players may share a tier. The member is not required to order players inside a tier. Every player in the league pool must be placed in exactly one tier for that member's valuation to be complete.
 
-> **[Implemented]** Members place each player in S, A, B, C or D. Several players may share a tier. The server stores a tier per player per voter.
+> **[Implemented]** Members rate each player 1–5 stars. Those map 1:1 onto S/A/B/C/D. Several players may share a rating. The server stores a tier per player per voter.
 
 ### 9.3 Valuation rules
 
@@ -531,6 +537,8 @@ The algorithm in Section 10.2 must remain:
 #### Initial value (valuation)
 
 **Decision (P0.1, P0.2):** the first Market Value is produced from genuine tiers, not from list position.
+
+The member-facing control is 1–5 stars mapped 1:1 onto those tiers (5 = S … 1 = D). Stored values remain S/A/B/C/D.
 
 Each tier has a fixed numeric value:
 
