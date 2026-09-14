@@ -74,6 +74,7 @@ export function normalizeTierPlacements(
   return [...byPlayer.entries()].map(([playerId, tier]) => ({ playerId, tier }));
 }
 
+/** True when every player has a tier. Submit does not require this — skipped votes are omitted. */
 export function isValuationComplete(
   playerIds: number[],
   placements: PlayerTierPlacement[],

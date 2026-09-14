@@ -84,8 +84,7 @@ export default function TierListSection({
     setPlacements(next);
   }, [existingTierList]);
 
-  const unplacedCount = players.filter((player) => !placements[player.id]).length;
-  const allPlaced = players.length > 0 && unplacedCount === 0;
+  const ratedCount = players.filter((player) => placements[player.id]).length;
   const hasSubmitted = Boolean(existingTierList?.submitted);
   const submittedCount = allTierLists.length;
   const fewVotes = submittedCount === 0 || submittedCount < Math.ceil(memberCount / 2);
@@ -174,12 +173,12 @@ export default function TierListSection({
   }, [players, placements, valuationClosed]);
 
   const handleSubmit = () => {
-    if (!allPlaced) return;
+    if (players.length === 0) return;
     submitMutation.mutate({
-      playerTiers: players.map((player) => ({
-        playerId: player.id,
-        tier: placements[player.id]!,
-      })),
+      playerTiers: players.flatMap((player) => {
+        const tier = placements[player.id];
+        return tier ? [{ playerId: player.id, tier }] : [];
+      }),
       submitted: true,
     });
   };
@@ -274,9 +273,8 @@ export default function TierListSection({
                 </Button>
                 <Button
                   onClick={handleSubmit}
-                  disabled={submitMutation.isPending || !allPlaced}
+                  disabled={submitMutation.isPending}
                   size="sm"
-                  title={!allPlaced ? t("tierlist.submitBlocked", { count: unplacedCount }) : undefined}
                   className="bg-emerald-600 hover:bg-emerald-700"
                 >
                   {submitMutation.isPending
@@ -285,9 +283,9 @@ export default function TierListSection({
                       ? t("tierlist.update")
                       : t("tierlist.submit")}
                 </Button>
-                {!allPlaced && valuationOpen && (
-                  <p className="text-amber-400 text-sm w-full">
-                    {t("tierlist.submitBlocked", { count: unplacedCount })}
+                {ratedCount < players.length && valuationOpen && (
+                  <p className="text-slate-400 text-sm w-full">
+                    {t("tierlist.skippedHint", { count: players.length - ratedCount })}
                   </p>
                 )}
               </>
@@ -351,7 +349,7 @@ export default function TierListSection({
                 key={player.id}
                 className={cn(
                   "flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border",
-                  unplaced ? "border-amber-500/70 bg-amber-500/10" : "border-slate-600 bg-slate-800/40",
+                  "border-slate-600 bg-slate-800/40",
                 )}
               >
                 <div className="flex items-center space-x-3 min-w-0">
@@ -359,7 +357,7 @@ export default function TierListSection({
                   <div className="min-w-0">
                     <div className="text-white font-medium truncate">{player.name}</div>
                     {unplaced && (
-                      <div className="text-amber-400 text-sm">{t("tierlist.unplaced")}</div>
+                      <div className="text-slate-500 text-sm">{t("tierlist.unplaced")}</div>
                     )}
                   </div>
                 </div>
@@ -370,7 +368,15 @@ export default function TierListSection({
                     label={t("tierlist.starGroupLabel", { name: player.name })}
                     starLabel={(star) => t("tierlist.starLabel", { stars: star })}
                     onChange={(next) =>
-                      setPlacements((current) => ({ ...current, [player.id]: next }))
+                      setPlacements((current) => {
+                        const copy = { ...current };
+                        if (next) {
+                          copy[player.id] = next;
+                        } else {
+                          delete copy[player.id];
+                        }
+                        return copy;
+                      })
                     }
                   />
                 ) : (

@@ -60,6 +60,15 @@ describe("valuation", () => {
     expect(values.get(2)).toBe(18);
   });
 
+  it("omits a skipped player from a ballot so their average uses only actual votes", () => {
+    const values = marketValuesFromTierSubmissions(
+      [1, 2],
+      [tiers([[1, "S"]]), tiers([[1, "D"], [2, "S"]])],
+    );
+    expect(values.get(1)).toBe(19);
+    expect(values.get(2)).toBe(30);
+  });
+
   it("gives a single player 18 when nobody voted", () => {
     const values = marketValuesFromTierSubmissions([1], []);
     expect(values.get(1)).toBe(18);
@@ -85,7 +94,7 @@ describe("valuation", () => {
     ).toBe(false);
   });
 
-  it("requires every player to be placed for a complete valuation", () => {
+  it("treats a ballot as fully placed only when every player has a tier", () => {
     expect(isValuationComplete([1, 2], tiers([[1, "B"]]))).toBe(false);
     expect(isValuationComplete([1, 2], tiers([[1, "B"], [2, "S"]]))).toBe(true);
     expect(isValuationComplete([], [])).toBe(false);

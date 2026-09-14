@@ -104,4 +104,44 @@ describe("club valuation", () => {
       .set(auth(users[1].token));
     expect(asMember.status).toBe(403);
   });
+
+  it("accepts a partial ballot and omits skipped players from the average", async () => {
+    const { owner, users, club } = await createClubWithMembers(2);
+    const players = await roster(owner.token, club.id);
+    const ownerPlayer = players.find((player) => player.userId === owner.user.id)!;
+    const otherPlayer = players.find((player) => player.userId !== owner.user.id)!;
+
+    await request(app)
+      .post(`/api/clubs/${club.id}/tierlist/open`)
+      .set(auth(owner.token));
+
+    const ownerPartial = await request(app)
+      .post(`/api/clubs/${club.id}/tierlist`)
+      .set(auth(owner.token))
+      .send({ playerTiers: [{ playerId: ownerPlayer.id, tier: "S" }], submitted: true });
+    expect(ownerPartial.status).toBe(200);
+    expect(ownerPartial.body.playerTiers).toEqual([{ playerId: ownerPlayer.id, tier: "S" }]);
+
+    const member = await request(app)
+      .post(`/api/clubs/${club.id}/tierlist`)
+      .set(auth(users[1].token))
+      .send({
+        playerTiers: [
+          { playerId: ownerPlayer.id, tier: "D" },
+          { playerId: otherPlayer.id, tier: "S" },
+        ],
+        submitted: true,
+      });
+    expect(member.status).toBe(200);
+
+    const closed = await request(app)
+      .post(`/api/clubs/${club.id}/tierlist/close`)
+      .set(auth(owner.token));
+    expect(closed.status).toBe(200);
+
+    const after = await roster(owner.token, club.id);
+    const byId = new Map(after.map((player) => [player.id, player.marketValue]));
+    expect(byId.get(ownerPlayer.id)).toBe(19);
+    expect(byId.get(otherPlayer.id)).toBe(30);
+  });
 });

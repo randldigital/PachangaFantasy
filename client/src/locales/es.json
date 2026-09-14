@@ -186,7 +186,7 @@
     },
     "submit_valuation": {
       "title": "Envía tu valoración",
-      "description": "Dale a cada jugador de 1 a 5 estrellas y envíala.",
+      "description": "Valora a los jugadores que conozcas y envíala. Puedes omitir a quien no conozcas.",
       "cta": "Ir a Valoración"
     },
     "wait_for_valuation": {
@@ -495,9 +495,10 @@
     "noPlayersDescription": "Agrega jugadores a la liga primero",
     "noPlayersDescriptionClub": "Agrega jugadores al club primero",
     "addPlayersCta": "Añadir un jugador",
-    "submitBlocked": "Valora a todos los jugadores (faltan {{count}})",
+    "submitBlocked": "{{count}} sin valorar — no contarán en la media de ese jugador",
+    "skippedHint": "{{count}} sin valorar — no contarán en la media de ese jugador",
     "marketValue": "Valor de Mercado",
-    "placeInTier": "Dale a cada jugador de 1 a 5 estrellas. Varios pueden compartir la misma nota.",
+    "placeInTier": "Valora a los jugadores que conozcas con 1–5 estrellas. Omite a quien no conozcas: ese voto no entra en su media. Toca la misma estrella otra vez para borrar. Varios pueden compartir la misma nota.",
     "starGroupLabel": "Valoración de {{name}}",
     "starLabel": "{{stars}} estrellas",
     "notOpen": "El administrador aún no ha abierto la valoración",
@@ -513,7 +514,7 @@
     "closeAnyway": "Cerrar de todos modos",
     "opened": "La valoración está abierta",
     "closed": "Se han calculado los valores de mercado",
-    "unplaced": "Falta una valoración",
+    "unplaced": "Sin valorar",
     "editWhileOpen": "Puedes cambiar las valoraciones y volver a enviarlas hasta que el administrador cierre la valoración."
   },
   "ratings": {

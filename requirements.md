@@ -31,7 +31,7 @@ These close Appendix A. They are product rules, not recommendations. Revisit the
 | **P0.1** | Default match budget remains **100**. Market Values use a fixed tier scale of **S = 30, A = 24, B = 18, C = 12, D = 8**. A five-player average (all B) costs 90; an all-S lineup costs 150 and is illegal. Budget input range is **50–200**. |
 | **P0.2** | Valuation is a **genuine S/A/B/C/D tier list**. The member-facing control is **1–5 stars** mapped 1:1 onto those tiers (**5 = S, 4 = A, 3 = B, 2 = C, 1 = D**). Multiple players may share a tier. A strict total ordering is not required. |
 | **P0.3** | A player with no votes, or added after valuation closed, receives **B (18)** — the mid-tier default. Nobody is free. |
-| **P0.4** | A member's valuation is complete when every current league player has a tier. The administrator may close with any number of submissions (warn if few). Valuation may **reopen at any time**; new values apply only to matches that are still Open. |
+| **P0.4** | A member may skip players they do not know. Skipped votes are omitted from that player's average; they do not count as B. Submit does not require a complete ballot. The administrator may close with any number of submissions (warn if few). Valuation may **reopen at any time**; new values apply only to matches that are still Open. |
 | **P0.5** | Lineups and joining **lock when the administrator starts the match**. Ending the match is too late — results are already known. Scheduled kick-off time is not the lock. |
 | **P0.6** | A player **may edit their own statistics** until the match is scored. After scoring, statistics are immutable. |
 | **P0.7** | **External players are in scope.** The administrator may submit statistics for **any participant**, including externals and absent registered players. Statistics are keyed to the Player, not the User. |
@@ -482,22 +482,22 @@ That is the requirement. **Drag-and-drop is not the requirement** — it is one 
 
 The member-facing control is **1–5 stars** mapped 1:1 onto those tiers (**5 = S, 4 = A, 3 = B, 2 = C, 1 = D**). The stored model and Market Value scale remain S/A/B/C/D.
 
-Multiple players may share a tier. The member is not required to order players inside a tier. Every player in the league pool must be placed in exactly one tier for that member's valuation to be complete.
+Multiple players may share a tier. The member is not required to order players inside a tier. Rating a player is optional: skip anyone the member does not know. A skipped (null) vote is omitted from that player's average.
 
-> **[Implemented]** Members rate each player 1–5 stars. Those map 1:1 onto S/A/B/C/D. Several players may share a rating. The server stores a tier per player per voter.
+> **[Implemented]** Members rate the players they know with 1–5 stars. Those map 1:1 onto S/A/B/C/D. Several players may share a rating. Skipped players are omitted from that ballot. The server stores a tier per rated player per voter.
 
 ### 9.3 Valuation rules
 
 | Question | Answer | Status |
 |---|---|---|
 | Who is eligible to vote? | Any League Member. External players cannot vote — they have no account. | **[Implemented]** |
-| Which players must be ranked? | All Players in the league's pool, including external players. Each must be placed in exactly one tier. | **[Implemented]** |
+| Which players must be ranked? | Any Players in the league's pool, including external players. Members rate who they know and skip the rest. | **[Implemented]** |
 | Can a user rank themselves? | Yes. Users are not excluded from their own tier list. | **[Implemented]** |
 | Can a valuation be edited before closure? | Yes, while valuation is open. The server already accepts resubmission. | **[Implemented]** |
-| What constitutes a completed valuation? | For a member: every current league player has a tier. For the league: the administrator decides to close; not every member need have submitted. | **[Implemented]** |
+| What constitutes a completed valuation? | For a member: submitting is enough; skipped players are omitted from that ballot. For the league: the administrator decides to close; not every member need have submitted. | **[Implemented]** |
 | Can the administrator close valuation? | Yes. Closing calculates Market Values. | **[Implemented]** |
 | Can valuation reopen? | Yes, at any time. New Market Values apply only to matches still Open. Locked and scored matches are unaffected. | **[Implemented]** |
-| How is incomplete voting handled? | Closure is allowed with any number of submissions. The administrator is warned if few members have voted. Players with no votes receive the B-tier default (Section 10.3). | **[Implemented]** |
+| How is incomplete voting handled? | Closure is allowed with any number of submissions. A member may skip players; those null votes are omitted from the average. The administrator is warned if few members have voted. Players with no votes at all receive the B-tier default (Section 10.3). | **[Implemented]** |
 
 **Required corrections:**
 
@@ -552,10 +552,10 @@ Each tier has a fixed numeric value:
 
 For each Player:
 
-1. Collect the numeric values of every submitted valuation that placed that Player.
+1. Collect the numeric values of every submitted valuation that placed that Player. A skipped or null vote in a ballot is omitted — it does not count as B.
 2. If the Player has more than two votes, discard the single highest and the single lowest.
 3. Average the remaining values.
-4. Round to the nearest integer.
+4. Round to the nearest integer. If nobody placed the Player, Market Value is **B (18)** (P0.3).
 
 The default match budget is **100**. Budget at match creation must be between **50 and 200** inclusive.
 

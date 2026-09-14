@@ -19,7 +19,7 @@ const STAR_FILL: Record<ValuationTier, string> = {
 
 interface StarRatingProps {
   value?: ValuationTier;
-  onChange: (tier: ValuationTier) => void;
+  onChange: (tier: ValuationTier | null) => void;
   disabled?: boolean;
   label: string;
   starLabel: (star: ValuationStar) => string;
@@ -37,26 +37,39 @@ export default function StarRating({
   const display = hover || selected;
   const colorTier = display ? tierFromStar(display) : null;
 
-  const selectStar = (star: ValuationStar) => {
+  const applyStar = (star: ValuationStar) => {
     const tier = tierFromStar(star);
     if (tier) onChange(tier);
   };
 
+  const toggleStar = (star: ValuationStar) => {
+    if (selected === star) {
+      onChange(null);
+      return;
+    }
+    applyStar(star);
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (disabled) return;
+    if (event.key === "Backspace" || event.key === "Delete" || event.key === "Escape") {
+      event.preventDefault();
+      onChange(null);
+      return;
+    }
     const current = hover || selected || 3;
     if (event.key === "ArrowRight" || event.key === "ArrowUp") {
       event.preventDefault();
-      selectStar(Math.min(5, current + 1) as ValuationStar);
+      applyStar(Math.min(5, current + 1) as ValuationStar);
     } else if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
       event.preventDefault();
-      selectStar(Math.max(1, current - 1) as ValuationStar);
+      applyStar(Math.max(1, current - 1) as ValuationStar);
     } else if (event.key === "Home") {
       event.preventDefault();
-      selectStar(1);
+      applyStar(1);
     } else if (event.key === "End") {
       event.preventDefault();
-      selectStar(5);
+      applyStar(5);
     }
   };
 
@@ -77,7 +90,7 @@ export default function StarRating({
             aria-checked={selected === star}
             aria-label={starLabel(star)}
             disabled={disabled}
-            onClick={() => selectStar(star)}
+            onClick={() => toggleStar(star)}
             onMouseEnter={() => setHover(star)}
             onMouseLeave={() => setHover(0)}
             onFocus={() => setHover(star)}

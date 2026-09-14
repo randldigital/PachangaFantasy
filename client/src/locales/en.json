@@ -189,7 +189,7 @@
     },
     "submit_valuation": {
       "title": "Submit your valuation",
-      "description": "Give every player 1–5 stars, then send it.",
+      "description": "Rate the players you know, then send it. You can skip anyone you don't.",
       "cta": "Go to Valuation"
     },
     "wait_for_valuation": {
@@ -498,9 +498,10 @@
     "noPlayersDescription": "Add players to the league first",
     "noPlayersDescriptionClub": "Add players to the club first",
     "addPlayersCta": "Add a player",
-    "submitBlocked": "Rate every player ({{count}} left)",
+    "submitBlocked": "{{count}} skipped — they will not count toward that player's average",
+    "skippedHint": "{{count}} skipped — they will not count toward that player's average",
     "marketValue": "Market Value",
-    "placeInTier": "Give each player 1–5 stars. Several players can share a rating.",
+    "placeInTier": "Rate the players you know with 1–5 stars. Skip anyone you don't — that vote is omitted from their average. Tap the same star again to clear. Several players can share a rating.",
     "starGroupLabel": "Rating for {{name}}",
     "starLabel": "{{stars}} stars",
     "notOpen": "The administrator has not opened valuation yet",
@@ -516,7 +517,7 @@
     "closeAnyway": "Close anyway",
     "opened": "Valuation is open",
     "closed": "Market Values have been calculated",
-    "unplaced": "Needs a rating",
+    "unplaced": "Skipped",
     "editWhileOpen": "You can change your ratings and submit again until the administrator closes valuation."
   },
   "ratings": {

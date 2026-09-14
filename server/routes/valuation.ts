@@ -8,7 +8,6 @@ import * as leagueRepo from "../repos/leagueRepo";
 import * as playerRepo from "../repos/playerRepo";
 import * as valuationRepo from "../repos/valuationRepo";
 import {
-  isValuationComplete,
   marketValuesFromTierSubmissions,
   normalizeTierPlacements,
   type PlayerTierPlacement,
@@ -51,10 +50,8 @@ export function registerValuationRoutes(app: Express) {
       );
       const submitted = tierListData.submitted ?? false;
 
-      if (submitted && !isValuationComplete(playerIds, playerTiers)) {
-        return res.status(400).json({
-          message: "Place every league player in a tier before submitting",
-        });
+      if (submitted && playerIds.length === 0) {
+        return res.status(400).json({ message: "Add players before submitting" });
       }
 
       const existing = await valuationRepo.getTierList(leagueId, access.user.id);
@@ -170,10 +167,8 @@ export function registerValuationRoutes(app: Express) {
       );
       const submitted = tierListData.submitted ?? false;
 
-      if (submitted && !isValuationComplete(playerIds, playerTiers)) {
-        return res.status(400).json({
-          message: "Place every club player in a tier before submitting",
-        });
+      if (submitted && playerIds.length === 0) {
+        return res.status(400).json({ message: "Add players before submitting" });
       }
 
       const existing = await valuationRepo.getContextTierList({ clubId }, access.user.id);

@@ -52,11 +52,13 @@ describe("phase 3 valuation", () => {
       .set("Authorization", `Bearer ${owner.token}`);
     expect(opened.status).toBe(200);
 
-    const incomplete = await request(app)
+    const partial = await request(app)
       .post(`/api/tierlist/${league.id}`)
       .set("Authorization", `Bearer ${owner.token}`)
       .send({ playerTiers: [{ playerId: ids[0], tier: "S" }], submitted: true });
-    expect(incomplete.status).toBe(400);
+    expect(partial.status).toBe(200);
+    expect(partial.body.submitted).toBe(true);
+    expect(partial.body.playerTiers).toEqual([{ playerId: ids[0], tier: "S" }]);
 
     const first = await request(app)
       .post(`/api/tierlist/${league.id}`)
@@ -109,6 +111,48 @@ describe("phase 3 valuation", () => {
     const byId = new Map(after.body.map((player: { id: number; marketValue: number }) => [player.id, player.marketValue]));
     expect(byId.get(ids[0])).toBe(21);
     expect(byId.get(ids[1])).toBe(15);
+  });
+
+  it("omits skipped players from the closed average instead of treating them as B", async () => {
+    const { owner, users, league } = await createLeagueWithMembers(app, 2);
+    const ids = await playerIds(app, owner.token, league.id);
+    expect(ids).toHaveLength(2);
+
+    await request(app)
+      .post(`/api/tierlist/${league.id}/open`)
+      .set("Authorization", `Bearer ${owner.token}`);
+
+    const ownerPartial = await request(app)
+      .post(`/api/tierlist/${league.id}`)
+      .set("Authorization", `Bearer ${owner.token}`)
+      .send({ playerTiers: [{ playerId: ids[0], tier: "S" }], submitted: true });
+    expect(ownerPartial.status).toBe(200);
+
+    const member = await request(app)
+      .post(`/api/tierlist/${league.id}`)
+      .set("Authorization", `Bearer ${users[1].token}`)
+      .send({
+        playerTiers: [
+          { playerId: ids[0], tier: "D" },
+          { playerId: ids[1], tier: "S" },
+        ],
+        submitted: true,
+      });
+    expect(member.status).toBe(200);
+
+    const closed = await request(app)
+      .post(`/api/tierlist/${league.id}/close`)
+      .set("Authorization", `Bearer ${owner.token}`);
+    expect(closed.status).toBe(200);
+
+    const after = await request(app)
+      .get(`/api/players/${league.id}`)
+      .set("Authorization", `Bearer ${owner.token}`);
+    const byId = new Map(
+      after.body.map((player: { id: number; marketValue: number }) => [player.id, player.marketValue]),
+    );
+    expect(byId.get(ids[0])).toBe(19);
+    expect(byId.get(ids[1])).toBe(30);
   });
 
   it("assigns B (18) when closing with no votes and when adding a player after close", async () => {
