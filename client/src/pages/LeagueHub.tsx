@@ -158,7 +158,9 @@ export default function LeagueHub() {
         </div>
       </div>
 
-      <AdSlot slot="hub.sidebar" />
+      <div className="container mx-auto px-4">
+        <AdSlot slot="hub.sidebar" />
+      </div>
       <PrimaryActionBanner
         league={league}
         matches={matches}

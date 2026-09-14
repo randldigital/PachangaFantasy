@@ -63,7 +63,7 @@ These extend Phase 0. They are product rules, not recommendations.
 | **P2.1.1** | **New accounts must verify email** before they receive a session. Existing 2.0 users are backfilled as verified. If SMTP is unset, register returns `503 EMAIL_NOT_CONFIGURED`. |
 | **P2.1.2** | League/Club **valuation `status` is not membership**. `joinOpen` (default true) closes join; invite codes still resolve. Closed join returns `403 MEMBERSHIP_CLOSED`. |
 | **P2.1.3** | Subscriptions belong to a **billing account** whose subject is a User **or** a League **or** a Club. Org-first: every League and Club is seeded on `free`. Members inherit that org plan in that context. A personal User account exists for later SKUs and does not upgrade leagues they merely joined. |
-| **P2.1.4** | `free` includes every current 2.0 football feature. Paid gates are **server-side** (`requireEntitlement`). Google, payments and ads stay off until env is set. Ads have **no** HTTP stub; `/api/auth/features` reports `ads: false` and `AdSlot` renders nothing. |
+| **P2.1.4** | `free` includes every current 2.0 football feature. Paid gates are **server-side** (`requireEntitlement`). Google, payments and ads stay off until env is set. Ads have **no** HTTP stub; `/api/auth/features` reports `ads: false` and `AdSlot` renders nothing until `ADS_ENABLED` (then it loads AdSense). |
 | **P2.1.5** | One React/Vite client is the future mobile UI. Do not add a second frontend. |
 
 ### How to read the status markers
@@ -1375,7 +1375,7 @@ Paid gates must be enforced on the server (`requireEntitlement` / `403 ENTITLEME
 
 ### 24.4 Ads
 
-`/api/auth/features` reports `ads: false` unless `ADS_ENABLED`. `AdSlot` renders nothing. There is no ads HTTP endpoint and no ads `501`. **[Implemented]**
+`/api/auth/features` reports `ads: false` unless `ADS_ENABLED`. When ads are on and `ADSENSE_CLIENT` is set, `AdSlot` loads AdSense into `overview.banner` and `hub.sidebar`. There is no ads HTTP endpoint and no ads `501`. **[Implemented]**
 
 ### 24.5 Single client
 

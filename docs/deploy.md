@@ -21,6 +21,9 @@ Copy `.env.example` to `.env`. Boot needs:
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | empty | `/api/auth/google` returns `501`; the Google button is hidden |
 | `PAYMENTS_ENABLED` | `false` | Checkout and webhook return `501 PAYMENTS_DISABLED`; `/billing` stays read-only |
 | `ADS_ENABLED` | `false` | `GET /api/auth/features` reports `ads: false`; ad slots render nothing |
+| `ADSENSE_CLIENT` | empty | Publisher id (`ca-pub-…` or `pub-…`). Ignored unless `ADS_ENABLED` |
+| `ADSENSE_SLOT_OVERVIEW` / `ADSENSE_SLOT_HUB` | empty | Optional Display ad-unit ids. Empty ⇒ responsive auto unit |
+| `ADS_TEST` | `false` | When true with ads on, units request Google test ads (`data-adtest=on`) |
 | `FEATURE_DEFAULT_PLAN` | `free` | Used when a billing account has no active subscription |
 | `CORS_ORIGINS` | empty | Same-origin only. Set a comma-separated list when a packaged WebView calls the API |
 | `ANALYTICS_PASSCODE` | `2026` | Unlocks `GET /analytics` (no nav link). Send as `X-Analytics-Passcode`. Change this in production. |

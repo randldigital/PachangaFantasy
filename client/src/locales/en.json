@@ -108,6 +108,9 @@
     "deleting": "Deleting...",
     "charsRemaining": "{{count}} characters remaining"
   },
+  "ads": {
+    "label": "Advertisement"
+  },
   "overview": {
     "title": "My Leagues",
     "noLeagues": "You don't have any leagues yet",

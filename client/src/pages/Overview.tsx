@@ -69,9 +69,8 @@ export default function Overview() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-wrap justify-between items-center gap-3 mb-8">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
           <h2 className="text-3xl font-bold text-white">{t("overview.title")}</h2>
-          <AdSlot slot="overview.banner" />
           <div className="flex flex-wrap gap-3">
             <Dialog open={showJoin} onOpenChange={setShowJoin}>
               <DialogTrigger asChild>
@@ -122,6 +121,8 @@ export default function Overview() {
             </Dialog>
           </div>
         </div>
+
+        <AdSlot slot="overview.banner" />
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -108,6 +108,9 @@
     "deleting": "Eliminando...",
     "charsRemaining": "Quedan {{count}} caracteres"
   },
+  "ads": {
+    "label": "Publicidad"
+  },
   "overview": {
     "title": "Mis Ligas",
     "noLeagues": "No tienes ligas aún",
