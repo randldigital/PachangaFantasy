@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
@@ -16,7 +16,7 @@ import { useAuthFeatures } from "@/lib/features";
 
 export default function Login() {
   const { t } = useTranslation();
-  const { login } = useAuth();
+  const { login, user, loading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { data: features } = useAuthFeatures();
@@ -27,6 +27,12 @@ export default function Login() {
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
+
+  useEffect(() => {
+    if (user && !loading) {
+      setLocation("/overview");
+    }
+  }, [user, loading, setLocation]);
 
   const onSubmit = async (data: LoginInput) => {
     setIsLoading(true);
@@ -68,10 +74,24 @@ export default function Login() {
           </button>
         </div>
       ) : (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+        <form
+          onSubmit={(event) => {
+            const native = new FormData(event.currentTarget);
+            const email = String(native.get("email") ?? "");
+            const password = String(native.get("password") ?? "");
+            if (email) {
+              form.setValue("email", email, { shouldValidate: false });
+            }
+            if (password) {
+              form.setValue("password", password, { shouldValidate: false });
+            }
+            void form.handleSubmit(onSubmit)(event);
+          }}
+          className="space-y-5"
+        >
           <div className="space-y-2">
             <Label htmlFor="email">{t("auth.email")}</Label>
-            <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
+            <Input id="email" type="email" autoComplete="username" {...form.register("email")} />
             {form.formState.errors.email && (
               <p className="text-red-400 text-sm">{form.formState.errors.email.message}</p>
             )}

@@ -24,6 +24,7 @@ import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { pickActiveMatch } from "@shared/domain/matchLifecycle";
 import { pickStatsMatch } from "@shared/domain/stats";
+import { shouldRenderHubAd } from "@shared/domain/entitlements";
 import type { Club, Match, Player } from "@shared/schema";
 
 type ClubTab = "roster" | "clasificacion" | "historial" | "valoracion" | "stats";
@@ -70,6 +71,12 @@ export default function ClubHub() {
     queryKey: queryKeys.clubClaimRequests(clubId),
     queryFn: () => api.get<{ id: number }[]>(`/api/clubs/${clubId}/claim-requests`),
     enabled: isAdmin,
+  });
+
+  const { data: billing } = useQuery<{ planCode: string }>({
+    queryKey: queryKeys.billingSubject("club", clubId),
+    queryFn: () => api.get<{ planCode: string }>(`/api/billing/subject/club/${clubId}`),
+    enabled: Number.isFinite(clubId),
   });
 
   if (isLoading) {
@@ -156,7 +163,7 @@ export default function ClubHub() {
           </div>
         </div>
 
-        <AdSlot slot="hub.sidebar" />
+        {shouldRenderHubAd(billing?.planCode) ? <AdSlot slot="hub.sidebar" /> : null}
         <ClubMatchBanner
           club={club}
           match={bannerMatch}

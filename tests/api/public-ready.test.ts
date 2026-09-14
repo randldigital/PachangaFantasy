@@ -1,9 +1,11 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import {
+  FEATURE_ADS_FREE,
   FEATURE_CORE_LEAGUE,
   FEATURE_PLUS_PLACEHOLDER,
   hasEntitlement,
+  shouldRenderHubAd,
 } from "@shared/domain/entitlements";
 import { createApp } from "../../server/app";
 import * as billingRepo from "../../server/repos/billingRepo";
@@ -76,6 +78,19 @@ describe("2.1 auth, membership and billing", () => {
       password: "secret1",
     });
     expect(login.status).toBe(200);
+    expect(login.body.token).toBeTruthy();
+  });
+
+  it("logs in when the email casing differs from the stored address", async () => {
+    const registered = await registerUser(app, 41, { email: "CaseUser@pachanga.test" });
+    expect(registered.status).toBe(200);
+
+    const login = await request(app).post("/api/auth/login").send({
+      email: "  CASEUSER@pachanga.test ",
+      password: "secret1",
+    });
+    expect(login.status).toBe(200);
+    expect(login.body.user.email).toBe("caseuser@pachanga.test");
     expect(login.body.token).toBeTruthy();
   });
 
@@ -288,6 +303,10 @@ describe("2.1 auth, membership and billing", () => {
     expect(await billingRepo.resolvePlan({ type: "user", id: member.user.id })).toBe("plus");
     expect(hasEntitlement("free", FEATURE_PLUS_PLACEHOLDER)).toBe(false);
     expect(hasEntitlement("plus", FEATURE_PLUS_PLACEHOLDER)).toBe(true);
+    expect(hasEntitlement("free", FEATURE_ADS_FREE)).toBe(false);
+    expect(hasEntitlement("plus", FEATURE_ADS_FREE)).toBe(true);
+    expect(shouldRenderHubAd("free")).toBe(true);
+    expect(shouldRenderHubAd("plus")).toBe(false);
 
     const denied = await request(app)
       .get("/api/billing/plus-preview")
@@ -305,6 +324,13 @@ describe("2.1 auth, membership and billing", () => {
       .query({ type: "league", id: league.id })
       .set(auth(owner.token));
     expect(allowed.status).toBe(200);
+
+    const subject = await request(app)
+      .get(`/api/billing/subject/league/${league.id}`)
+      .set(auth(owner.token));
+    expect(subject.status).toBe(200);
+    expect(subject.body.planCode).toBe("plus");
+    expect(shouldRenderHubAd(subject.body.planCode)).toBe(false);
   });
 
   it("serves billing catalog and overview while checkout stays 501", async () => {
@@ -313,6 +339,10 @@ describe("2.1 auth, membership and billing", () => {
     expect(plans.status).toBe(200);
     expect(plans.body.paymentsEnabled).toBe(false);
     expect(plans.body.plans.map((plan: { code: string }) => plan.code)).toEqual(["free", "plus"]);
+    const plus = plans.body.plans.find((plan: { code: string }) => plan.code === "plus");
+    const free = plans.body.plans.find((plan: { code: string }) => plan.code === "free");
+    expect(plus.features).toContain("org.ad_free");
+    expect(free.features).not.toContain("org.ad_free");
 
     const overview = await request(app).get("/api/billing/overview").set(auth(owner.token));
     expect(overview.status).toBe(200);

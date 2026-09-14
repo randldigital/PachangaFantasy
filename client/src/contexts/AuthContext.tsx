@@ -1,55 +1,100 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getQueryFn } from '@/lib/queryClient';
-import { api } from '@/lib/api';
-import { queryKeys } from '@/lib/queryKeys';
-import type { User, InsertUser } from '@shared/schema';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { apiUrl } from "@/lib/apiBase";
+import { parseApiErrorBody } from "@/lib/apiError";
+import { queryKeys } from "@/lib/queryKeys";
+import type { User, InsertUser } from "@shared/schema";
+
+type AuthPayload = { user: User; token: string };
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   register: (userData: InsertUser) => Promise<{ email: string }>;
+  applySession: (payload: AuthPayload) => void;
   logout: () => void;
   loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-type AuthPayload = { user: User; token: string };
+function meKey(token: string | null) {
+  return [...queryKeys.me, token] as const;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem("token"));
+  const [user, setUser] = useState<User | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: user, isLoading, error } = useQuery<{ user: User } | null>({
-    queryKey: queryKeys.me,
-    queryFn: getQueryFn({ on401: "returnNull" }),
-    enabled: !!token,
+  const persistToken = useCallback((next: string | null) => {
+    setToken(next);
+    if (next) {
+      localStorage.setItem("token", next);
+    } else {
+      localStorage.removeItem("token");
+      setUser(null);
+    }
+  }, []);
+
+  const applySession = useCallback(
+    (payload: AuthPayload) => {
+      setUser(payload.user);
+      queryClient.setQueryData(meKey(payload.token), { user: payload.user });
+      persistToken(payload.token);
+    },
+    [queryClient, persistToken],
+  );
+
+  const { data, isFetched, isError } = useQuery<{ user: User } | null>({
+    queryKey: meKey(token),
+    queryFn: async () => {
+      if (!token) {
+        return null;
+      }
+      const res = await fetch(apiUrl("/api/auth/me"), {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+      });
+      if (res.status === 401 || res.status === 403) {
+        return null;
+      }
+      if (!res.ok) {
+        throw parseApiErrorBody(res.status, await res.text());
+      }
+      return (await res.json()) as { user: User };
+    },
+    enabled: Boolean(token),
     retry: false,
+    staleTime: Infinity,
   });
 
   useEffect(() => {
-    if (error && token) {
-      setToken(null);
-      localStorage.removeItem('token');
+    if (data?.user) {
+      setUser(data.user);
     }
-  }, [error, token]);
+  }, [data]);
+
+  useEffect(() => {
+    if (!token || !isFetched) {
+      return;
+    }
+    if (data === null) {
+      persistToken(null);
+    }
+  }, [token, data, isFetched, persistToken]);
 
   const loginMutation = useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      return api.post<AuthPayload>('/api/auth/login', { email, password });
+      return api.post<AuthPayload>("/api/auth/login", { email, password });
     },
-    onSuccess: (data) => {
-      localStorage.setItem('token', data.token);
-      setToken(data.token);
-      queryClient.setQueryData(queryKeys.me, data);
-      queryClient.invalidateQueries({ queryKey: queryKeys.me });
-    },
+    onSuccess: applySession,
   });
 
   const registerMutation = useMutation({
     mutationFn: async (userData: InsertUser) => {
-      return api.post<{ email: string; code: string }>('/api/auth/register', userData);
+      return api.post<{ email: string; code: string }>("/api/auth/register", userData);
     },
   });
 
@@ -63,33 +108,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    queryClient.clear();
+    persistToken(null);
+    queryClient.removeQueries({ queryKey: queryKeys.me });
   };
-
-  useEffect(() => {
-    if (token) {
-      localStorage.setItem('token', token);
-    } else {
-      localStorage.removeItem('token');
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (token && user === null && !isLoading) {
-      setToken(null);
-    }
-  }, [token, user, isLoading]);
 
   return (
     <AuthContext.Provider
       value={{
-        user: user?.user || null,
+        user,
         login,
         register,
+        applySession,
         logout,
-        loading: isLoading,
+        loading: Boolean(token) && !user && !isError,
       }}
     >
       {children}
@@ -100,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }

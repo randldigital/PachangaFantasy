@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { apiUrl } from "../../client/src/lib/apiBase";
 import {
+  FEATURE_ADS_FREE,
   FEATURE_CORE_CLUB,
   FEATURE_CORE_LEAGUE,
   FEATURE_PLUS_PLACEHOLDER,
   hasEntitlement,
+  shouldRenderHubAd,
 } from "@shared/domain/entitlements";
 import { isAdsEnabled as adsFromFeatures, isPaymentsEnabled } from "../../client/src/lib/features";
 
@@ -26,6 +28,14 @@ describe("entitlements", () => {
     expect(hasEntitlement("free", FEATURE_CORE_CLUB)).toBe(true);
     expect(hasEntitlement("free", FEATURE_PLUS_PLACEHOLDER)).toBe(false);
     expect(hasEntitlement("plus", FEATURE_PLUS_PLACEHOLDER)).toBe(true);
+    expect(hasEntitlement("free", FEATURE_ADS_FREE)).toBe(false);
+    expect(hasEntitlement("plus", FEATURE_ADS_FREE)).toBe(true);
+  });
+
+  it("hides hub ads on Plus and until the org plan is known", () => {
+    expect(shouldRenderHubAd(undefined)).toBe(false);
+    expect(shouldRenderHubAd("free")).toBe(true);
+    expect(shouldRenderHubAd("plus")).toBe(false);
   });
 });
 

@@ -1,5 +1,5 @@
 {
-  "name": "Pachanga",
+  "name": "Pachanga Fantasy",
   "short_name": "Pachanga",
   "display": "standalone",
   "start_url": "/",
@@ -7,9 +7,9 @@
   "theme_color": "#121212",
   "icons": [
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/brand/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
       "purpose": "any"
     }
   ]

@@ -5,6 +5,7 @@ export const FEATURE_CORE_LINEUP = "lineup.core";
 export const FEATURE_CORE_VALUATION = "valuation.core";
 export const FEATURE_CORE_CLAIMS = "claims.core";
 export const FEATURE_PLUS_PLACEHOLDER = "org.plus_placeholder";
+export const FEATURE_ADS_FREE = "org.ad_free";
 
 export const FREE_FEATURES = [
   FEATURE_CORE_LEAGUE,
@@ -15,7 +16,7 @@ export const FREE_FEATURES = [
   FEATURE_CORE_CLAIMS,
 ] as const;
 
-export const PLUS_FEATURES = [...FREE_FEATURES, FEATURE_PLUS_PLACEHOLDER] as const;
+export const PLUS_FEATURES = [...FREE_FEATURES, FEATURE_PLUS_PLACEHOLDER, FEATURE_ADS_FREE] as const;
 
 export type FeatureKey = (typeof PLUS_FEATURES)[number];
 export type PlanCode = "free" | "plus" | string;
@@ -38,6 +39,14 @@ export function featuresForPlan(planCode: PlanCode): readonly string[] {
 
 export function hasEntitlement(planCode: PlanCode, feature: string): boolean {
   return featuresForPlan(planCode).includes(feature);
+}
+
+/** Hub AdSlot only after the org plan is known, and never on Plus. Overview/Billing ignore this. */
+export function shouldRenderHubAd(planCode: string | undefined | null): boolean {
+  if (!planCode) {
+    return false;
+  }
+  return !hasEntitlement(planCode, FEATURE_ADS_FREE);
 }
 
 export function catalogPlans() {

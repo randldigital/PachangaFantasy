@@ -12,7 +12,10 @@ class CapturingMailer {
   }
 
   lastTokenFor(email: string): string | undefined {
-    const message = [...this.sent].reverse().find((row) => row.to === email);
+    const normalized = email.trim().toLowerCase();
+    const message = [...this.sent]
+      .reverse()
+      .find((row) => row.to.trim().toLowerCase() === normalized);
     const match = message?.text.match(/token=([A-Za-z0-9]+)/);
     return match?.[1];
   }

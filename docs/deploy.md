@@ -17,11 +17,11 @@ Copy `.env.example` to `.env`. Boot needs:
 |---|---|---|
 | `PUBLIC_URL` | (empty) | Verify emails use `http://localhost:$PORT` |
 | `STORAGE_DIR` | `uploads` | Avatars are files under this directory (`$STORAGE_DIR/avatars`) |
-| `SMTP_HOST` (and related `SMTP_*`) | empty | Register returns `503 EMAIL_NOT_CONFIGURED` |
+| `SMTP_HOST` (and related `SMTP_*`) | empty | Register returns `503 EMAIL_NOT_CONFIGURED`. `SMTP_FROM` must be a **verified sender** at the provider, not the SMTP login (e.g. not `*@smtp-brevo.com`) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | empty | `/api/auth/google` returns `501`; the Google button is hidden |
 | `PAYMENTS_ENABLED` | `false` | Checkout and webhook return `501 PAYMENTS_DISABLED`; `/billing` stays read-only |
 | `ADS_ENABLED` | `false` | `GET /api/auth/features` reports `ads: false`; ad slots render nothing |
-| `ADSENSE_CLIENT` | empty | Publisher id (`ca-pub-…` or `pub-…`). Ignored unless `ADS_ENABLED` |
+| `ADSENSE_CLIENT` | empty | Publisher id (`ca-pub-…` or `pub-…`). Ignored unless `ADS_ENABLED`. Production `index.html` also has the matching `google-adsense-account` meta tag so Google can verify the site without login. |
 | `ADSENSE_SLOT_OVERVIEW` / `ADSENSE_SLOT_HUB` | empty | Optional Display ad-unit ids. Empty ⇒ responsive auto unit |
 | `ADS_TEST` | `false` | When true with ads on, units request Google test ads (`data-adtest=on`) |
 | `FEATURE_DEFAULT_PLAN` | `free` | Used when a billing account has no active subscription |
@@ -29,6 +29,23 @@ Copy `.env.example` to `.env`. Boot needs:
 | `ANALYTICS_PASSCODE` | `2026` | Unlocks `GET /analytics` (no nav link). Send as `X-Analytics-Passcode`. Change this in production. |
 
 Treat `false`, `0`, and empty as off for boolean flags. Only `true` / `1` / `yes` turn them on.
+
+## Grant Plus without payments (ops)
+
+Checkout stays `501` while `PAYMENTS_ENABLED` is off, so a Plus org is granted with SQL. Do **not** encode league names in application code. Confirm the rows first, then update those billing subscriptions:
+
+```sql
+SELECT l.id, l.name FROM leagues l WHERE l.name = 'Gazpachangas';
+
+UPDATE subscriptions s
+SET plan_id = (SELECT id FROM plans WHERE code = 'plus'), status = 'active'
+FROM billing_accounts ba
+JOIN leagues l ON ba.subject_type = 'league' AND ba.subject_id = l.id
+WHERE s.billing_account_id = ba.id
+  AND l.name = 'Gazpachangas';
+```
+
+Plus hubs hide `hub.sidebar` ads (`org.ad_free`). Overview and Billing ads are unchanged. Re-run the update (or target `l.id`) if you create another test league later.
 
 ## Schema updates
 

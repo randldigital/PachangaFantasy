@@ -1,10 +1,11 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, Trophy, CreditCard } from "lucide-react";
+import { LogOut, CreditCard } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import AvatarUploadButton from "@/components/AvatarUploadButton";
+import { BrandIcon } from "@/components/BrandMark";
 import { isPaymentsEnabled, useAuthFeatures } from "@/lib/features";
 
 export default function Navbar() {
@@ -19,7 +20,7 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex items-center space-x-8">
             <Link href="/" className="flex items-center space-x-2">
-              <Trophy className="h-8 w-8 text-accent-blue" />
+              <BrandIcon className="h-10 w-10" />
               <span className="text-xl font-bold text-text-primary">{t("app.title")}</span>
             </Link>
           </div>

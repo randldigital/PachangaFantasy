@@ -322,6 +322,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
 }).extend({
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(6, "Password must be at least 6 characters"),
 }).strip();
 
@@ -333,7 +334,7 @@ export const registerUserSchema = insertUserSchema.extend({
 });
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
 });
 
 export const resetPasswordSchema = z.object({
@@ -387,7 +388,7 @@ export const insertTierListSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(1, "Password is required"),
 });
 

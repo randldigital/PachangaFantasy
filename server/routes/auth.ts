@@ -60,6 +60,24 @@ async function sendPasswordResetEmail(user: User, rawToken: string) {
   });
 }
 
+function mailConfigError(res: Response, error: unknown): boolean {
+  if (error instanceof Error && error.message === "SMTP_FROM_INVALID") {
+    res.status(503).json({
+      message: "SMTP_FROM must be a sender verified at your mail provider, not the SMTP login",
+      code: "SMTP_FROM_INVALID",
+    });
+    return true;
+  }
+  if (error instanceof Error && error.message === "EMAIL_NOT_CONFIGURED") {
+    res.status(503).json({
+      message: "Email delivery is not configured",
+      code: "EMAIL_NOT_CONFIGURED",
+    });
+    return true;
+  }
+  return false;
+}
+
 function issueToken(user: User) {
   return userRepo.signUserToken(user);
 }
@@ -110,6 +128,7 @@ export function registerAuthRoutes(app: Express) {
         email: user.email,
       });
     } catch (error) {
+      if (mailConfigError(res, error)) return;
       logger.error("Register error", error);
       res.status(400).json({ message: "Invalid input" });
     }
@@ -187,6 +206,7 @@ export function registerAuthRoutes(app: Express) {
       resendAt.set(user.id, Date.now());
       res.json({ ok: true });
     } catch (error) {
+      if (mailConfigError(res, error)) return;
       logger.error("Resend verification error", error);
       res.status(400).json({ message: "Invalid input" });
     }
@@ -212,6 +232,7 @@ export function registerAuthRoutes(app: Express) {
       }
       res.json({ ok: true });
     } catch (error) {
+      if (mailConfigError(res, error)) return;
       logger.error("Forgot password error", error);
       res.status(400).json({ message: "Invalid input" });
     }

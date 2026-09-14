@@ -27,6 +27,7 @@ import AdSlot from "@/components/AdSlot";
 import RosterManagerDialog from "@/components/league/RosterManagerDialog";
 import { pickActiveMatch } from "@shared/domain/matchLifecycle";
 import { pickStatsMatch } from "@shared/domain/stats";
+import { shouldRenderHubAd } from "@shared/domain/entitlements";
 import type { HubTab } from "@shared/domain/primaryAction";
 import type { League, Match, Player } from "@shared/schema";
 
@@ -62,6 +63,12 @@ export default function LeagueHub() {
     queryKey: queryKeys.leagueClaimRequests(leagueId),
     queryFn: () => api.get<{ id: number }[]>(`/api/leagues/${leagueId}/claim-requests`),
     enabled: isAdmin,
+  });
+
+  const { data: billing } = useQuery<{ planCode: string }>({
+    queryKey: queryKeys.billingSubject("league", leagueId),
+    queryFn: () => api.get<{ planCode: string }>(`/api/billing/subject/league/${leagueId}`),
+    enabled: Number.isFinite(leagueId),
   });
 
   const activeMatch = pickActiveMatch(matches);
@@ -159,7 +166,7 @@ export default function LeagueHub() {
       </div>
 
       <div className="container mx-auto px-4">
-        <AdSlot slot="hub.sidebar" />
+        {shouldRenderHubAd(billing?.planCode) ? <AdSlot slot="hub.sidebar" /> : null}
       </div>
       <PrimaryActionBanner
         league={league}

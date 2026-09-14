@@ -3,13 +3,13 @@ import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import AuthShell from "@/components/AuthShell";
 import { api } from "@/lib/api";
-import { queryClient } from "@/lib/queryClient";
-import { queryKeys } from "@/lib/queryKeys";
+import { useAuth } from "@/contexts/AuthContext";
 import type { User } from "@shared/schema";
 
 export default function VerifyEmail() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
+  const { applySession } = useAuth();
   const [status, setStatus] = useState<"working" | "ok" | "error">("working");
 
   useEffect(() => {
@@ -22,13 +22,12 @@ export default function VerifyEmail() {
     api
       .get<{ user: User; token: string }>(`/api/auth/verify?token=${encodeURIComponent(token)}`)
       .then((data) => {
-        localStorage.setItem("token", data.token);
-        queryClient.setQueryData(queryKeys.me, { user: data.user });
+        applySession(data);
         setStatus("ok");
         setLocation("/overview");
       })
       .catch(() => setStatus("error"));
-  }, [setLocation]);
+  }, [applySession, setLocation]);
 
   return (
     <AuthShell title={t("auth.verifyTitle")} subtitle={t("auth.verifyWorking")}>

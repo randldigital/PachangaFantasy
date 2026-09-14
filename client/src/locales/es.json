@@ -322,6 +322,7 @@
     "SIDE_INCOMPLETE": "Cada equipo necesita el número exacto de jugadores para empezar.",
     "MEMBERSHIP_CLOSED": "Este grupo no admite miembros nuevos.",
     "EMAIL_NOT_CONFIGURED": "El envío de correo aún no está configurado.",
+    "SMTP_FROM_INVALID": "La dirección From debe ser un remitente verificado en tu proveedor de correo, no el usuario SMTP.",
     "EMAIL_NOT_VERIFIED": "Confirma tu correo antes de entrar.",
     "EMAIL_VERIFICATION_REQUIRED": "Revisa tu correo para confirmar la cuenta.",
     "INVALID_VERIFICATION_TOKEN": "Ese enlace no es válido o ha caducado.",
@@ -742,7 +743,8 @@
       "lineup.core": "Alineaciones",
       "valuation.core": "Valoración y valor de mercado",
       "claims.core": "Reclamaciones y plantilla",
-      "org.plus_placeholder": "Plus (aún no se vende)"
+      "org.plus_placeholder": "Plus (aún no se vende)",
+      "org.ad_free": "Sin anuncios en esta liga o club"
     }
   },
   "analytics": {

@@ -325,6 +325,7 @@
     "SIDE_INCOMPLETE": "Both sides need the exact number of players before starting.",
     "MEMBERSHIP_CLOSED": "This group is not accepting new members.",
     "EMAIL_NOT_CONFIGURED": "Email delivery is not configured yet.",
+    "SMTP_FROM_INVALID": "The From address must be a sender verified at your mail provider, not the SMTP login.",
     "EMAIL_NOT_VERIFIED": "Verify your email before signing in.",
     "EMAIL_VERIFICATION_REQUIRED": "Check your email to confirm the account.",
     "INVALID_VERIFICATION_TOKEN": "That confirmation link is invalid or has expired.",
@@ -745,7 +746,8 @@
       "lineup.core": "Lineups",
       "valuation.core": "Valuation and market value",
       "claims.core": "Claims and roster",
-      "org.plus_placeholder": "Plus placeholder (not sold yet)"
+      "org.plus_placeholder": "Plus placeholder (not sold yet)",
+      "org.ad_free": "No ads in this league or club"
     }
   },
   "analytics": {

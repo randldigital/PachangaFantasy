@@ -4,7 +4,7 @@ import {
   type InsertUser,
 } from "@shared/schema";
 import { db } from "../db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { env } from "../env";
@@ -15,7 +15,11 @@ export async function getUser(id: number): Promise<User | undefined> {
 }
 
 export async function getUserByEmail(email: string): Promise<User | undefined> {
-  const [user] = await db.select().from(users).where(eq(users.email, email));
+  const normalized = email.trim().toLowerCase();
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(sql`lower(${users.email}) = ${normalized}`);
   return user || undefined;
 }
 
@@ -41,7 +45,7 @@ export async function createVerifiedUser(
     .insert(users)
     .values({
       username: insertUser.username,
-      email: insertUser.email,
+      email: insertUser.email.trim().toLowerCase(),
       password: hashedPassword,
       emailVerifiedAt: verified ? new Date() : null,
     })
