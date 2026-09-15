@@ -377,6 +377,7 @@
     "deletedDescription": "El partido se ha eliminado.",
     "startMatch": "Empezar partido",
     "setTeams": "Definir equipos",
+    "editTeams": "Editar equipos",
     "started": "Partido empezado. Las alineaciones y las inscripciones están bloqueadas.",
     "participants": "Participantes",
     "alreadyActiveMatch": "Ya hay un partido Abierto o Empezado",

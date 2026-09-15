@@ -237,25 +237,24 @@ export default function MatchContextHeader({
                     teamsReady={teamsReady}
                     startPending={startMatchMutation.isPending}
                     onAddPlayers={() => setShowAddPlayers(true)}
-                    onStartOrSetTeams={() =>
-                      teamsReady
-                        ? startMatchMutation.mutate(match.id)
-                        : setShowMatchDetails(true)
-                    }
+                    onEditTeams={() => setShowMatchDetails(true)}
+                    onStart={() => startMatchMutation.mutate(match.id)}
                     onMatchDeleted={onMatchAction}
                   />
                 )}
                 {userHasJoined ? (
                   <>
-                    <Button
-                      onClick={() => setShowMatchDetails(true)}
-                      size="sm"
-                      variant="outline"
-                      className={`border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white ${actionButtonClass}`}
-                    >
-                      <Eye className="w-4 h-4 mr-2" />
-                      {t('match.view')}
-                    </Button>
+                    {user?.id !== league.createdBy && (
+                      <Button
+                        onClick={() => setShowMatchDetails(true)}
+                        size="sm"
+                        variant="outline"
+                        className={`border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white ${actionButtonClass}`}
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        {t('match.view')}
+                      </Button>
+                    )}
                     {statusOpen && ownPlayerId != null && (
                       <Button
                         onClick={() => leaveMatchMutation.mutate(ownPlayerId)}
@@ -412,7 +411,8 @@ interface MatchAdminActionsProps {
   teamsReady: boolean;
   startPending: boolean;
   onAddPlayers: () => void;
-  onStartOrSetTeams: () => void;
+  onEditTeams: () => void;
+  onStart: () => void;
   onMatchDeleted?: () => void;
 }
 
@@ -423,7 +423,8 @@ function MatchAdminActions({
   teamsReady,
   startPending,
   onAddPlayers,
-  onStartOrSetTeams,
+  onEditTeams,
+  onStart,
   onMatchDeleted,
 }: MatchAdminActionsProps) {
   const { t } = useTranslation();
@@ -441,15 +442,28 @@ function MatchAdminActions({
           {t("match.addPlayers")}
         </Button>
       )}
-      {canStartMatch(match.status) && (
+      <Button
+        onClick={onEditTeams}
+        size="sm"
+        variant="outline"
+        className={`border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white ${actionButtonClass}`}
+      >
+        <Users className="w-4 h-4 mr-2" />
+        {statusOpen
+          ? teamsReady
+            ? t("match.editTeams")
+            : t("match.setTeams")
+          : t("match.view")}
+      </Button>
+      {canStartMatch(match.status) && teamsReady && (
         <Button
-          onClick={onStartOrSetTeams}
+          onClick={onStart}
           disabled={startPending}
           size="sm"
           className={`bg-blue-600 hover:bg-blue-700 text-white ${actionButtonClass}`}
         >
           <Play className="w-4 h-4 mr-2" />
-          {teamsReady ? t("match.startMatch") : t("match.setTeams")}
+          {t("match.startMatch")}
         </Button>
       )}
       <EndMatchButton

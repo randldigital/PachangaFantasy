@@ -380,6 +380,7 @@
     "deletedDescription": "The match has been removed.",
     "startMatch": "Start match",
     "setTeams": "Set teams",
+    "editTeams": "Edit teams",
     "started": "Match started. Lineups and joining are locked.",
     "participants": "Participants",
     "alreadyActiveMatch": "There is already an Open or Started match",
