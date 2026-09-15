@@ -2,6 +2,7 @@ import { Crown, Handshake, Coins, Target } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { formatDisplayMarketValue } from "@shared/domain/displayValue";
 
 export interface MatchRecapPlayer {
   playerId: number;
@@ -118,9 +119,9 @@ function vmLabel(player: MatchRecapPlayer) {
     return null;
   }
   if (player.vmBefore != null && player.vmAfter != null && player.vmBefore !== player.vmAfter) {
-    return `${player.vmBefore}→${player.vmAfter}`;
+    return `${formatDisplayMarketValue(player.vmBefore)}→${formatDisplayMarketValue(player.vmAfter)}`;
   }
-  return String(player.vmAfter ?? player.vmBefore);
+  return formatDisplayMarketValue(player.vmAfter ?? player.vmBefore ?? 0);
 }
 
 function PlayerToken({ player, side }: { player: MatchRecapPlayer; side: "A" | "B" | "none" }) {

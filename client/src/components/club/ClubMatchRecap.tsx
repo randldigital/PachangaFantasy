@@ -2,6 +2,7 @@ import { Crown, Handshake, Target, Timer } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import UserAvatar from "@/components/UserAvatar";
 import { Badge } from "@/components/ui/badge";
+import { formatDisplayMarketValue, formatDisplayMarketValueDelta } from "@shared/domain/displayValue";
 
 export interface ClubRecapPlayer {
   playerId: number;
@@ -88,9 +89,9 @@ export default function ClubMatchRecap({
               </div>
               {player.vmBefore != null && player.vmAfter != null && (
                 <p className="text-xs text-slate-400">
-                  {t("historial.ratingThen")} ${player.vmBefore} → ${player.vmAfter}
+                  {t("historial.ratingThen")} {formatDisplayMarketValue(player.vmBefore)} → {formatDisplayMarketValue(player.vmAfter)}
                   {player.delta != null && player.delta !== 0
-                    ? ` (${player.delta > 0 ? "+" : ""}${player.delta})`
+                    ? ` (${formatDisplayMarketValueDelta(player.delta)})`
                     : ""}
                 </p>
               )}

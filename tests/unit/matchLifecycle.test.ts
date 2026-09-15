@@ -5,6 +5,7 @@ import {
   hasActiveMatch,
   isJoinableStatus,
   isLineupEditable,
+  isMatchJoinOpen,
   normalizeMatchStatus,
   pickActiveMatch,
 } from "@shared/domain/matchLifecycle";
@@ -31,5 +32,11 @@ describe("match lifecycle", () => {
     expect(hasActiveMatch([{ status: "open" }])).toBe(true);
     expect(hasActiveMatch([{ status: "started" }])).toBe(true);
     expect(pickActiveMatch([{ status: "completed" }, { status: "open" }])?.status).toBe("open");
+  });
+
+  it("treats a missing joinOpen flag as open", () => {
+    expect(isMatchJoinOpen(undefined)).toBe(true);
+    expect(isMatchJoinOpen({ joinOpen: true })).toBe(true);
+    expect(isMatchJoinOpen({ joinOpen: false })).toBe(false);
   });
 });

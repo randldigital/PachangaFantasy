@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   matchCapacity,
+  recommendMatchTeams,
   SIDE_SIZES,
   sideSizeOf,
   teamsAreComplete,
@@ -111,5 +112,55 @@ describe("side size", () => {
     expect(
       teamsAreComplete({ teamA, teamB }, [...teamA, ...teamB], 11),
     ).toBe(true);
+  });
+});
+
+describe("recommendMatchTeams", () => {
+  it("balances sides by market value and fills A first on a tie", () => {
+    const marketValue: Record<number, number> = {
+      1: 30,
+      2: 28,
+      3: 24,
+      4: 22,
+      5: 20,
+      6: 18,
+      7: 16,
+      8: 14,
+      9: 12,
+      10: 8,
+    };
+    const recommended = recommendMatchTeams({
+      participantIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      marketValue,
+      sideSize: 5,
+    });
+    expect(recommended.teamA).toEqual([1, 4, 5, 8, 9]);
+    expect(recommended.teamB).toEqual([2, 3, 6, 7, 10]);
+  });
+
+  it("respects sideSize and leaves extras unassigned", () => {
+    const participantIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const marketValue = Object.fromEntries(participantIds.map((id) => [id, 18]));
+    const recommended = recommendMatchTeams({
+      participantIds,
+      marketValue,
+      sideSize: 5,
+    });
+    expect(recommended.teamA.length).toBe(5);
+    expect(recommended.teamB.length).toBe(5);
+    const seated = new Set([...recommended.teamA, ...recommended.teamB]);
+    expect(seated.size).toBe(10);
+    expect(seated.has(11)).toBe(false);
+    expect(seated.has(12)).toBe(false);
+  });
+
+  it("breaks equal values by player id", () => {
+    const recommended = recommendMatchTeams({
+      participantIds: [5, 3, 1, 4, 2],
+      marketValue: { 1: 18, 2: 18, 3: 18, 4: 18, 5: 18 },
+      sideSize: 5,
+    });
+    expect(recommended.teamA[0]).toBe(1);
+    expect(recommended.teamB[0]).toBe(2);
   });
 });

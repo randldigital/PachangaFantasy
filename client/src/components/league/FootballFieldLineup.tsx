@@ -3,14 +3,16 @@ import { Star, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Player, Lineup } from '@shared/schema';
+import { formatDisplayMarketValue } from '@shared/domain/displayValue';
 
 interface FootballFieldLineupProps {
   lineup: Lineup | null;
   players: Player[];
   className?: string;
+  budget?: number;
 }
 
-export default function FootballFieldLineup({ lineup, players, className = "" }: FootballFieldLineupProps) {
+export default function FootballFieldLineup({ lineup, players, className = "", budget = 100 }: FootballFieldLineupProps) {
   if (!lineup || !lineup.playerIds || lineup.playerIds.length === 0) {
     return (
       <Card className={`bg-[#1e1e1e] border-gray-700 ${className}`}>
@@ -52,7 +54,7 @@ export default function FootballFieldLineup({ lineup, players, className = "" }:
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-yellow-400 border-yellow-400">
               <DollarSign className="h-3 w-3 mr-1" />
-              {totalCost}M
+              {formatDisplayMarketValue(totalCost)}
             </Badge>
           </div>
         </CardTitle>
@@ -110,7 +112,7 @@ export default function FootballFieldLineup({ lineup, players, className = "" }:
 
                 {/* Market value */}
                 <div className="text-xs text-center text-green-200 font-bold">
-                  {player.marketValue || 0}M
+                  {formatDisplayMarketValue(player.marketValue || 0)}
                 </div>
               </div>
             );
@@ -126,7 +128,7 @@ export default function FootballFieldLineup({ lineup, players, className = "" }:
             </div>
             <div>
               <span className="text-gray-400">Budget:</span>
-              <span className="text-white ml-2">{totalCost}/100M</span>
+              <span className="text-white ml-2">{formatDisplayMarketValue(totalCost)}/{formatDisplayMarketValue(budget)}</span>
             </div>
           </div>
           

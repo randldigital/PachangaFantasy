@@ -9,6 +9,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
 import { DEFAULT_SIDE_SIZE, SIDE_SIZES, type SideSize } from "@shared/domain/teams";
+import { Switch } from "@/components/ui/switch";
+import { formatDisplayMarketValue } from "@shared/domain/displayValue";
 
 interface CreateMatchFormProps {
   leagueId: number;
@@ -24,11 +26,13 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
     time: string;
     lineupBudget: number;
     sideSize: SideSize;
+    joinOpen: boolean;
   }>({
     date: '',
     time: '',
     lineupBudget: 100,
-    sideSize: DEFAULT_SIDE_SIZE
+    sideSize: DEFAULT_SIDE_SIZE,
+    joinOpen: true,
   });
 
   const createMatchMutation = useMutation({
@@ -37,6 +41,7 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
       date: string;
       lineupBudget: number;
       sideSize: SideSize;
+      joinOpen: boolean;
     }) => {
       const response = await apiRequest('POST', '/api/matches', data);
       return response.json();
@@ -69,7 +74,8 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
       leagueId,
       date: matchDate.toISOString(),
       lineupBudget: formData.lineupBudget,
-      sideSize: formData.sideSize
+      sideSize: formData.sideSize,
+      joinOpen: formData.joinOpen,
     });
   };
 
@@ -144,7 +150,22 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
           min="50"
           max="200"
         />
+        <p className="text-xs text-slate-400">
+          {t("match.lineupBudgetHint", { display: formatDisplayMarketValue(formData.lineupBudget) })}
+        </p>
       </div>
+
+      <div className="flex items-center gap-2">
+        <Switch
+          id="match-join-open"
+          checked={formData.joinOpen}
+          onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, joinOpen: checked }))}
+        />
+        <Label htmlFor="match-join-open" className="text-white text-sm">
+          {formData.joinOpen ? t("match.joinOpen") : t("match.joinClosed")}
+        </Label>
+      </div>
+      <p className="text-xs text-slate-400">{t("match.joinOpenHint")}</p>
 
       <Button
         type="submit"

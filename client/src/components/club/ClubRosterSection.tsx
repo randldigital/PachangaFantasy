@@ -8,6 +8,7 @@ import UserAvatar from "@/components/UserAvatar";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import type { Player } from "@shared/schema";
+import { formatDisplayMarketValue } from "@shared/domain/displayValue";
 
 interface ClubRosterSectionProps {
   clubId: number;
@@ -58,7 +59,7 @@ export default function ClubRosterSection({ clubId, onAddPlayer }: ClubRosterSec
                 <span className="text-white flex-1">{player.name}</span>
                 {(player.marketValue ?? 0) > 0 && (
                   <Badge variant="outline" className="text-xs border-emerald-500/50 text-emerald-400">
-                    ${player.marketValue}
+                    {formatDisplayMarketValue(player.marketValue ?? 0)}
                   </Badge>
                 )}
                 {player.isExternal && (

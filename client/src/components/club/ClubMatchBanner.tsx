@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Calendar, Clock, Loader2, Play, Plus, Target, UserPlus, Users } from "lucide-react";
+import { Calendar, Clock, Loader2, Play, Plus, Target, UserMinus, UserPlus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,9 +30,11 @@ import {
   canEndMatch,
   canStartMatch,
   isJoinableStatus,
+  isMatchJoinOpen,
   normalizeMatchStatus,
 } from "@shared/domain/matchLifecycle";
 import type { Club, Match, Player, User } from "@shared/schema";
+import MatchJoinToggle from "@/components/MatchJoinToggle";
 
 const actionButtonClass = "w-full sm:w-auto";
 
@@ -79,7 +81,9 @@ export default function ClubMatchBanner({
 
   const acceptedParticipants = participants.filter((participant) => participant.status === "accepted");
   const userHasJoined = acceptedParticipants.some((participant) => participant.userId === user?.id);
-  const joiningOpen = isJoinableStatus(match?.status);
+  const ownPlayerId = acceptedParticipants.find((participant) => participant.userId === user?.id)?.playerId;
+  const statusOpen = isJoinableStatus(match?.status);
+  const canSelfJoin = statusOpen && isMatchJoinOpen(match);
 
   const invalidateClubMatch = async () => {
     await Promise.all([
@@ -99,6 +103,36 @@ export default function ClubMatchBanner({
         title: t("match.joined"),
         description: t("club.matchJoinedDescription"),
       });
+      await invalidateClubMatch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("common.error"),
+        description: describeApiError(error, t),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const leaveMatchMutation = useMutation({
+    mutationFn: async (playerId: number) => api.delete(`/api/matches/${match!.id}/participants/${playerId}`),
+    onSuccess: async () => {
+      toast({ title: t("match.left") });
+      await invalidateClubMatch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("common.error"),
+        description: describeApiError(error, t),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeParticipantMutation = useMutation({
+    mutationFn: async (playerId: number) => api.delete(`/api/matches/${match!.id}/participants/${playerId}`),
+    onSuccess: async () => {
+      toast({ title: t("match.participantRemoved") });
       await invalidateClubMatch();
     },
     onError: (error: Error) => {
@@ -198,7 +232,14 @@ export default function ClubMatchBanner({
               </div>
 
               <div className="flex flex-wrap items-stretch gap-2 w-full sm:w-auto sm:justify-end">
-                {isAdmin && joiningOpen && (
+                {isAdmin && statusOpen && (
+                  <MatchJoinToggle
+                    matchId={match.id}
+                    joinOpen={isMatchJoinOpen(match)}
+                    clubId={club.id}
+                  />
+                )}
+                {isAdmin && statusOpen && (
                   <Button
                     onClick={() => setShowAddPlayers(true)}
                     size="sm"
@@ -247,7 +288,19 @@ export default function ClubMatchBanner({
                     className={actionButtonClass}
                   />
                 )}
-                {!userHasJoined && joiningOpen && (
+                {userHasJoined && statusOpen && ownPlayerId != null && (
+                  <Button
+                    onClick={() => leaveMatchMutation.mutate(ownPlayerId)}
+                    disabled={leaveMatchMutation.isPending}
+                    size="sm"
+                    variant="outline"
+                    className={`border-red-500 text-red-400 hover:bg-red-500 hover:text-white ${actionButtonClass}`}
+                  >
+                    <UserMinus className="w-4 h-4 mr-2" />
+                    {leaveMatchMutation.isPending ? t("common.loading") : t("match.leave")}
+                  </Button>
+                )}
+                {!userHasJoined && canSelfJoin && (
                   <Button
                     onClick={() => joinMatchMutation.mutate(match.id)}
                     disabled={joinMatchMutation.isPending}
@@ -264,6 +317,32 @@ export default function ClubMatchBanner({
                 )}
               </div>
             </div>
+            {statusOpen && acceptedParticipants.length > 0 && (
+              <ul className="mt-3 space-y-1">
+                {acceptedParticipants.map((participant) => (
+                  <li
+                    key={participant.playerId}
+                    className="flex items-center justify-between gap-2 rounded-md bg-slate-900/40 px-2 py-1"
+                  >
+                    <span className="text-sm text-slate-200 truncate">
+                      {participant.username || participant.playerName}
+                    </span>
+                    {isAdmin && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-red-400"
+                        aria-label={t("match.removeParticipant")}
+                        disabled={removeParticipantMutation.isPending}
+                        onClick={() => removeParticipantMutation.mutate(participant.playerId)}
+                      >
+                        <UserMinus className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
 

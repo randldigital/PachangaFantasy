@@ -3,6 +3,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trophy, Award, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Player } from "@shared/schema";
+import { formatDisplayMarketValue } from "@shared/domain/displayValue";
 
 interface SortablePlayerItemProps {
   player: Player;
@@ -69,7 +70,7 @@ export default function SortablePlayerItem({
         {marketValue && (
           <div className="text-right">
             <div className="text-emerald-400 font-bold">
-              ${marketValue}
+              {formatDisplayMarketValue(marketValue)}
             </div>
             <div className="text-slate-400 text-xs">
               {t('tierlist.marketValue')}

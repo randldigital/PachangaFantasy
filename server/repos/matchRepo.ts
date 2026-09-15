@@ -17,9 +17,10 @@ import {
   type MatchParticipant,
 } from "@shared/schema";
 import { db } from "../db";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, inArray } from "drizzle-orm";
 import { seasonOf } from "@shared/domain/season";
 import { contextOf, type ContextRef } from "@shared/domain/context";
+import { lineupTotalCost } from "@shared/domain/lineup";
 import { logger } from "../logger";
 
 export async function getMatch(id: number): Promise<Match | undefined> {
@@ -150,4 +151,56 @@ export async function getMatchParticipants(matchId: number): Promise<MatchPartic
     .select()
     .from(matchParticipants)
     .where(eq(matchParticipants.matchId, matchId));
+}
+
+export async function removeParticipantFromMatch(
+  matchId: number,
+  playerId: number,
+): Promise<boolean> {
+  const existing = await db
+    .select()
+    .from(matchParticipants)
+    .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.playerId, playerId)))
+    .limit(1);
+  if (existing.length === 0) {
+    return false;
+  }
+
+  await db
+    .delete(matchParticipants)
+    .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.playerId, playerId)));
+
+  const match = await getMatch(matchId);
+  if (match?.matchTeams) {
+    const teamA = match.matchTeams.teamA.filter((id) => id !== playerId);
+    const teamB = match.matchTeams.teamB.filter((id) => id !== playerId);
+    await updateMatch(matchId, { matchTeams: { teamA, teamB } });
+  }
+
+  const matchLineups = await db.select().from(lineups).where(eq(lineups.matchId, matchId));
+  for (const lineup of matchLineups) {
+    if (!lineup.playerIds.includes(playerId)) {
+      continue;
+    }
+    const remaining = lineup.playerIds.filter((id) => id !== playerId);
+    if (remaining.length === 0) {
+      await db.delete(lineups).where(eq(lineups.id, lineup.id));
+      continue;
+    }
+    const roster =
+      remaining.length > 0
+        ? await db.select().from(players).where(inArray(players.id, remaining))
+        : [];
+    const captainId = remaining.includes(lineup.captainId) ? lineup.captainId : remaining[0];
+    await db
+      .update(lineups)
+      .set({
+        playerIds: remaining,
+        captainId,
+        totalCost: lineupTotalCost(remaining, roster),
+      })
+      .where(eq(lineups.id, lineup.id));
+  }
+
+  return true;
 }

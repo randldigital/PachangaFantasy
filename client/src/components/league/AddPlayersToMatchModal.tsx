@@ -12,6 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
 import type { Player, Match } from "@shared/schema";
+import { formatDisplayMarketValue } from "@shared/domain/displayValue";
 
 interface ParticipantWithUser {
   matchId: number;
@@ -167,7 +168,7 @@ export default function AddPlayersToMatchModal({
                     </div>
                     {match.leagueId != null && (
                       <Badge variant="outline" className="text-xs border-emerald-500/50 text-emerald-400">
-                        ${player.marketValue}
+                        {formatDisplayMarketValue(player.marketValue ?? 0)}
                       </Badge>
                     )}
                   </div>

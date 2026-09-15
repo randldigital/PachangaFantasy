@@ -124,6 +124,8 @@ export const matches = pgTable("matches", {
   ourGoals: integer("our_goals"),
   opponentGoals: integer("opponent_goals"),
   statsAcknowledged: boolean("stats_acknowledged").notNull().default(false),
+  /** When false, members cannot self-join; the admin can still add players. */
+  joinOpen: boolean("join_open").notNull().default(true),
   createdBy: integer("created_by").notNull().references(() => users.id),
   // Season the match belongs to (1 Aug – 31 Jul), derived from `date` at creation.
   seasonKey: text("season_key"),
@@ -493,6 +495,7 @@ export const insertMatchSchema = z.object({
   sideSize: z
     .union([z.literal(5), z.literal(7), z.literal(11)])
     .default(DEFAULT_SIDE_SIZE),
+  joinOpen: z.boolean().default(true),
 });
 
 /** Club Match: a Club and a date. No side size, no budget, no Team A/B. */
@@ -500,6 +503,7 @@ export const insertClubMatchSchema = z.object({
   clubId: z.number().int().positive(),
   date: matchDateSchema,
   opponentName: z.string().trim().max(40).optional(),
+  joinOpen: z.boolean().default(true),
 });
 
 /**

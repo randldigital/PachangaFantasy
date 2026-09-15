@@ -8,6 +8,7 @@ import UserAvatar from "@/components/UserAvatar";
 import SeasonSwitcher, { ALL_SEASONS, defaultSeason } from "@/components/SeasonSwitcher";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
+import { formatDisplayMarketValue } from "@shared/domain/displayValue";
 
 interface ClubRankingRow {
   playerId: number;
@@ -135,7 +136,7 @@ export default function ClubClasificacionSection({ clubId }: ClubClasificacionSe
                     </p>
                   </div>
                   <span className="text-emerald-400 font-semibold tabular-nums">
-                    {sortKey === "marketValue" ? `$${row.marketValue}` : formatSortValue(row, sortKey)}
+                    {sortKey === "marketValue" ? formatDisplayMarketValue(row.marketValue) : formatSortValue(row, sortKey)}
                   </span>
                 </li>
               ))}

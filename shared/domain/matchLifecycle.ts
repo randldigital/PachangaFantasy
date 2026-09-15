@@ -16,6 +16,11 @@ export function isJoinableStatus(status: string | null | undefined): boolean {
   return normalizeMatchStatus(status) === "open";
 }
 
+/** Missing/legacy rows behave as open. Distinct from league/club membership `joinOpen`. */
+export function isMatchJoinOpen(match: { joinOpen?: boolean | null } | null | undefined): boolean {
+  return match?.joinOpen !== false;
+}
+
 export function isActiveMatchStatus(status: string | null | undefined): boolean {
   const normalized = normalizeMatchStatus(status);
   return normalized === "open" || normalized === "started";

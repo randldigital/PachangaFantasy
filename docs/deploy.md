@@ -58,6 +58,7 @@ psql "$DATABASE_URL" -f migrations/0014_membership_join_open.sql
 psql "$DATABASE_URL" -f migrations/0015_auth_email_identities.sql
 psql "$DATABASE_URL" -f migrations/0016_billing_accounts.sql
 psql "$DATABASE_URL" -f migrations/0017_password_reset_tokens.sql
+psql "$DATABASE_URL" -f migrations/0018_match_join_open.sql
 ```
 
 The traction dashboard is only at `/analytics`. It is not linked from the product. Unlock with `ANALYTICS_PASSCODE` (default `2026`). The page shows aggregates only — no emails, usernames, or invite codes.

@@ -12,6 +12,7 @@ import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
 import { lineupTotalCost, validateLineup, type LineupViolation } from "@shared/domain/lineup";
 import { isLineupEditable } from "@shared/domain/matchLifecycle";
+import { formatDisplayMarketValue } from "@shared/domain/displayValue";
 import FootballFieldLineup from "./FootballFieldLineup";
 import type { Match, League, Player, User, Lineup } from "@shared/schema";
 
@@ -139,7 +140,10 @@ export default function LineupSection({
       case "LINEUP_NOT_PARTICIPANT":
         return t("lineup.blockers.notParticipant");
       case "LINEUP_OVER_BUDGET":
-        return t("lineup.blockers.overBudget", { cost: totalCost, budget });
+        return t("lineup.blockers.overBudget", {
+          cost: formatDisplayMarketValue(totalCost),
+          budget: formatDisplayMarketValue(budget),
+        });
       case "LINEUP_LOCKED":
         return t("lineup.blockers.locked");
       default:
@@ -205,6 +209,7 @@ export default function LineupSection({
             }
           }
           players={players}
+          budget={budget}
         />
       )}
 
@@ -223,7 +228,7 @@ export default function LineupSection({
               <div className="flex justify-between items-center">
                 <span className="text-white text-sm">{t("lineup.budget")}</span>
                 <span className="text-white text-sm">
-                  {totalCost}/{budget}
+                  {formatDisplayMarketValue(totalCost)}/{formatDisplayMarketValue(budget)}
                 </span>
               </div>
               <Progress
@@ -298,7 +303,7 @@ export default function LineupSection({
                         </div>
                         <div className="flex items-center space-x-2 text-sm text-slate-400">
                           <DollarSign className="w-3 h-3" />
-                          <span>{player.marketValue || 0}</span>
+                          <span>{formatDisplayMarketValue(player.marketValue || 0)}</span>
                         </div>
                       </div>
                     </div>

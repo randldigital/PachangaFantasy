@@ -5,6 +5,7 @@ import {
   endMatchSchema,
   insertClubMatchSchema,
   insertMatchSchema,
+  membershipSchema,
   saveTeamsSchema,
 } from "@shared/schema";
 import { logger } from "../logger";
@@ -29,6 +30,7 @@ import {
   canStartMatch,
   hasActiveMatch,
   isJoinableStatus,
+  isMatchJoinOpen,
 } from "@shared/domain/matchLifecycle";
 import { matchCapacity, sideSizeOf, teamsAreComplete, validateMatchTeams } from "@shared/domain/teams";
 import type { AuthRequest } from "../types";
@@ -560,6 +562,13 @@ export function registerMatchRoutes(app: Express) {
         });
       }
 
+      if (!isMatchJoinOpen(access.match)) {
+        return res.status(403).json({
+          message: "The administrator closed the participant list",
+          code: "MATCH_JOIN_CLOSED",
+        });
+      }
+
       const userAsPlayer = await playerRepo.checkUserAsPlayer(access.user.id, access.match);
       if (!userAsPlayer) {
         return res.status(400).json({
@@ -594,6 +603,81 @@ export function registerMatchRoutes(app: Express) {
         }
         return res.status(400).json({ message: error.message });
       }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/matches/:id/join-open", requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const access = await loadMatchAccess(req, res, matchId);
+      if (!access) return;
+
+      if (rejectUnlessAdmin(res, access.organisation, access.user.id, "Only the administrator can close the participant list")) {
+        return;
+      }
+
+      if (!isJoinableStatus(access.match.status)) {
+        return res.status(400).json({
+          message: "Joining locks when the match starts",
+          code: "MATCH_NOT_JOINABLE",
+        });
+      }
+
+      const parsed = membershipSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.issues });
+      }
+
+      const updated = await matchRepo.updateMatch(matchId, { joinOpen: parsed.data.joinOpen });
+      res.json({
+        message: parsed.data.joinOpen ? "Participant list opened" : "Participant list closed",
+        match: updated,
+      });
+    } catch (error) {
+      logger.error("Error updating match joinOpen", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/matches/:id/participants/:playerId", requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const playerId = parseInt(req.params.playerId);
+      const access = await loadMatchAccess(req, res, matchId);
+      if (!access) return;
+
+      if (!Number.isFinite(playerId)) {
+        return res.status(400).json({ message: "Invalid player" });
+      }
+
+      if (!isJoinableStatus(access.match.status)) {
+        return res.status(400).json({
+          message: "Joining locks when the match starts",
+          code: "MATCH_NOT_JOINABLE",
+        });
+      }
+
+      const ownPlayer = await playerRepo.checkUserAsPlayer(access.user.id, access.match);
+      const admin = isAdmin(access.organisation, access.user.id);
+      if (!admin && ownPlayer?.id !== playerId) {
+        return res.status(403).json({ message: "Not authorized to remove this participant" });
+      }
+
+      const removed = await matchRepo.removeParticipantFromMatch(matchId, playerId);
+      if (!removed) {
+        return res.status(404).json({ message: "Participant not found" });
+      }
+
+      logger.info("Match participant removed", {
+        match: matchId,
+        playerId,
+        by: access.user.id,
+        admin,
+      });
+      res.json({ message: "Participant removed" });
+    } catch (error) {
+      logger.error("Error removing match participant", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

@@ -11,6 +11,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { invalidateMatchQueries, isClubMatch, isRatingsPhase } from "@/lib/matchQueries";
 import { useToast } from "@/hooks/use-toast";
 import type { Match } from "@shared/schema";
+import { formatDisplayMarketValue, formatDisplayMarketValueDelta } from "@shared/domain/displayValue";
 
 export interface RatingsPayload {
   ratingsComplete: boolean;
@@ -96,10 +97,9 @@ export default function MatchRatings({ match, participants }: MatchRatingsProps)
             <div key={row.playerId} className="flex items-center justify-between text-sm">
               <span className="text-white">{row.name}</span>
               <span className="text-slate-300">
-                {row.vmBefore} → {row.vmAfter}{" "}
+                {formatDisplayMarketValue(row.vmBefore)} → {formatDisplayMarketValue(row.vmAfter)}{" "}
                 <span className={row.delta >= 0 ? "text-emerald-400" : "text-amber-400"}>
-                  ({row.delta >= 0 ? "+" : ""}
-                  {row.delta})
+                  ({formatDisplayMarketValueDelta(row.delta)})
                 </span>
               </span>
             </div>

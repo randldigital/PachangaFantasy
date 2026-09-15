@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Settings, Users } from "lucide-react";
+import { Settings, UserMinus, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,13 @@ import { queryKeys } from "@/lib/queryKeys";
 import { useToast } from "@/hooks/use-toast";
 import AddPlayersToMatchModal from "./AddPlayersToMatchModal";
 import { isJoinableStatus } from "@shared/domain/matchLifecycle";
-import { sideSizeOf, teamsAreComplete, type MatchTeams } from "@shared/domain/teams";
+import { formatDisplayMarketValue } from "@shared/domain/displayValue";
+import {
+  recommendMatchTeams,
+  sideSizeOf,
+  teamsAreComplete,
+  type MatchTeams,
+} from "@shared/domain/teams";
 import type { Match, User, Player } from "@shared/schema";
 import { requireLeagueId } from "@shared/domain/context";
 
@@ -56,24 +62,53 @@ export default function TeamAssignmentPreview({
 
   const accepted = participants.filter((participant) => participant.status === "accepted");
   const acceptedIds = accepted.map((participant) => participant.playerId);
+  const acceptedKey = acceptedIds.join(",");
   const canEdit = Boolean(user && league && user.id === league.createdBy && isJoinableStatus(match.status));
   const sideSize = sideSizeOf(match);
   const complete = teamsAreComplete({ teamA, teamB }, acceptedIds, sideSize);
+  const valueOf = (playerId: number) => players.find((player) => player.id === playerId)?.marketValue ?? 0;
+  const sumA = teamA.reduce((total, playerId) => total + valueOf(playerId), 0);
+  const sumB = teamB.reduce((total, playerId) => total + valueOf(playerId), 0);
 
   useEffect(() => {
-    setTeamA(match.matchTeams?.teamA ?? []);
-    setTeamB(match.matchTeams?.teamB ?? []);
-  }, [match.matchTeams?.teamA, match.matchTeams?.teamB, match.id]);
+    const allowed = new Set(acceptedIds);
+    const fromMatchA = (match.matchTeams?.teamA ?? []).filter((id) => allowed.has(id));
+    const fromMatchB = (match.matchTeams?.teamB ?? []).filter((id) => allowed.has(id));
+    setTeamA(fromMatchA);
+    setTeamB(fromMatchB);
+    // acceptedKey tracks roster membership without resetting on local A/B moves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match.id, match.matchTeams?.teamA, match.matchTeams?.teamB, acceptedKey]);
+
+  const invalidateMatch = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.match(match.id) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(requireLeagueId(match)) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.matchParticipants(match.id) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.matchLineup(match.id) }),
+    ]);
+  };
 
   const saveMutation = useMutation({
     mutationFn: (teams: MatchTeams) => api.post(`/api/matches/${match.id}/teams`, teams),
     onSuccess: async () => {
       toast({ title: t("match.teamsSaved") });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.match(match.id) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(requireLeagueId(match)) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.matchParticipants(match.id) }),
-      ]);
+      await invalidateMatch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("common.error"),
+        description: describeApiError(error, t),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (playerId: number) => api.delete(`/api/matches/${match.id}/participants/${playerId}`),
+    onSuccess: async () => {
+      toast({ title: t("match.participantRemoved") });
+      await invalidateMatch();
     },
     onError: (error: Error) => {
       toast({
@@ -85,7 +120,6 @@ export default function TeamAssignmentPreview({
   });
 
   const moveTo = (playerId: number, side: "A" | "B" | "none") => {
-    // A side never takes more than `sideSize`; the wrong size means deleting the match.
     const target = side === "A" ? teamA : side === "B" ? teamB : [];
     if (side !== "none" && !target.includes(playerId) && target.length >= sideSize) {
       toast({
@@ -101,6 +135,17 @@ export default function TeamAssignmentPreview({
     if (side === "B") setTeamB((current) => [...current, playerId]);
   };
 
+  const applyRecommend = () => {
+    const marketValue = Object.fromEntries(players.map((player) => [player.id, player.marketValue ?? 0]));
+    const recommended = recommendMatchTeams({
+      participantIds: acceptedIds,
+      marketValue,
+      sideSize,
+    });
+    setTeamA(recommended.teamA);
+    setTeamB(recommended.teamB);
+  };
+
   const unassigned = accepted.filter(
     (participant) => !teamA.includes(participant.playerId) && !teamB.includes(participant.playerId),
   );
@@ -114,7 +159,10 @@ export default function TeamAssignmentPreview({
             {initials(displayName)}
           </AvatarFallback>
         </Avatar>
-        <p className="text-white text-sm font-medium flex-1 truncate">{displayName}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-white text-sm font-medium truncate">{displayName}</p>
+          <p className="text-xs text-emerald-400">{formatDisplayMarketValue(valueOf(participant.playerId))}</p>
+        </div>
         {canEdit && (
           <div className="flex gap-1">
             {side !== "A" && (
@@ -132,6 +180,16 @@ export default function TeamAssignmentPreview({
                 ×
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs text-red-400"
+              aria-label={t("match.removeParticipant")}
+              disabled={removeMutation.isPending}
+              onClick={() => removeMutation.mutate(participant.playerId)}
+            >
+              <UserMinus className="w-3.5 h-3.5" />
+            </Button>
           </div>
         )}
       </div>
@@ -186,13 +244,13 @@ export default function TeamAssignmentPreview({
             </div>
             <div className="space-y-2">
               <p className="text-emerald-400 text-sm font-medium">
-                {t("match.teamA")} ({teamA.length}/{sideSize})
+                {t("match.teamA")} ({teamA.length}/{sideSize}) · {formatDisplayMarketValue(sumA)}
               </p>
               {accepted.filter((participant) => teamA.includes(participant.playerId)).map((participant) => renderPlayer(participant, "A"))}
             </div>
             <div className="space-y-2">
               <p className="text-sky-400 text-sm font-medium">
-                {t("match.teamB")} ({teamB.length}/{sideSize})
+                {t("match.teamB")} ({teamB.length}/{sideSize}) · {formatDisplayMarketValue(sumB)}
               </p>
               {accepted.filter((participant) => teamB.includes(participant.playerId)).map((participant) => renderPlayer(participant, "B"))}
             </div>
@@ -201,6 +259,17 @@ export default function TeamAssignmentPreview({
 
         {canEdit && (
           <div className="space-y-2">
+            <p className="text-xs text-slate-400 text-center">{t("match.teamsEditableUntilStart")}</p>
+            {accepted.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={applyRecommend}
+                className="w-full border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white"
+              >
+                {t("match.recommendTeams")}
+              </Button>
+            )}
             <Button
               onClick={() => saveMutation.mutate({ teamA, teamB })}
               disabled={saveMutation.isPending || !complete}

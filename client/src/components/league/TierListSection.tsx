@@ -26,6 +26,7 @@ import {
   type ValuationTier,
 } from "@shared/domain/valuation";
 import type { Player, User, TierList } from "@shared/schema";
+import { formatDisplayMarketValue } from "@shared/domain/displayValue";
 import StarRating from "@/components/league/StarRating";
 
 interface ValuationOrganisation {
@@ -381,7 +382,7 @@ export default function TierListSection({
                   />
                 ) : (
                   <div className="text-right">
-                    <div className="text-emerald-400 font-bold">${player.marketValue ?? 0}</div>
+                    <div className="text-emerald-400 font-bold">{formatDisplayMarketValue(player.marketValue ?? 0)}</div>
                     <div className="text-slate-400 text-xs">{t("tierlist.marketValue")}</div>
                   </div>
                 )}

@@ -120,6 +120,7 @@ export async function resetTestSchema() {
       our_goals integer,
       opponent_goals integer,
       stats_acknowledged boolean NOT NULL DEFAULT false,
+      join_open boolean NOT NULL DEFAULT true,
       created_by integer NOT NULL,
       season_key text,
       created_at timestamp DEFAULT now()
@@ -366,6 +367,7 @@ export async function resetTestSchema() {
   await client.unsafe(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at timestamp`);
   await client.unsafe(`ALTER TABLE leagues ADD COLUMN IF NOT EXISTS join_open boolean NOT NULL DEFAULT true`);
   await client.unsafe(`ALTER TABLE clubs ADD COLUMN IF NOT EXISTS join_open boolean NOT NULL DEFAULT true`);
+  await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS join_open boolean NOT NULL DEFAULT true`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS auth_identities_provider_user ON auth_identities (provider, provider_user_id)`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS billing_accounts_subject ON billing_accounts (subject_type, subject_id)`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_billing_account ON subscriptions (billing_account_id)`);

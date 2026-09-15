@@ -93,6 +93,56 @@ export function validateMatchTeams(input: {
   return violations;
 }
 
+export function recommendMatchTeams(input: {
+  participantIds: number[];
+  marketValue: Record<number, number>;
+  sideSize: SideSize;
+}): MatchTeams {
+  const capacity = matchCapacity(input.sideSize);
+  const ranked = [...input.participantIds].sort((left, right) => {
+    const vmDiff = (input.marketValue[right] ?? 0) - (input.marketValue[left] ?? 0);
+    if (vmDiff !== 0) {
+      return vmDiff;
+    }
+    return left - right;
+  });
+  const seated = ranked.slice(0, capacity);
+  const teamA: number[] = [];
+  const teamB: number[] = [];
+  let sumA = 0;
+  let sumB = 0;
+
+  for (const playerId of seated) {
+    const vm = input.marketValue[playerId] ?? 0;
+    const aFull = teamA.length >= input.sideSize;
+    const bFull = teamB.length >= input.sideSize;
+    let toA = true;
+    if (aFull) {
+      toA = false;
+    } else if (bFull) {
+      toA = true;
+    } else if (sumA < sumB) {
+      toA = true;
+    } else if (sumB < sumA) {
+      toA = false;
+    } else if (teamA.length < teamB.length) {
+      toA = true;
+    } else if (teamB.length < teamA.length) {
+      toA = false;
+    }
+
+    if (toA) {
+      teamA.push(playerId);
+      sumA += vm;
+    } else {
+      teamB.push(playerId);
+      sumB += vm;
+    }
+  }
+
+  return { teamA, teamB };
+}
+
 export function teamsAreComplete(
   teams: MatchTeams | null | undefined,
   participantIds: number[],

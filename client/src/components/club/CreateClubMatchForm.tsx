@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
+import { Switch } from "@/components/ui/switch";
 
 interface CreateClubMatchFormProps {
   clubId: number;
@@ -22,10 +23,11 @@ export default function CreateClubMatchForm({ clubId, onSuccess }: CreateClubMat
     date: "",
     time: "",
     opponentName: "",
+    joinOpen: true,
   });
 
   const createMatchMutation = useMutation({
-    mutationFn: async (data: { clubId: number; date: string; opponentName?: string }) => {
+    mutationFn: async (data: { clubId: number; date: string; opponentName?: string; joinOpen: boolean }) => {
       const response = await apiRequest("POST", "/api/matches", data);
       return response.json();
     },
@@ -55,6 +57,7 @@ export default function CreateClubMatchForm({ clubId, onSuccess }: CreateClubMat
       clubId,
       date: new Date(`${formData.date}T${formData.time}`).toISOString(),
       ...(opponentName ? { opponentName } : {}),
+      joinOpen: formData.joinOpen,
     });
   };
 
@@ -103,6 +106,18 @@ export default function CreateClubMatchForm({ clubId, onSuccess }: CreateClubMat
         />
         <p className="text-xs text-slate-400">{t("club.opponentNameOptional")}</p>
       </div>
+
+      <div className="flex items-center gap-2">
+        <Switch
+          id="club-match-join-open"
+          checked={formData.joinOpen}
+          onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, joinOpen: checked }))}
+        />
+        <Label htmlFor="club-match-join-open" className="text-white text-sm">
+          {formData.joinOpen ? t("match.joinOpen") : t("match.joinClosed")}
+        </Label>
+      </div>
+      <p className="text-xs text-slate-400">{t("match.joinOpenHint")}</p>
 
       <Button
         type="submit"

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { Calendar, Clock, Users, Plus, UserPlus, Eye, Loader2, Settings, Play } from "lucide-react";
+import { Calendar, Clock, Users, Plus, UserPlus, UserMinus, Eye, Loader2, Settings, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,10 +19,12 @@ import {
   canStartMatch,
   isFinishedStatus,
   isJoinableStatus,
+  isMatchJoinOpen,
   normalizeMatchStatus,
 } from "@shared/domain/matchLifecycle";
 import { matchCapacity, sideSizeOf, teamsAreComplete } from "@shared/domain/teams";
 import type { Match, League, User, Player } from "@shared/schema";
+import MatchJoinToggle from "@/components/MatchJoinToggle";
 
 const actionButtonClass = "w-full sm:w-auto";
 
@@ -78,8 +80,10 @@ export default function MatchContextHeader({
   });
 
   const userHasJoined = participants.some(p => p.userId === user?.id && p.status === 'accepted');
+  const ownPlayerId = participants.find((participant) => participant.userId === user?.id && participant.status === "accepted")?.playerId;
   const acceptedParticipants = participants.filter(p => p.status === 'accepted');
-  const joiningOpen = isJoinableStatus(match?.status);
+  const statusOpen = isJoinableStatus(match?.status);
+  const canSelfJoin = statusOpen && isMatchJoinOpen(match);
   const teamsReady = Boolean(
     match &&
       teamsAreComplete(
@@ -111,6 +115,26 @@ export default function MatchContextHeader({
         variant: 'destructive',
       });
     }
+  });
+
+  const leaveMatchMutation = useMutation({
+    mutationFn: async (playerId: number) => api.delete(`/api/matches/${match!.id}/participants/${playerId}`),
+    onSuccess: () => {
+      toast({ title: t("match.left") });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagueMatches(league.id) });
+      if (match) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.matchParticipants(match.id) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.matchLineup(match.id) });
+      }
+      onMatchAction?.();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("common.error"),
+        description: describeApiError(error, t),
+        variant: "destructive",
+      });
+    },
   });
 
   const startMatchMutation = useMutation({
@@ -198,11 +222,18 @@ export default function MatchContextHeader({
               </div>
               
               <div className="flex flex-wrap items-stretch gap-2 w-full sm:w-auto sm:justify-end">
+                {user?.id === league.createdBy && statusOpen && match && (
+                  <MatchJoinToggle
+                    matchId={match.id}
+                    joinOpen={isMatchJoinOpen(match)}
+                    leagueId={league.id}
+                  />
+                )}
                 {user?.id === league.createdBy && (
                   <MatchAdminActions
                     match={match}
                     leagueId={league.id}
-                    joiningOpen={joiningOpen}
+                    statusOpen={statusOpen}
                     teamsReady={teamsReady}
                     startPending={startMatchMutation.isPending}
                     onAddPlayers={() => setShowAddPlayers(true)}
@@ -215,35 +246,57 @@ export default function MatchContextHeader({
                   />
                 )}
                 {userHasJoined ? (
-                  <Button
-                    onClick={() => setShowMatchDetails(true)}
-                    size="sm"
-                    variant="outline"
-                    className={`border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white ${actionButtonClass}`}
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    {t('match.view')}
-                  </Button>
+                  <>
+                    <Button
+                      onClick={() => setShowMatchDetails(true)}
+                      size="sm"
+                      variant="outline"
+                      className={`border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white ${actionButtonClass}`}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      {t('match.view')}
+                    </Button>
+                    {statusOpen && ownPlayerId != null && (
+                      <Button
+                        onClick={() => leaveMatchMutation.mutate(ownPlayerId)}
+                        disabled={leaveMatchMutation.isPending}
+                        size="sm"
+                        variant="outline"
+                        className={`border-red-500 text-red-400 hover:bg-red-500 hover:text-white ${actionButtonClass}`}
+                      >
+                        <UserMinus className="w-4 h-4 mr-2" />
+                        {leaveMatchMutation.isPending ? t("common.loading") : t("match.leave")}
+                      </Button>
+                    )}
+                  </>
                 ) : (
                   !isFinishedStatus(match.status) && (
-                    <Button
-                      onClick={handleJoinMatch}
-                      disabled={joinMatchMutation.isPending || !joiningOpen}
-                      size="sm"
-                      className={`bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 ${actionButtonClass}`}
-                    >
-                      {joinMatchMutation.isPending ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <UserPlus className="w-4 h-4 mr-2" />
-                      )}
-                      {joinMatchMutation.isPending 
-                        ? t('common.joining') 
-                        : joiningOpen 
-                          ? t('match.join')
-                          : t('match.joiningLocked')
-                      }
-                    </Button>
+                    canSelfJoin ? (
+                      <Button
+                        onClick={handleJoinMatch}
+                        disabled={joinMatchMutation.isPending}
+                        size="sm"
+                        className={`bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 ${actionButtonClass}`}
+                      >
+                        {joinMatchMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <UserPlus className="w-4 h-4 mr-2" />
+                        )}
+                        {joinMatchMutation.isPending
+                          ? t('common.joining')
+                          : t('match.join')
+                        }
+                      </Button>
+                    ) : statusOpen ? null : (
+                      <Button
+                        disabled
+                        size="sm"
+                        className={`bg-emerald-600 text-white disabled:opacity-50 ${actionButtonClass}`}
+                      >
+                        {t('match.joiningLocked')}
+                      </Button>
+                    )
                   )
                 )}
               </div>
@@ -355,7 +408,7 @@ export default function MatchContextHeader({
 interface MatchAdminActionsProps {
   match: Match;
   leagueId: number;
-  joiningOpen: boolean;
+  statusOpen: boolean;
   teamsReady: boolean;
   startPending: boolean;
   onAddPlayers: () => void;
@@ -366,7 +419,7 @@ interface MatchAdminActionsProps {
 function MatchAdminActions({
   match,
   leagueId,
-  joiningOpen,
+  statusOpen,
   teamsReady,
   startPending,
   onAddPlayers,
@@ -377,7 +430,7 @@ function MatchAdminActions({
 
   return (
     <>
-      {joiningOpen && (
+      {statusOpen && (
         <Button
           onClick={onAddPlayers}
           size="sm"
