@@ -198,7 +198,7 @@ export default function TeamAssignmentPreview({
 
   if (isLoading) {
     return (
-      <Card className="bg-slate-800/50 border-slate-700">
+      <Card className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-800/50 border-slate-700">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Users className="w-5 h-5" />
@@ -210,8 +210,8 @@ export default function TeamAssignmentPreview({
   }
 
   return (
-    <Card className="bg-slate-800/50 border-slate-700">
-      <CardHeader>
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-800/50 border-slate-700">
+      <CardHeader className="shrink-0 p-4 sm:p-6">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-white flex items-center gap-2">
             <Users className="w-5 h-5 text-emerald-400" />
@@ -230,14 +230,14 @@ export default function TeamAssignmentPreview({
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="flex min-h-0 flex-1 flex-col space-y-4 overflow-hidden">
         {accepted.length === 0 ? (
           <div className="text-center py-8 text-slate-400">
             <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p>{t("match.noParticipants")}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="min-h-0 flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="space-y-2">
               <p className="text-slate-400 text-sm">{t("match.unassigned")} ({unassigned.length})</p>
               {unassigned.map((participant) => renderPlayer(participant, "none"))}
@@ -258,7 +258,7 @@ export default function TeamAssignmentPreview({
         )}
 
         {canEdit && (
-          <div className="space-y-2">
+          <div className="shrink-0 space-y-2">
             <p className="text-xs text-slate-400 text-center">{t("match.teamsEditableUntilStart")}</p>
             {accepted.length > 0 && (
               <Button

@@ -103,7 +103,7 @@ export default function FootballFieldLineup({ lineup, players, className = "", b
                 </div>
 
                 {/* Player name */}
-                <div className="mt-1 text-xs text-center text-white font-medium bg-black bg-opacity-60 rounded px-1 py-0.5 min-w-max">
+                <div className="mt-1 max-w-[4.5rem] truncate text-xs text-center text-white font-medium bg-black bg-opacity-60 rounded px-1 py-0.5">
                   {player.name}
                   {isCaptain && (
                     <span className="ml-1 text-yellow-400">(C)</span>

@@ -118,15 +118,15 @@ export default function AddPlayersToMatchModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-slate-800 border-slate-700 max-w-md">
-        <DialogHeader>
+      <DialogContent className="flex max-w-md flex-col overflow-hidden bg-slate-800 border-slate-700 max-sm:h-[min(90dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem))]">
+        <DialogHeader className="pr-8">
           <DialogTitle className="text-white flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-emerald-400" />
             {t('match.addPlayersToMatch')}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 max-h-96 overflow-y-auto">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
           {/* Available Players Section */}
           {availablePlayers.length > 0 && (
             <div>
@@ -217,7 +217,7 @@ export default function AddPlayersToMatchModal({
           )}
         </div>
 
-        <DialogFooter className="flex gap-2">
+        <DialogFooter className="flex shrink-0 gap-2">
           <Button
             variant="outline"
             onClick={onClose}

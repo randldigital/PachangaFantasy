@@ -67,7 +67,7 @@ export default function Overview() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
           <h2 className="text-3xl font-bold text-white">{t("overview.title")}</h2>

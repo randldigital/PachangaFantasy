@@ -304,19 +304,21 @@ export default function MatchContextHeader({
         </Card>
 
         <Dialog open={showMatchDetails} onOpenChange={setShowMatchDetails}>
-          <DialogContent className="bg-slate-800 border-slate-700 max-w-4xl">
-            <DialogHeader>
+          <DialogContent className="flex max-w-4xl flex-col overflow-hidden bg-slate-800 border-slate-700 p-4 sm:p-6 max-sm:h-[min(90dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem))]">
+            <DialogHeader className="pr-8">
               <DialogTitle className="text-white flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-emerald-400" />
                 {t('match.details')} - {formatDate(match.date)}
               </DialogTitle>
             </DialogHeader>
-            <TeamAssignmentPreview 
-              match={match} 
-              user={user}
-              players={players}
-              league={league}
-            />
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <TeamAssignmentPreview
+                match={match}
+                user={user}
+                players={players}
+                league={league}
+              />
+            </div>
           </DialogContent>
         </Dialog>
 

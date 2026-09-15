@@ -147,11 +147,12 @@ export default function RosterManagerDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="bg-slate-800 border-slate-700 max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex flex-col overflow-hidden bg-slate-800 border-slate-700 max-sm:h-[min(90dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem))]">
+        <DialogHeader className="pr-8">
           <DialogTitle className="text-white">{t("roster.title")}</DialogTitle>
         </DialogHeader>
 
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
         {claims.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-white">{t("claims.title")}</h4>
@@ -279,6 +280,7 @@ export default function RosterManagerDialog({
               )}
             </div>
           ))}
+        </div>
         </div>
       </DialogContent>
 
