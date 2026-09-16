@@ -38,6 +38,7 @@ import MatchJoinToggle from "@/components/MatchJoinToggle";
 import MatchFriendlyToggle from "@/components/MatchFriendlyToggle";
 import CorrectResultButton from "@/components/CorrectResultButton";
 import RecalculateButton from "@/components/RecalculateButton";
+import ReopenStatsButton from "@/components/ReopenStatsButton";
 
 const actionButtonClass = "w-full sm:w-auto";
 
@@ -54,6 +55,7 @@ interface ParticipantWithUser {
 interface ClubMatchBannerProps {
   club: Club;
   match?: Match;
+  matches?: Match[];
   user?: User;
   players: Player[];
   createMatchOpen: boolean;
@@ -64,6 +66,7 @@ interface ClubMatchBannerProps {
 export default function ClubMatchBanner({
   club,
   match,
+  matches = [],
   user,
   players,
   createMatchOpen,
@@ -247,6 +250,7 @@ export default function ClubMatchBanner({
                   <>
                     <CorrectResultButton match={match} className={actionButtonClass} />
                     <RecalculateButton match={match} className={actionButtonClass} />
+                    <ReopenStatsButton match={match} matches={matches} className={actionButtonClass} />
                   </>
                 )}
                 {isAdmin && statusOpen && (

@@ -14,6 +14,7 @@ import { groupBySeason, seasonOf } from "@shared/domain/season";
 import MatchRecapPitch, { type MatchRecapPlayer } from "./MatchRecapPitch";
 import CorrectResultButton from "@/components/CorrectResultButton";
 import RecalculateButton from "@/components/RecalculateButton";
+import ReopenStatsButton from "@/components/ReopenStatsButton";
 import MatchFriendlyToggle from "@/components/MatchFriendlyToggle";
 
 interface MatchRecap {
@@ -217,6 +218,7 @@ export default function HistorialSection({
                         <div className="flex flex-wrap items-center gap-2 pt-3">
                           <CorrectResultButton match={match} />
                           <RecalculateButton match={match} />
+                          <ReopenStatsButton match={match} matches={matches} />
                           <MatchFriendlyToggle match={match} />
                         </div>
                       )}

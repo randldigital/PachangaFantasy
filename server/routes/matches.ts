@@ -35,6 +35,7 @@ import {
   isMatchJoinOpen,
   normalizeMatchStatus,
 } from "@shared/domain/matchLifecycle";
+import { canReopenMatchStats } from "@shared/domain/matchReplay";
 import { submittedStatsExceedResult } from "@shared/domain/stats";
 import { matchCapacity, sideSizeOf, teamsAreComplete, validateMatchTeams } from "@shared/domain/teams";
 import type { AuthRequest } from "../types";
@@ -512,6 +513,47 @@ export function registerMatchRoutes(app: Express) {
     } catch (error) {
       logger.error("Recalculate error", error);
       res.status(500).json({ message: "Failed to recalculate the match" });
+    }
+  });
+
+  app.post("/api/matches/:id/reopen-stats", requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const access = await loadMatchAccess(req, res, matchId);
+      if (!access) return;
+
+      if (rejectUnlessAdmin(res, access.organisation, access.user.id, "Only the administrator can reopen stats")) {
+        return;
+      }
+
+      const status = normalizeMatchStatus(access.match.status);
+      if (status !== "scored" && status !== "closed") {
+        return res.status(400).json({
+          message: "Stats can be reopened after the match is scored",
+          code: "MATCH_NOT_REOPENABLE",
+        });
+      }
+
+      const siblings =
+        access.context === "league"
+          ? await matchRepo.getMatchesByLeague(access.match.leagueId!)
+          : await matchRepo.getMatchesByClub(access.match.clubId!);
+      if (!canReopenMatchStats(siblings, access.match)) {
+        return res.status(400).json({
+          message: "Only the last finished match can be reopened",
+          code: "MATCH_NOT_LAST_FINISHED",
+        });
+      }
+
+      const match = await scoreRepo.reopenMatchStats(matchId);
+      logger.info("Match stats reopened", { match: matchId });
+      res.json({
+        message: "Stats and votes are open again",
+        match,
+      });
+    } catch (error) {
+      logger.error("Reopen stats error", error);
+      res.status(500).json({ message: "Failed to reopen match stats" });
     }
   });
 

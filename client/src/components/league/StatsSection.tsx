@@ -9,6 +9,7 @@ import SubmitMyStats from "./SubmitMyStats";
 import MatchRatings from "./MatchRatings";
 import AdminStatsOverview, { type ParticipantDetail } from "./AdminStatsOverview";
 import CorrectResultButton from "@/components/CorrectResultButton";
+import ReopenStatsButton from "@/components/ReopenStatsButton";
 import { isClubMatch } from "@/lib/matchQueries";
 import { normalizeMatchStatus } from "@shared/domain/matchLifecycle";
 import type { StatsStatus } from "@shared/domain/stats";
@@ -16,6 +17,7 @@ import type { Match, Player, StatReport, User } from "@shared/schema";
 
 interface StatsSectionProps {
   match?: Match;
+  matches?: Match[];
   isAdmin: boolean;
   players: Player[];
   user?: User;
@@ -27,7 +29,14 @@ interface StatsStatusResponse {
   status: StatsStatus;
 }
 
-export default function StatsSection({ match, isAdmin, players, user, onGoToMatch }: StatsSectionProps) {
+export default function StatsSection({
+  match,
+  matches = [],
+  isAdmin,
+  players,
+  user,
+  onGoToMatch,
+}: StatsSectionProps) {
   const { t } = useTranslation();
 
   const { data: participants = [] } = useQuery<ParticipantDetail[]>({
@@ -94,6 +103,7 @@ export default function StatsSection({ match, isAdmin, players, user, onGoToMatc
               <span className="text-white font-semibold tabular-nums">{scoreLabel}</span>
             )}
             <CorrectResultButton match={match} />
+            <ReopenStatsButton match={match} matches={matches} />
           </div>
         )}
       </div>

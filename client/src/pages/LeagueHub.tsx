@@ -257,6 +257,7 @@ export default function LeagueHub() {
           <TabsContent value="stats" className="mt-0">
             <StatsSection
               match={statsMatch}
+              matches={matches}
               isAdmin={isAdmin}
               players={players}
               user={user || undefined}

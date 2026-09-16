@@ -167,6 +167,7 @@ export default function ClubHub() {
         <ClubMatchBanner
           club={club}
           match={bannerMatch}
+          matches={matches}
           user={user || undefined}
           players={players}
           createMatchOpen={showCreateMatch}
@@ -226,6 +227,7 @@ export default function ClubHub() {
           <TabsContent value="stats" className="mt-6">
             <StatsSection
               match={statsMatch}
+              matches={matches}
               isAdmin={isAdmin}
               players={players}
               user={user || undefined}

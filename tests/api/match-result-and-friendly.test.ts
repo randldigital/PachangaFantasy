@@ -198,6 +198,89 @@ describe("result correction, recalculate, friendlies, and team caps", () => {
     expect(recap.body.players.some((row: { points: number }) => row.points > 0)).toBe(true);
   });
 
+  it("reopens the last scored match while keeping stats and votes", async () => {
+    const { owner, users, league } = await createLeagueWithMembers(app, 2);
+    const match = (await createOpenMatch(app, owner.token, league.id)).body;
+    await joinAllMatches(app, match.id, users);
+    await scoreSimpleMatch(app, owner.token, users, match.id, 2, 0, 1);
+
+    const beforeReports = await request(app)
+      .get(`/api/matches/${match.id}/stats`)
+      .set(auth(owner.token));
+    expect(beforeReports.status).toBe(200);
+    expect(beforeReports.body.length).toBeGreaterThan(0);
+    const ownerGoals = beforeReports.body.find(
+      (row: { playerId: number; goals: number }) => row.goals === 1,
+    );
+    expect(ownerGoals).toBeTruthy();
+
+    const beforeRatings = await request(app)
+      .get(`/api/matches/${match.id}/ratings`)
+      .set(auth(owner.token));
+    expect(beforeRatings.body.submittedCount).toBeGreaterThan(0);
+
+    const rosterBefore = await listPlayers(app, owner.token, league.id);
+    const ownerBefore = rosterBefore.find((player) => player.userId === owner.user.id)!;
+
+    const reopened = await request(app)
+      .post(`/api/matches/${match.id}/reopen-stats`)
+      .set(auth(owner.token));
+    expect(reopened.status).toBe(200);
+    expect(reopened.body.match.status).toBe("completed");
+
+    const afterReports = await request(app)
+      .get(`/api/matches/${match.id}/stats`)
+      .set(auth(owner.token));
+    expect(afterReports.body).toHaveLength(beforeReports.body.length);
+
+    const afterRatings = await request(app)
+      .get(`/api/matches/${match.id}/ratings`)
+      .set(auth(owner.token));
+    expect(afterRatings.body.submittedCount).toBe(beforeRatings.body.submittedCount);
+
+    const updatedStats = await request(app)
+      .post(`/api/matches/${match.id}/stats`)
+      .set(auth(owner.token))
+      .send({ goals: 2, assists: 0 });
+    expect(updatedStats.status).toBe(200);
+
+    const board = await request(app)
+      .get(`/api/leagues/${league.id}/rankings`)
+      .set(auth(owner.token));
+    const ownerRow = board.body.find((row: { playerId: number }) => row.playerId === ownerBefore.id);
+    expect(ownerRow?.matchesPlayed ?? 0).toBe(0);
+
+    const rescored = await request(app)
+      .post(`/api/matches/${match.id}/calculate-scores`)
+      .set(auth(owner.token));
+    expect(rescored.status).toBe(200);
+  });
+
+  it("refuses to reopen an earlier scored match when a later finished one exists", async () => {
+    const { owner, users, league } = await createLeagueWithMembers(app, 2);
+    const first = (
+      await createOpenMatch(app, owner.token, league.id, undefined, {
+        date: new Date("2026-03-01T12:00:00.000Z").toISOString(),
+      })
+    ).body;
+    await joinAllMatches(app, first.id, users);
+    await scoreSimpleMatch(app, owner.token, users, first.id, 1, 0, 1);
+
+    const second = (
+      await createOpenMatch(app, owner.token, league.id, undefined, {
+        date: new Date("2026-04-01T12:00:00.000Z").toISOString(),
+      })
+    ).body;
+    await joinAllMatches(app, second.id, users);
+    await scoreSimpleMatch(app, owner.token, users, second.id, 2, 0, 1);
+
+    const blocked = await request(app)
+      .post(`/api/matches/${first.id}/reopen-stats`)
+      .set(auth(owner.token));
+    expect(blocked.status).toBe(400);
+    expect(blocked.body.code).toBe("MATCH_NOT_LAST_FINISHED");
+  });
+
   it("blocks fantasy scoring when a side is over its goal cap", async () => {
     const { owner, users, league } = await createLeagueWithMembers(app, 2);
     const match = (await createOpenMatch(app, owner.token, league.id)).body;

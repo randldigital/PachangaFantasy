@@ -336,7 +336,9 @@
     "STATS_EXCEED_RESULT": "Los goles o asistencias enviados ya superan ese nuevo marcador.",
     "STATS_ACKNOWLEDGE_REMOVED": "No se puede aceptar un exceso sobre el marcador. Corrige las estadísticas o sube el resultado de ese equipo.",
     "MATCH_NOT_CORRECTABLE": "El resultado se puede corregir cuando el partido ha terminado.",
-    "MATCH_NOT_RECALCULABLE": "Recalcular está disponible cuando el partido ya está puntuado."
+    "MATCH_NOT_RECALCULABLE": "Recalcular está disponible cuando el partido ya está puntuado.",
+    "MATCH_NOT_REOPENABLE": "Las estadísticas se pueden reabrir cuando el partido ya está puntuado.",
+    "MATCH_NOT_LAST_FINISHED": "Solo se puede reabrir el último partido terminado."
   },
   "match": {
     "noActiveMatch": "No hay partidos activos",
@@ -376,6 +378,11 @@
     "recalculateConfirm": "Este partido y los posteriores terminados se volverán a puntuar. Cambiarán los puntos y los valores de mercado actuales.",
     "recalculateDone": "Recalculado",
     "recalculateDoneDescription": "Se actualizaron los puntos de partidos posteriores y los valores de mercado actuales.",
+    "reopenStats": "Reabrir estadísticas",
+    "reopenStatsTitle": "¿Reabrir estadísticas y votos?",
+    "reopenStatsConfirm": "Se mantienen las estadísticas y los votos. Este partido sale de la clasificación hasta que vuelvas a calcular la puntuación.",
+    "reopenStatsDone": "Estadísticas reabiertas",
+    "reopenStatsDoneDescription": "Los jugadores pueden actualizar sus estadísticas y votos otra vez.",
     "leave": "Salir del partido",
     "left": "Has salido del partido",
     "removeParticipant": "Quitar del partido",

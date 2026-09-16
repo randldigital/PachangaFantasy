@@ -339,7 +339,9 @@
     "STATS_EXCEED_RESULT": "Submitted goals or assists already exceed that new score.",
     "STATS_ACKNOWLEDGE_REMOVED": "Going over a team's score cannot be acknowledged. Correct the stats or raise that side's result.",
     "MATCH_NOT_CORRECTABLE": "The result can be corrected after the match is finished.",
-    "MATCH_NOT_RECALCULABLE": "Recalculate is available after the match is scored."
+    "MATCH_NOT_RECALCULABLE": "Recalculate is available after the match is scored.",
+    "MATCH_NOT_REOPENABLE": "Stats can be reopened after the match is scored.",
+    "MATCH_NOT_LAST_FINISHED": "Only the last finished match can be reopened."
   },
   "match": {
     "noActiveMatch": "No active matches",
@@ -379,6 +381,11 @@
     "recalculateConfirm": "This match and later finished matches will be rescored. Points and current Market Values will change.",
     "recalculateDone": "Recalculated",
     "recalculateDoneDescription": "Later match points and current Market Values were updated.",
+    "reopenStats": "Reopen stats",
+    "reopenStatsTitle": "Reopen stats and votes?",
+    "reopenStatsConfirm": "Existing stats and votes stay. This match leaves the standings until you calculate scores again.",
+    "reopenStatsDone": "Stats reopened",
+    "reopenStatsDoneDescription": "Players can update their stats and votes again.",
     "leave": "Leave match",
     "left": "You left the match",
     "removeParticipant": "Remove from match",

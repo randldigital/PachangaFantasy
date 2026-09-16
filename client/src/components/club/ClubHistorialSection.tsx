@@ -14,6 +14,7 @@ import { groupBySeason, seasonOf } from "@shared/domain/season";
 import type { Match } from "@shared/schema";
 import CorrectResultButton from "@/components/CorrectResultButton";
 import RecalculateButton from "@/components/RecalculateButton";
+import ReopenStatsButton from "@/components/ReopenStatsButton";
 import MatchFriendlyToggle from "@/components/MatchFriendlyToggle";
 
 interface ClubSeasonAggregate {
@@ -221,6 +222,7 @@ export default function ClubHistorialSection({
                                 <div className="flex flex-wrap items-center gap-2">
                                   <CorrectResultButton match={match} />
                                   <RecalculateButton match={match} />
+                                  <ReopenStatsButton match={match} matches={matches} />
                                   <MatchFriendlyToggle match={match} />
                                 </div>
                               )}

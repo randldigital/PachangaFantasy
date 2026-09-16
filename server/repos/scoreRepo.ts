@@ -8,6 +8,7 @@ import {
   clubs,
   playerMarketValueHistory,
   statReports,
+  type Match,
   type PlayerMatchPoints,
   type ManagerMatchPoints,
   type PlayerMarketValueHistory,
@@ -33,7 +34,7 @@ import {
 } from "@shared/domain/marketValue";
 import { seasonOf, sortSeasonKeysDescending } from "@shared/domain/season";
 import { requireLeagueId } from "@shared/domain/context";
-import { scoredReplayChain } from "@shared/domain/matchReplay";
+import { canReopenMatchStats, scoredReplayChain } from "@shared/domain/matchReplay";
 import {
   clubPlayerPoints,
   clubResultOf,
@@ -593,6 +594,57 @@ export async function recalculateFromMatch(matchId: number): Promise<{ matchIds:
     matchIds.push(current.id);
   }
   return { matchIds };
+}
+
+export async function reopenMatchStats(matchId: number): Promise<Match> {
+  const origin = await matchRepo.getMatch(matchId);
+  if (!origin) {
+    throw new Error("Match not found");
+  }
+
+  const siblings =
+    origin.leagueId != null
+      ? await matchRepo.getMatchesByLeague(origin.leagueId)
+      : origin.clubId != null
+        ? await matchRepo.getMatchesByClub(origin.clubId)
+        : [];
+  if (!canReopenMatchStats(siblings, origin)) {
+    throw new Error("Match cannot be reopened");
+  }
+
+  const history = await ratingRepo.getMarketValueHistory(origin.id);
+  const storedBaseline = history[0]?.baseline;
+  const snapshot = await ratingRepo.getMatchPlayerVm(origin.id);
+
+  await db.transaction(async (tx) => {
+    if (storedBaseline != null) {
+      if (origin.leagueId != null) {
+        await tx
+          .update(leagues)
+          .set({ scoringBaseline: storedBaseline })
+          .where(eq(leagues.id, origin.leagueId));
+      }
+      if (origin.clubId != null) {
+        await tx
+          .update(clubs)
+          .set({ scoringBaseline: storedBaseline })
+          .where(eq(clubs.id, origin.clubId));
+      }
+    }
+    for (const row of snapshot) {
+      await tx.update(players).set({ marketValue: row.marketValue }).where(eq(players.id, row.playerId));
+    }
+    await tx.delete(playerMatchPoints).where(eq(playerMatchPoints.matchId, matchId));
+    await tx.delete(managerMatchPoints).where(eq(managerMatchPoints.matchId, matchId));
+    await tx.delete(playerMarketValueHistory).where(eq(playerMarketValueHistory.matchId, matchId));
+    await tx.update(matches).set({ status: "completed" }).where(eq(matches.id, matchId));
+  });
+
+  const updated = await matchRepo.getMatch(matchId);
+  if (!updated) {
+    throw new Error("Match not found");
+  }
+  return updated;
 }
 
 export type MatchRecapPlayer = {
