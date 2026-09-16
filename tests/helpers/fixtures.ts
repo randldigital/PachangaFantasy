@@ -1,7 +1,9 @@
 import type { Express } from "express";
 import request from "supertest";
 import * as ratingRepo from "../../server/repos/ratingRepo";
-import { meanPeerScore, mvpPlayerIds, playerMatchRating } from "@shared/domain/scoring";
+import * as matchRepo from "../../server/repos/matchRepo";
+import { meanPeerScore, mvpPlayerIds, playerMatchRating, fantasyRatingFactors } from "@shared/domain/scoring";
+import { averageVm, MIN_MARKET_VALUE } from "@shared/domain/marketValue";
 import { testMailer } from "./mailer";
 
 export async function registerUser(
@@ -59,6 +61,7 @@ export async function createOpenMatch(
   ownerToken: string,
   leagueId: number,
   sideSize?: 5 | 7 | 11,
+  extras: Record<string, unknown> = {},
 ) {
   const matchResponse = await request(app)
     .post("/api/matches")
@@ -68,6 +71,7 @@ export async function createOpenMatch(
       date: new Date(Date.now() + 86400000).toISOString(),
       lineupBudget: 100,
       ...(sideSize ? { sideSize } : {}),
+      ...extras,
     });
   return matchResponse;
 }
@@ -233,16 +237,44 @@ export async function expectedPlayerMatchRating(
   playerId: number,
   stats: { goals?: number | null; assists?: number | null },
 ): Promise<number> {
-  const [votes, peerRatings] = await Promise.all([
+  const [votes, peerRatings, match, vmRows] = await Promise.all([
     ratingRepo.getMvpVotes(matchId),
     ratingRepo.getPeerRatings(matchId),
+    matchRepo.getMatch(matchId),
+    ratingRepo.getMatchPlayerVm(matchId),
   ]);
+  const preMatchVm = Object.fromEntries(vmRows.map((row) => [row.playerId, row.marketValue]));
+  const teamA = match?.matchTeams?.teamA ?? [];
+  const teamB = match?.matchTeams?.teamB ?? [];
+  const onA = teamA.includes(playerId);
+  const onB = teamB.includes(playerId);
+  const teamAGoals = match?.teamAGoals ?? 0;
+  const teamBGoals = match?.teamBGoals ?? 0;
+  const ownGoals = onA ? teamAGoals : onB ? teamBGoals : 0;
+  const oppGoals = onA ? teamBGoals : onB ? teamAGoals : 0;
+  const won = onA || onB ? ownGoals > oppGoals : false;
+  const participantIds = [...teamA, ...teamB];
+  const participantVms = participantIds.map((id) => preMatchVm[id] ?? MIN_MARKET_VALUE);
+  const goals = stats.goals ?? 0;
+  const assists = stats.assists ?? 0;
   return playerMatchRating({
     peerAverage: meanPeerScore(
       peerRatings.filter((row) => row.rateePlayerId === playerId).map((row) => row.score),
     ),
-    goals: stats.goals,
-    assists: stats.assists,
+    goals,
+    assists,
     isMvp: mvpPlayerIds(votes).has(playerId),
+    won,
+    factors: fantasyRatingFactors({
+      won,
+      ownGoals,
+      oppGoals,
+      ownAvgVm: averageVm(onA ? teamA : onB ? teamB : [], preMatchVm),
+      oppAvgVm: averageVm(onA ? teamB : onB ? teamA : [], preMatchVm),
+      playerVm: preMatchVm[playerId] ?? MIN_MARKET_VALUE,
+      participantVms,
+      goals,
+      assists,
+    }),
   });
 }

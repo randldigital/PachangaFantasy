@@ -38,7 +38,7 @@
  *   Listado de stats                  GET  /api/matches/:matchId/stats
  *   Estado de stats                   GET  /api/matches/:matchId/stats-status
  *   Validar goles                     POST /api/matches/:matchId/validate-goals
- *   Reconocer stats                   POST /api/matches/:matchId/acknowledge-stats
+ *   Recalcular                        POST /api/matches/:id/recalculate
  *   Votar MVP y compañeros            GET  /api/matches/:matchId/ratings
  *   Enviar votos                      POST /api/matches/:matchId/ratings
  *   Calcular puntuación               POST /api/matches/:matchId/calculate-scores
@@ -452,7 +452,7 @@ describe("deep surface catalog", () => {
     expect(managersBoard.body.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("POST /api/matches/:matchId/acknowledge-stats", async () => {
+  it("POST /api/matches/:id/recalculate", async () => {
     const { owner, users, league } = await valuedLeague(2);
     const match = (await createOpenMatch(app, owner.token, league.id)).body;
     await joinAllMatches(app, match.id, users);
@@ -472,11 +472,17 @@ describe("deep surface catalog", () => {
       .set(auth(users[1].token))
       .send({ goals: 0, assists: 0 });
 
-    const acknowledged = await request(app)
-      .post(`/api/matches/${match.id}/acknowledge-stats`)
+    await submitAllRatings(app, match.id, users);
+    const scored = await request(app)
+      .post(`/api/matches/${match.id}/calculate-scores`)
       .set(auth(owner.token));
-    ok(acknowledged, "POST /api/matches/:matchId/acknowledge-stats");
-    expect(acknowledged.body.status.canScore).toBe(true);
+    ok(scored, "POST /api/matches/:matchId/calculate-scores");
+
+    const recalculated = await request(app)
+      .post(`/api/matches/${match.id}/recalculate`)
+      .set(auth(owner.token));
+    ok(recalculated, "POST /api/matches/:id/recalculate");
+    expect(recalculated.body.replayedMatchIds).toContain(match.id);
   });
 
   it("DELETE /api/matches/:id", async () => {

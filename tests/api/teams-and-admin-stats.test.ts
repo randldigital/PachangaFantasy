@@ -132,7 +132,7 @@ describe("teams, admin stats, and assist validation", () => {
       .post(`/api/matches/${match.id}/acknowledge-stats`)
       .set(auth(owner.token));
     expect(ack.status).toBe(400);
-    expect(ack.body.code).toBe("STATS_ASSISTS_EXCEED");
+    expect(ack.body.code).toBe("STATS_ACKNOWLEDGE_REMOVED");
 
     const scored = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)

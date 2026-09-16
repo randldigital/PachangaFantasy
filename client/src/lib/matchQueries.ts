@@ -10,6 +10,7 @@ export async function invalidateMatchQueries(queryClient: QueryClient, match: Ma
     queryClient.invalidateQueries({ queryKey: queryKeys.matchStatsStatus(match.id) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.matchRatings(match.id) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.matchParticipants(match.id) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.matchRecap(match.id) }),
   ];
 
   if (match.clubId != null) {

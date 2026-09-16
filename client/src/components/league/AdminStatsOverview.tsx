@@ -11,6 +11,7 @@ import { invalidateMatchQueries, isClubMatch, isRatingsPhase } from "@/lib/match
 import { useToast } from "@/hooks/use-toast";
 import { Calculator, CheckCircle, Clock, Lock, Users, AlertTriangle } from "lucide-react";
 import SubmitMyStats from "./SubmitMyStats";
+import CorrectResultButton from "@/components/CorrectResultButton";
 import { canCloseMatch, isClosedStatus } from "@shared/domain/matchLifecycle";
 import {
   AlertDialog,
@@ -108,24 +109,6 @@ export default function AdminStatsOverview({
     },
   });
 
-  const acknowledgeMutation = useMutation({
-    mutationFn: () => api.post(`/api/matches/${match.id}/acknowledge-stats`),
-    onSuccess: () => {
-      toast({
-        title: t("stats.acknowledged"),
-        description: t("stats.acknowledgedDescription"),
-      });
-      invalidate();
-    },
-    onError: (error: Error) => {
-      toast({
-        title: t("common.error"),
-        description: describeApiError(error, t),
-        variant: "destructive",
-      });
-    },
-  });
-
   const closeMutation = useMutation({
     mutationFn: () => api.post(`/api/matches/${match.id}/close`),
     onSuccess: () => {
@@ -147,7 +130,6 @@ export default function AdminStatsOverview({
 
   const accepted = participants.filter((participant) => participant.status === "accepted");
   const scored = match.status === "scored" || isClosedStatus(match.status);
-  const difference = status.difference ?? 0;
 
   return (
     <Card className="bg-slate-800/50 border-slate-700">
@@ -165,30 +147,55 @@ export default function AdminStatsOverview({
             total: accepted.length,
           })}
         </CardDescription>
+        {!scored && (
+          <div className="pt-2">
+            <CorrectResultButton match={match} className="w-full sm:w-auto" />
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <div className="bg-slate-900/50 p-3 rounded-lg space-y-1">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">
-              {clubMatch ? t("club.ourGoals") : t("stats.expectedGoals")}
-            </span>
-            <span className="text-white font-medium">{status.expectedTotal ?? "—"}</span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">{t("stats.reportedGoals")}</span>
-            <span className="text-white font-medium">{status.reportedTotal}</span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">{t("stats.reportedAssists")}</span>
-            <span className="text-white font-medium">{status.reportedAssists}</span>
-          </div>
+        <div className="bg-slate-900/50 p-3 rounded-lg space-y-2">
+          {(status.sides?.length ? status.sides : []).map((side) => (
+            <div key={side.key} className="space-y-1">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">
+                  {clubMatch
+                    ? t("club.ourGoals")
+                    : side.key === "b"
+                      ? t("match.teamBGoals")
+                      : t("match.teamAGoals")}
+                </span>
+                <span className="text-white font-medium">
+                  {side.reportedGoals}/{side.expectedGoals ?? "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">{t("stats.reportedAssists")}</span>
+                <span className="text-white font-medium">
+                  {side.reportedAssists}/{side.expectedGoals ?? "—"}
+                </span>
+              </div>
+            </div>
+          ))}
+          {(!status.sides || status.sides.length === 0) && (
+            <>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">
+                  {clubMatch ? t("club.ourGoals") : t("stats.expectedGoals")}
+                </span>
+                <span className="text-white font-medium">{status.expectedTotal ?? "—"}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">{t("stats.reportedGoals")}</span>
+                <span className="text-white font-medium">{status.reportedTotal}</span>
+              </div>
+            </>
+          )}
           {status.complete && !status.consistent && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-400">{t("stats.difference")}</span>
-              <span className="text-amber-400 font-medium">
-                {difference > 0 ? `+${difference}` : difference}
-              </span>
+              <span className="text-slate-400">{t("stats.overCap")}</span>
+              <span className="text-amber-400 font-medium">{t("stats.overCapYes")}</span>
             </div>
           )}
         </div>
@@ -269,16 +276,8 @@ export default function AdminStatsOverview({
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               {clubMatch
-                ? t("stats.clubInconsistentWarning", {
-                    expected: status.expectedTotal ?? 0,
-                    reported: status.reportedTotal,
-                    difference: Math.abs(difference),
-                  })
-                : t("stats.inconsistentDetail", {
-                    expected: status.expectedTotal ?? 0,
-                    reported: status.reportedTotal,
-                    difference: Math.abs(difference),
-                  })}
+                ? t("stats.clubOverCapWarning")
+                : t("stats.overCapDetail")}
             </AlertDescription>
           </Alert>
         )}
@@ -288,33 +287,6 @@ export default function AdminStatsOverview({
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>{t("stats.validatedDetail")}</AlertDescription>
           </Alert>
-        )}
-
-        {status.state === "inconsistent" && !status.assistsOk && (
-          <Alert className="border-amber-600 bg-amber-900/20">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              {t("stats.assistsExceedDetail", {
-                assists: status.reportedAssists,
-                expected: status.expectedTotal ?? 0,
-              })}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {status.state === "inconsistent" && status.assistsOk && !scored && !clubMatch && (
-          <Button
-            variant="outline"
-            onClick={() => acknowledgeMutation.mutate()}
-            disabled={acknowledgeMutation.isPending}
-            className="w-full border-amber-500 text-amber-300 hover:bg-amber-500/10"
-          >
-            {acknowledgeMutation.isPending ? t("common.saving") : t("stats.acknowledge")}
-          </Button>
-        )}
-
-        {status.acknowledged && status.state === "inconsistent" && (
-          <p className="text-xs text-amber-300 text-center">{t("stats.acknowledgedNote")}</p>
         )}
 
         <div className="pt-2 border-t border-slate-700">

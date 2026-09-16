@@ -1,4 +1,3 @@
-import { validateGoalTotal } from "./scoring";
 import { normalizeMatchStatus } from "./matchLifecycle";
 
 export type ParticipantStatsState = "pending" | "submitted";
@@ -16,16 +15,32 @@ export function pickStatsMatch<T extends { status: string | null }>(matches: T[]
   );
 }
 
+export type StatsSideInput = {
+  key: string;
+  playerIds: number[];
+  teamGoals: number | null;
+};
+
 export type StatsStatusInput = {
   participantPlayerIds: number[];
   reports: { playerId: number; goals?: number | null; assists?: number | null }[];
-  expectedGoals: number | null;
-  acknowledged: boolean;
+  sides?: StatsSideInput[];
+  expectedGoals?: number | null;
+  acknowledged?: boolean;
   /**
    * Club matches compare participant goals against "our goals" as an administrator
    * warning only, so a mismatch must not withhold scoring.
    */
   consistencyIsWarning?: boolean;
+};
+
+export type StatsSideStatus = {
+  key: string;
+  expectedGoals: number | null;
+  reportedGoals: number;
+  reportedAssists: number;
+  goalsOk: boolean;
+  assistsOk: boolean;
 };
 
 export type StatsStatus = {
@@ -40,8 +55,33 @@ export type StatsStatus = {
   reportedTotal: number;
   reportedAssists: number;
   assistsOk: boolean;
+  goalsOk: boolean;
   difference: number | null;
+  sides: StatsSideStatus[];
 };
+
+function sideStatus(
+  side: StatsSideInput,
+  reportsByPlayer: Map<number, { playerId: number; goals?: number | null; assists?: number | null }>,
+): StatsSideStatus {
+  const reportedGoals = side.playerIds.reduce(
+    (sum, id) => sum + (reportsByPlayer.get(id)?.goals || 0),
+    0,
+  );
+  const reportedAssists = side.playerIds.reduce(
+    (sum, id) => sum + (reportsByPlayer.get(id)?.assists || 0),
+    0,
+  );
+  const cap = side.teamGoals;
+  return {
+    key: side.key,
+    expectedGoals: cap,
+    reportedGoals,
+    reportedAssists,
+    goalsOk: cap === null ? false : reportedGoals <= cap,
+    assistsOk: cap === null ? false : reportedAssists <= cap,
+  };
+}
 
 export function statsSubmissionState(input: StatsStatusInput): StatsStatus {
   const participantSet = new Set(input.participantPlayerIds);
@@ -56,26 +96,34 @@ export function statsSubmissionState(input: StatsStatusInput): StatsStatus {
   const pendingPlayerIds = input.participantPlayerIds.filter((id) => !reportsByPlayer.has(id));
   const complete = input.participantPlayerIds.length > 0 && pendingPlayerIds.length === 0;
 
-  const reportedGoals = submittedPlayerIds.map((id) => reportsByPlayer.get(id)?.goals || 0);
+  const sidesInput =
+    input.sides && input.sides.length > 0
+      ? input.sides
+      : [
+          {
+            key: "match",
+            playerIds: input.participantPlayerIds,
+            teamGoals: input.expectedGoals ?? null,
+          },
+        ];
+  const sides = sidesInput.map((side) => sideStatus(side, reportsByPlayer));
+
+  const reportedTotal = submittedPlayerIds.reduce(
+    (sum, id) => sum + (reportsByPlayer.get(id)?.goals || 0),
+    0,
+  );
   const reportedAssists = submittedPlayerIds.reduce(
     (sum, id) => sum + (reportsByPlayer.get(id)?.assists || 0),
     0,
   );
-  const expectedTotal = input.expectedGoals;
-  const check =
-    expectedTotal === null
-      ? {
-          isValid: false,
-          reportedTotal: reportedGoals.reduce((sum, goals) => sum + goals, 0),
-          difference: 0,
-        }
-      : validateGoalTotal(reportedGoals, expectedTotal);
-
-  const reportedTotal = check.reportedTotal;
-  const assistsOk = expectedTotal === null ? false : reportedAssists <= expectedTotal;
-  const goalsMatch = complete && expectedTotal !== null && check.isValid;
-  const consistent = goalsMatch && assistsOk;
-  const difference = expectedTotal === null ? null : check.difference;
+  const expectedParts = sides.map((side) => side.expectedGoals);
+  const expectedTotal = expectedParts.every((value) => value !== null)
+    ? expectedParts.reduce((sum, value) => sum + (value ?? 0), 0)
+    : null;
+  const goalsOk = sides.every((side) => side.goalsOk);
+  const assistsOk = sides.every((side) => side.assistsOk);
+  const consistent = complete && goalsOk && assistsOk;
+  const difference = expectedTotal === null ? null : reportedTotal - expectedTotal;
 
   let state: MatchStatsState = "pending";
   if (complete && expectedTotal === null) {
@@ -88,20 +136,38 @@ export function statsSubmissionState(input: StatsStatusInput): StatsStatus {
 
   return {
     state,
-    canScore: input.consistencyIsWarning
-      ? complete
-      : complete && assistsOk && (goalsMatch || input.acknowledged),
+    canScore: input.consistencyIsWarning ? complete : complete && goalsOk && assistsOk,
     complete,
     consistent,
-    acknowledged: input.acknowledged,
+    acknowledged: Boolean(input.acknowledged),
     pendingPlayerIds,
     submittedPlayerIds,
     expectedTotal,
     reportedTotal,
     reportedAssists,
     assistsOk,
+    goalsOk,
     difference,
+    sides,
   };
+}
+
+/** True when already-submitted reports go over a side's new score (incomplete submissions still count). */
+export function submittedStatsExceedResult(input: {
+  reports: { playerId: number; goals?: number | null; assists?: number | null }[];
+  sides: { key?: string; playerIds: number[]; teamGoals: number }[];
+}): boolean {
+  const playerIds = [...new Set(input.sides.flatMap((side) => side.playerIds))];
+  const status = statsSubmissionState({
+    participantPlayerIds: playerIds,
+    reports: input.reports,
+    sides: input.sides.map((side, index) => ({
+      key: side.key ?? `side-${index}`,
+      playerIds: side.playerIds,
+      teamGoals: side.teamGoals,
+    })),
+  });
+  return !status.goalsOk || !status.assistsOk;
 }
 
 export function participantStatsState(

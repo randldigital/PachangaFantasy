@@ -137,7 +137,7 @@ describe("phase 5 statistics and validation", () => {
     expect(frozen.body.code).toBe("STATS_LOCKED");
   });
 
-  it("refuses scoring until statistics are complete and consistent, unless acknowledged", async () => {
+  it("refuses scoring when a side is over its score and does not allow acknowledgement", async () => {
     const { users, owner, league } = await createLeagueWithMembers(app, 2);
     const matchResponse = await createOpenMatch(app, owner.token, league.id);
     const match = matchResponse.body;
@@ -171,7 +171,6 @@ describe("phase 5 statistics and validation", () => {
       .set("Authorization", `Bearer ${owner.token}`);
     expect(inconsistent.status).toBe(400);
     expect(inconsistent.body.code).toBe("STATS_INCONSISTENT");
-    expect(inconsistent.body.difference).toBe(2);
 
     const memberAck = await request(app)
       .post(`/api/matches/${match.id}/acknowledge-stats`)
@@ -181,9 +180,13 @@ describe("phase 5 statistics and validation", () => {
     const ack = await request(app)
       .post(`/api/matches/${match.id}/acknowledge-stats`)
       .set("Authorization", `Bearer ${owner.token}`);
-    expect(ack.status).toBe(200);
-    expect(ack.body.status.canScore).toBe(true);
-    expect(ack.body.status.state).toBe("inconsistent");
+    expect(ack.status).toBe(400);
+    expect(ack.body.code).toBe("STATS_ACKNOWLEDGE_REMOVED");
+
+    await request(app)
+      .post(`/api/matches/${match.id}/stats`)
+      .set("Authorization", `Bearer ${users[1].token}`)
+      .send({ goals: 0, assists: 0 });
 
     await submitAllRatings(app, match.id, users);
 

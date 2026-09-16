@@ -35,6 +35,9 @@ import {
 } from "@shared/domain/matchLifecycle";
 import type { Club, Match, Player, User } from "@shared/schema";
 import MatchJoinToggle from "@/components/MatchJoinToggle";
+import MatchFriendlyToggle from "@/components/MatchFriendlyToggle";
+import CorrectResultButton from "@/components/CorrectResultButton";
+import RecalculateButton from "@/components/RecalculateButton";
 
 const actionButtonClass = "w-full sm:w-auto";
 
@@ -238,6 +241,13 @@ export default function ClubMatchBanner({
                     joinOpen={isMatchJoinOpen(match)}
                     clubId={club.id}
                   />
+                )}
+                {isAdmin && <MatchFriendlyToggle match={match} />}
+                {isAdmin && (
+                  <>
+                    <CorrectResultButton match={match} className={actionButtonClass} />
+                    <RecalculateButton match={match} className={actionButtonClass} />
+                  </>
                 )}
                 {isAdmin && statusOpen && (
                   <Button

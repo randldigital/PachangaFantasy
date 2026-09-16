@@ -60,8 +60,8 @@ export function registerScoringRoutes(app: Express) {
           message: !status.complete
             ? "Every participant must submit statistics before scoring"
             : !status.assistsOk
-              ? "Assists cannot exceed the match goal total"
-              : "Goal totals are inconsistent. Correct the statistics or acknowledge the difference.",
+              ? "Assists cannot exceed that side's goal total"
+              : "Reported goals or assists exceed that side's score",
           code,
           ...status,
         });

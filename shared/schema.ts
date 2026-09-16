@@ -126,6 +126,8 @@ export const matches = pgTable("matches", {
   statsAcknowledged: boolean("stats_acknowledged").notNull().default(false),
   /** When false, members cannot self-join; the admin can still add players. */
   joinOpen: boolean("join_open").notNull().default(true),
+  /** Friendly matches stay on historial but skip clasificacion totals and VM. */
+  isFriendly: boolean("is_friendly").notNull().default(false),
   createdBy: integer("created_by").notNull().references(() => users.id),
   // Season the match belongs to (1 Aug – 31 Jul), derived from `date` at creation.
   seasonKey: text("season_key"),
@@ -467,6 +469,10 @@ export const membershipSchema = z.object({
   joinOpen: z.boolean(),
 });
 
+export const matchFriendlySchema = z.object({
+  isFriendly: z.boolean(),
+});
+
 export const billingCheckoutSchema = z.object({
   billingAccountId: z.number().int().positive(),
   planCode: z.string().min(1),
@@ -496,6 +502,7 @@ export const insertMatchSchema = z.object({
     .union([z.literal(5), z.literal(7), z.literal(11)])
     .default(DEFAULT_SIDE_SIZE),
   joinOpen: z.boolean().default(true),
+  isFriendly: z.boolean().default(false),
 });
 
 /** Club Match: a Club and a date. No side size, no budget, no Team A/B. */
@@ -504,6 +511,7 @@ export const insertClubMatchSchema = z.object({
   date: matchDateSchema,
   opponentName: z.string().trim().max(40).optional(),
   joinOpen: z.boolean().default(true),
+  isFriendly: z.boolean().default(false),
 });
 
 /**
@@ -624,4 +632,5 @@ export type BillingAccount = typeof billingAccounts.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type MembershipInput = z.infer<typeof membershipSchema>;
+export type MatchFriendlyInput = z.infer<typeof matchFriendlySchema>;
 export type BillingCheckoutInput = z.infer<typeof billingCheckoutSchema>;

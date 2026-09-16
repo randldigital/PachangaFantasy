@@ -12,6 +12,9 @@ import { queryKeys } from "@/lib/queryKeys";
 import { isFinishedStatus } from "@shared/domain/matchLifecycle";
 import { groupBySeason, seasonOf } from "@shared/domain/season";
 import type { Match } from "@shared/schema";
+import CorrectResultButton from "@/components/CorrectResultButton";
+import RecalculateButton from "@/components/RecalculateButton";
+import MatchFriendlyToggle from "@/components/MatchFriendlyToggle";
 
 interface ClubSeasonAggregate {
   season: string;
@@ -33,6 +36,7 @@ interface ClubMatchRecapPayload {
 
 interface ClubHistorialSectionProps {
   clubId: number;
+  isAdmin?: boolean;
   onCreateMatch?: () => void;
 }
 
@@ -73,6 +77,7 @@ function ClubMatchDetail({ matchId, open }: { matchId: number; open: boolean }) 
 /** Matches and Club aggregates in season sections (1 Aug – 31 Jul), newest season first. */
 export default function ClubHistorialSection({
   clubId,
+  isAdmin = false,
   onCreateMatch,
 }: ClubHistorialSectionProps) {
   const { t } = useTranslation();
@@ -189,6 +194,9 @@ export default function ClubHistorialSection({
                               {t(`match.status.${match.status ?? "open"}`)}
                             </Badge>
                           )}
+                          {match.isFriendly && (
+                            <Badge className="bg-sky-700 text-white border-0">{t("match.friendly")}</Badge>
+                          )}
                           {expandable && (
                             <CollapsibleTrigger asChild>
                               <Button
@@ -208,7 +216,14 @@ export default function ClubHistorialSection({
                         </div>
                         {expandable && (
                           <CollapsibleContent>
-                            <div className="pb-3 pl-2">
+                            <div className="pb-3 pl-2 space-y-3">
+                              {isAdmin && (
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <CorrectResultButton match={match} />
+                                  <RecalculateButton match={match} />
+                                  <MatchFriendlyToggle match={match} />
+                                </div>
+                              )}
                               <ClubMatchDetail matchId={match.id} open={isExpanded} />
                             </div>
                           </CollapsibleContent>

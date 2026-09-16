@@ -5,6 +5,7 @@ import {
   endMatchSchema,
   insertClubMatchSchema,
   insertMatchSchema,
+  matchFriendlySchema,
   membershipSchema,
   saveTeamsSchema,
 } from "@shared/schema";
@@ -23,6 +24,7 @@ import * as matchRepo from "../repos/matchRepo";
 import * as playerRepo from "../repos/playerRepo";
 import * as ratingRepo from "../repos/ratingRepo";
 import * as scoreRepo from "../repos/scoreRepo";
+import * as statsRepo from "../repos/statsRepo";
 import * as userRepo from "../repos/userRepo";
 import {
   canCloseMatch,
@@ -31,9 +33,38 @@ import {
   hasActiveMatch,
   isJoinableStatus,
   isMatchJoinOpen,
+  normalizeMatchStatus,
 } from "@shared/domain/matchLifecycle";
+import { submittedStatsExceedResult } from "@shared/domain/stats";
 import { matchCapacity, sideSizeOf, teamsAreComplete, validateMatchTeams } from "@shared/domain/teams";
 import type { AuthRequest } from "../types";
+import type { Match } from "@shared/schema";
+
+function canCorrectResult(status: string | null | undefined): boolean {
+  const normalized = normalizeMatchStatus(status);
+  return normalized === "completed" || normalized === "scored" || normalized === "closed";
+}
+
+async function submittedStatsExceedNewResult(
+  match: Match,
+  goals: { teamAGoals?: number; teamBGoals?: number; ourGoals?: number },
+): Promise<boolean> {
+  const [participants, reports] = await Promise.all([
+    matchRepo.getMatchParticipants(match.id),
+    statsRepo.getStatReportsForMatch(match.id),
+  ]);
+  const accepted = participants
+    .filter((participant) => participant.status === "accepted")
+    .map((participant) => participant.playerId);
+  const sides =
+    match.clubId != null
+      ? [{ playerIds: accepted, teamGoals: goals.ourGoals ?? 0 }]
+      : [
+          { playerIds: match.matchTeams?.teamA ?? [], teamGoals: goals.teamAGoals ?? 0 },
+          { playerIds: match.matchTeams?.teamB ?? [], teamGoals: goals.teamBGoals ?? 0 },
+        ];
+  return submittedStatsExceedResult({ reports, sides });
+}
 
 /** Creating a Club Match: a date and an opponent name, with no Fantasy machinery. */
 async function createClubMatch(req: AuthRequest, res: Response) {
@@ -359,9 +390,177 @@ export function registerMatchRoutes(app: Express) {
     }
   });
 
+  app.patch("/api/matches/:id/result", requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const access = await loadMatchAccess(req, res, matchId);
+      if (!access) return;
+
+      if (rejectUnlessAdmin(res, access.organisation, access.user.id, "Only the administrator can correct the result")) {
+        return;
+      }
+      if (!canCorrectResult(access.match.status)) {
+        return res.status(400).json({
+          message: "The result can be corrected after the match is finished",
+          code: "MATCH_NOT_CORRECTABLE",
+        });
+      }
+
+      const isClub = access.context === "club";
+      if (isClub) {
+        const parsed = clubResultSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ message: "Invalid input", errors: parsed.error.issues });
+        }
+        if (await submittedStatsExceedNewResult(access.match, { ourGoals: parsed.data.ourGoals })) {
+          return res.status(400).json({
+            message: "Submitted goals or assists exceed the new team score",
+            code: "STATS_EXCEED_RESULT",
+          });
+        }
+        const updated = await matchRepo.updateMatch(matchId, {
+          opponentName: parsed.data.opponentName,
+          ourGoals: parsed.data.ourGoals,
+          opponentGoals: parsed.data.opponentGoals,
+          finalScore: parsed.data.ourGoals,
+        });
+        const status = normalizeMatchStatus(access.match.status);
+        if (status === "scored" || status === "closed") {
+          const replay = await scoreRepo.recalculateFromMatch(matchId);
+          logger.info("Match result corrected and replayed", {
+            match: matchId,
+            replayed: replay.matchIds,
+          });
+          return res.json({
+            message: "Result updated and later matches recalculated",
+            match: await matchRepo.getMatch(matchId),
+            replayedMatchIds: replay.matchIds,
+          });
+        }
+        logger.info("Match result corrected", { match: matchId });
+        return res.json({ message: "Result updated", match: updated });
+      }
+
+      const parsed = endMatchSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.issues });
+      }
+      if (
+        await submittedStatsExceedNewResult(access.match, {
+          teamAGoals: parsed.data.teamAGoals,
+          teamBGoals: parsed.data.teamBGoals,
+        })
+      ) {
+        return res.status(400).json({
+          message: "Submitted goals or assists exceed the new team score",
+          code: "STATS_EXCEED_RESULT",
+        });
+      }
+      const updated = await matchRepo.updateMatch(matchId, {
+        teamAGoals: parsed.data.teamAGoals,
+        teamBGoals: parsed.data.teamBGoals,
+        finalScore: parsed.data.teamAGoals + parsed.data.teamBGoals,
+      });
+
+      const status = normalizeMatchStatus(access.match.status);
+      if (status === "scored" || status === "closed") {
+        const replay = await scoreRepo.recalculateFromMatch(matchId);
+        logger.info("Match result corrected and replayed", {
+          match: matchId,
+          replayed: replay.matchIds,
+        });
+        return res.json({
+          message: "Result updated and later matches recalculated",
+          match: await matchRepo.getMatch(matchId),
+          replayedMatchIds: replay.matchIds,
+        });
+      }
+
+      logger.info("Match result corrected", { match: matchId });
+      res.json({ message: "Result updated", match: updated });
+    } catch (error) {
+      logger.error("Correct result error", error);
+      res.status(500).json({ message: "Failed to correct the result" });
+    }
+  });
+
+  app.post("/api/matches/:id/recalculate", requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const access = await loadMatchAccess(req, res, matchId);
+      if (!access) return;
+
+      if (rejectUnlessAdmin(res, access.organisation, access.user.id, "Only the administrator can recalculate")) {
+        return;
+      }
+
+      const status = normalizeMatchStatus(access.match.status);
+      if (status !== "scored" && status !== "closed") {
+        return res.status(400).json({
+          message: "Recalculate is available after the match is scored",
+          code: "MATCH_NOT_RECALCULABLE",
+        });
+      }
+
+      const replay = await scoreRepo.recalculateFromMatch(matchId);
+      logger.info("Match recalculated", { match: matchId, replayed: replay.matchIds });
+      res.json({
+        message: "Match and later scored matches recalculated",
+        match: await matchRepo.getMatch(matchId),
+        replayedMatchIds: replay.matchIds,
+      });
+    } catch (error) {
+      logger.error("Recalculate error", error);
+      res.status(500).json({ message: "Failed to recalculate the match" });
+    }
+  });
+
+  app.post("/api/matches/:id/friendly", requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      const matchId = parseInt(req.params.id);
+      const access = await loadMatchAccess(req, res, matchId);
+      if (!access) return;
+
+      if (rejectUnlessAdmin(res, access.organisation, access.user.id, "Only the administrator can mark a friendly")) {
+        return;
+      }
+
+      const parsed = matchFriendlySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.issues });
+      }
+
+      const updated = await matchRepo.updateMatch(matchId, { isFriendly: parsed.data.isFriendly });
+      const status = normalizeMatchStatus(access.match.status);
+      if (status === "scored" || status === "closed") {
+        const replay = await scoreRepo.recalculateFromMatch(matchId);
+        logger.info("Friendly flag updated and replayed", {
+          match: matchId,
+          isFriendly: parsed.data.isFriendly,
+          replayed: replay.matchIds,
+        });
+        return res.json({
+          message: parsed.data.isFriendly
+            ? "Friendly flag set and later matches recalculated"
+            : "Official flag set and later matches recalculated",
+          match: await matchRepo.getMatch(matchId),
+          replayedMatchIds: replay.matchIds,
+        });
+      }
+
+      res.json({
+        message: parsed.data.isFriendly ? "Marked as friendly" : "Marked as official",
+        match: updated,
+      });
+    } catch (error) {
+      logger.error("Error updating match friendly flag", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   /**
-   * Closing is a separate, explicit administrator action after scoring. A closed match is
-   * immutable: no late statistics, no late ratings, no recalculation.
+   * Closing is a separate, explicit administrator action after scoring. Recalculate
+   * can still replay a closed match so later Market Values stay consistent.
    */
   app.post("/api/matches/:id/close", requireAuth, async (req: AuthRequest, res: Response) => {
     try {

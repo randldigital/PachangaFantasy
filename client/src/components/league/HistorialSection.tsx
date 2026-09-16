@@ -12,6 +12,9 @@ import type { Match, Player } from "@shared/schema";
 import { isFinishedStatus, normalizeMatchStatus } from "@shared/domain/matchLifecycle";
 import { groupBySeason, seasonOf } from "@shared/domain/season";
 import MatchRecapPitch, { type MatchRecapPlayer } from "./MatchRecapPitch";
+import CorrectResultButton from "@/components/CorrectResultButton";
+import RecalculateButton from "@/components/RecalculateButton";
+import MatchFriendlyToggle from "@/components/MatchFriendlyToggle";
 
 interface MatchRecap {
   matchId: number;
@@ -25,6 +28,7 @@ interface HistorialSectionProps {
   matches: Match[];
   players: Player[];
   isLoading: boolean;
+  isAdmin?: boolean;
   onCreateMatch?: () => void;
 }
 
@@ -60,6 +64,7 @@ export default function HistorialSection({
   matches,
   players,
   isLoading,
+  isAdmin = false,
   onCreateMatch,
 }: HistorialSectionProps) {
   const { t, i18n } = useTranslation();
@@ -195,6 +200,9 @@ export default function HistorialSection({
                         <Badge className={scored ? "bg-violet-600 text-white" : "bg-emerald-600 text-white"}>
                           {t(`match.status.${normalizeMatchStatus(match.status)}`)}
                         </Badge>
+                        {match.isFriendly && (
+                          <Badge className="bg-sky-700 text-white">{t("match.friendly")}</Badge>
+                        )}
                         {isExpanded ? (
                           <ChevronUp className="w-4 h-4 text-slate-400" />
                         ) : (
@@ -204,7 +212,14 @@ export default function HistorialSection({
                     </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="px-4 pb-4 border-t border-slate-700">
+                    <div className="px-4 pb-4 border-t border-slate-700 space-y-3">
+                      {isAdmin && (
+                        <div className="flex flex-wrap items-center gap-2 pt-3">
+                          <CorrectResultButton match={match} />
+                          <RecalculateButton match={match} />
+                          <MatchFriendlyToggle match={match} />
+                        </div>
+                      )}
                       <MatchDetail matchId={match.id} open={isExpanded} />
                     </div>
                   </CollapsibleContent>

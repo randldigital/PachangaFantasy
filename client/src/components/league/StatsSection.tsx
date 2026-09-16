@@ -8,6 +8,9 @@ import { queryKeys } from "@/lib/queryKeys";
 import SubmitMyStats from "./SubmitMyStats";
 import MatchRatings from "./MatchRatings";
 import AdminStatsOverview, { type ParticipantDetail } from "./AdminStatsOverview";
+import CorrectResultButton from "@/components/CorrectResultButton";
+import { isClubMatch } from "@/lib/matchQueries";
+import { normalizeMatchStatus } from "@shared/domain/matchLifecycle";
 import type { StatsStatus } from "@shared/domain/stats";
 import type { Match, Player, StatReport, User } from "@shared/schema";
 
@@ -59,6 +62,17 @@ export default function StatsSection({ match, isAdmin, players, user, onGoToMatc
 
   const reports = payload?.reports ?? [];
   const status = payload?.status;
+  const clubMatch = isClubMatch(match);
+  const matchStatus = normalizeMatchStatus(match.status);
+  const showCorrectResult =
+    isAdmin && (matchStatus === "completed" || matchStatus === "scored" || matchStatus === "closed");
+  const scoreLabel = clubMatch
+    ? match.ourGoals != null && match.opponentGoals != null
+      ? `${match.ourGoals} – ${match.opponentGoals}`
+      : null
+    : match.teamAGoals != null && match.teamBGoals != null
+      ? `${match.teamAGoals} – ${match.teamBGoals}`
+      : null;
   const ownPlayer = players.find((player) => player.userId === user?.id);
   const ownParticipant = participants.find(
     (participant) => participant.playerId === ownPlayer?.id && participant.status === "accepted",
@@ -67,12 +81,22 @@ export default function StatsSection({ match, isAdmin, players, user, onGoToMatc
 
   return (
     <div className="space-y-4">
-      {status && (
-        <div className="flex items-center justify-between">
-          <p className="text-slate-300 text-sm">{t("stats.matchState")}</p>
-          <Badge className="bg-slate-700 text-white">{t(`stats.states.${status.state}`)}</Badge>
-        </div>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {status && (
+          <div className="flex items-center gap-2">
+            <p className="text-slate-300 text-sm">{t("stats.matchState")}</p>
+            <Badge className="bg-slate-700 text-white">{t(`stats.states.${status.state}`)}</Badge>
+          </div>
+        )}
+        {showCorrectResult && (
+          <div className="flex flex-wrap items-center gap-2">
+            {scoreLabel && (
+              <span className="text-white font-semibold tabular-nums">{scoreLabel}</span>
+            )}
+            <CorrectResultButton match={match} />
+          </div>
+        )}
+      </div>
 
       {ownParticipant && ownPlayer && (
         <SubmitMyStats

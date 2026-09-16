@@ -50,11 +50,31 @@ export function matchStatsStatus(
     .filter((participant) => participant.status === "accepted")
     .map((participant) => participant.playerId);
   const isClub = match.clubId != null;
+  const sides = isClub
+    ? [
+        {
+          key: "club",
+          playerIds: participantPlayerIds,
+          teamGoals: match.ourGoals ?? null,
+        },
+      ]
+    : [
+        {
+          key: "a",
+          playerIds: match.matchTeams?.teamA ?? [],
+          teamGoals: match.teamAGoals ?? null,
+        },
+        {
+          key: "b",
+          playerIds: match.matchTeams?.teamB ?? [],
+          teamGoals: match.teamBGoals ?? null,
+        },
+      ];
 
   return statsSubmissionState({
     participantPlayerIds,
     reports,
-    expectedGoals: isClub ? match.ourGoals ?? null : match.finalScore ?? null,
+    sides,
     acknowledged: match.statsAcknowledged,
     consistencyIsWarning: isClub,
   });

@@ -28,6 +28,11 @@ export const api = {
     return parseJson<T>(response);
   },
 
+  patch: async <T>(url: string, data?: unknown): Promise<T> => {
+    const response = await apiRequest("PATCH", url, data);
+    return parseJson<T>(response);
+  },
+
   delete: async <T>(url: string): Promise<T> => {
     const response = await apiRequest("DELETE", url);
     return parseJson<T>(response);

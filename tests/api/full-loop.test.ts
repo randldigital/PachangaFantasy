@@ -202,7 +202,7 @@ describe("full loop", () => {
       const submitted = await request(app)
         .post(`/api/matches/${match.id}/stats`)
         .set(auth(user.token))
-        .send(user.user.id === owner.user.id ? { goals: 4, assists: 1 } : { goals: 0, assists: 0 });
+        .send(user.user.id === owner.user.id ? { goals: 3, assists: 1 } : { goals: 0, assists: 0 });
       expect(submitted.status).toBe(200);
     }
 
@@ -214,7 +214,7 @@ describe("full loop", () => {
     expect(scored.status).toBe(200);
     expect(scored.body.playerPoints).toHaveLength(14);
     const ownerRating = await expectedPlayerMatchRating(match.id, ownerPlayer.id, {
-      goals: 4,
+      goals: 3,
       assists: 1,
     });
     expect(

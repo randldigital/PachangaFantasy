@@ -239,6 +239,7 @@ export default function LeagueHub() {
               matches={matches}
               players={players}
               isLoading={matchesLoading}
+              isAdmin={isAdmin}
               onCreateMatch={isAdmin ? () => setShowCreateMatch(true) : undefined}
             />
           </TabsContent>

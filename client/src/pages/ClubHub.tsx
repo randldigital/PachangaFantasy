@@ -210,6 +210,7 @@ export default function ClubHub() {
           <TabsContent value="historial" className="mt-6">
             <ClubHistorialSection
               clubId={clubId}
+              isAdmin={isAdmin}
               onCreateMatch={isAdmin && !activeMatch ? () => setShowCreateMatch(true) : undefined}
             />
           </TabsContent>

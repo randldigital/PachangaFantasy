@@ -130,26 +130,34 @@ describe("nine registered players plus one guest", () => {
       .send({ teamAGoals: 4, teamBGoals: 2 });
 
     const ownerPlayer = valued.find((player) => player.userId === owner.user.id)!;
-    await request(app)
-      .post(`/api/matches/${match.id}/stats`)
-      .set(auth(owner.token))
-      .send({ goals: 3, assists: 1 });
-    for (const user of users.slice(1, 4)) {
-      await request(app)
-        .post(`/api/matches/${match.id}/stats`)
-        .set(auth(user.token))
-        .send({ goals: 1, assists: 0 });
+    const teamsPayload = await request(app).get(`/api/matches/${match.id}`).set(auth(owner.token));
+    const teamA = teamsPayload.body.matchTeams.teamA as number[];
+    const teamB = teamsPayload.body.matchTeams.teamB as number[];
+    const goalsByPlayer = new Map<number, { goals: number; assists: number }>();
+    for (const id of [...teamA, ...teamB]) {
+      goalsByPlayer.set(id, { goals: 0, assists: 0 });
     }
-    for (const user of users.slice(4)) {
-      await request(app)
-        .post(`/api/matches/${match.id}/stats`)
-        .set(auth(user.token))
-        .send({ goals: 0, assists: 0 });
+    if (teamA[0] != null) goalsByPlayer.set(teamA[0], { goals: 2, assists: 1 });
+    if (teamA[1] != null) goalsByPlayer.set(teamA[1], { goals: 1, assists: 0 });
+    if (teamA[2] != null) goalsByPlayer.set(teamA[2], { goals: 1, assists: 0 });
+    if (teamB[0] != null) goalsByPlayer.set(teamB[0], { goals: 1, assists: 1 });
+    if (teamB[1] != null) goalsByPlayer.set(teamB[1], { goals: 1, assists: 0 });
+
+    const userByPlayer = new Map(valued.map((player) => [player.id, users.find((user) => user.user.id === player.userId)]));
+    for (const [playerId, stats] of goalsByPlayer) {
+      const user = userByPlayer.get(playerId);
+      if (user) {
+        await request(app)
+          .post(`/api/matches/${match.id}/stats`)
+          .set(auth(user.token))
+          .send(stats);
+      } else {
+        await request(app)
+          .post(`/api/matches/${match.id}/stats`)
+          .set(auth(owner.token))
+          .send({ playerId, ...stats });
+      }
     }
-    await request(app)
-      .post(`/api/matches/${match.id}/stats`)
-      .set(auth(owner.token))
-      .send({ playerId: guest.body.id, goals: 0, assists: 1 });
 
     const blocked = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)
@@ -157,34 +165,18 @@ describe("nine registered players plus one guest", () => {
     expect(blocked.status).toBe(400);
     expect(["STATS_INCONSISTENT", "STATS_ASSISTS_EXCEED", "RATINGS_INCOMPLETE"]).toContain(blocked.body.code);
 
-    const status = await request(app)
-      .get(`/api/matches/${match.id}/stats-status`)
-      .set(auth(owner.token));
-    if (!status.body.status.canScore) {
-      if (status.body.status.assistsOk === false) {
-        await request(app)
-          .post(`/api/matches/${match.id}/stats`)
-          .set(auth(owner.token))
-          .send({ playerId: guest.body.id, goals: 0, assists: 0 });
-      } else if (status.body.status.complete && !status.body.status.consistent) {
-        const ack = await request(app)
-          .post(`/api/matches/${match.id}/acknowledge-stats`)
-          .set(auth(owner.token));
-        expect(ack.status).toBe(200);
-      }
-    }
-
     await submitAllRatings(app, match.id, users);
 
     const scored = await request(app)
       .post(`/api/matches/${match.id}/calculate-scores`)
       .set(auth(owner.token));
     expect(scored.status).toBe(200);
+    const ownerStats = goalsByPlayer.get(ownerPlayer.id) ?? { goals: 0, assists: 0 };
     const ownerPoints = scored.body.playerPoints.find(
       (row: { playerId: number }) => row.playerId === ownerPlayer.id,
     );
     expect(ownerPoints.points).toBe(
-      await expectedPlayerMatchRating(match.id, ownerPlayer.id, { goals: 3, assists: 1 }),
+      await expectedPlayerMatchRating(match.id, ownerPlayer.id, ownerStats),
     );
     expect(scored.body.marketValues).toHaveLength(10);
     expect(scored.body.marketValues.some((row: { delta: number }) => row.delta !== 0)).toBe(true);

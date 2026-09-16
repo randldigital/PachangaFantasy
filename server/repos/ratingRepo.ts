@@ -44,6 +44,18 @@ export async function snapshotMatchPlayerVm(matchId: number): Promise<MatchPlaye
   return await db.insert(matchPlayerVm).values(rows).returning();
 }
 
+export async function replaceMatchPlayerVmFromRoster(matchId: number): Promise<MatchPlayerVm[]> {
+  await db.delete(matchPlayerVm).where(eq(matchPlayerVm.matchId, matchId));
+  return snapshotMatchPlayerVm(matchId);
+}
+
+export async function restorePlayerMarketValuesFromSnapshot(matchId: number): Promise<void> {
+  const rows = await getMatchPlayerVm(matchId);
+  for (const row of rows) {
+    await playerRepo.updatePlayer(row.playerId, { marketValue: row.marketValue });
+  }
+}
+
 export async function getMatchPlayerVm(matchId: number): Promise<MatchPlayerVm[]> {
   return await db.select().from(matchPlayerVm).where(eq(matchPlayerVm.matchId, matchId));
 }

@@ -190,53 +190,9 @@ export function registerStatsRoutes(app: Express) {
         return;
       }
 
-      if (access.match.status === "scored") {
-        return res.status(400).json({
-          message: "Statistics cannot be changed after the match is scored",
-          code: "STATS_LOCKED",
-        });
-      }
-
-      if (!isStatsEditable(access.match.status)) {
-        return res.status(400).json({
-          message: "Can only acknowledge statistics for a finished match",
-          code: "STATS_NOT_EDITABLE",
-        });
-      }
-
-      const participants = await matchRepo.getMatchParticipants(matchId);
-      const reports = await statsRepo.getStatReportsForMatch(matchId);
-      const status = statsRepo.matchStatsStatus(access.match, participants, reports);
-
-      if (!status.complete) {
-        return res.status(400).json({
-          message: "Cannot acknowledge statistics until every participant has submitted",
-          code: "STATS_INCOMPLETE",
-          ...status,
-        });
-      }
-
-      if (status.consistent) {
-        return res.status(400).json({
-          message: "Goal totals already match; acknowledgement is not needed",
-          code: "STATS_ALREADY_VALID",
-          ...status,
-        });
-      }
-
-      if (!status.assistsOk) {
-        return res.status(400).json({
-          message: "Assists cannot exceed the match goal total. Correct the statistics before scoring.",
-          code: "STATS_ASSISTS_EXCEED",
-          ...status,
-        });
-      }
-
-      const updated = await matchRepo.updateMatch(matchId, { statsAcknowledged: true });
-      res.json({
-        match: updated,
-        status: statsRepo.matchStatsStatus(updated!, participants, reports),
-        reports,
+      return res.status(400).json({
+        message: "Going over a team's score cannot be acknowledged. Correct the statistics or raise that side's result.",
+        code: "STATS_ACKNOWLEDGE_REMOVED",
       });
     } catch (error) {
       logger.error("Error acknowledging stats", error);

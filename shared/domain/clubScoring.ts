@@ -1,14 +1,12 @@
 /**
- * Club Mode Player Points. Shares the football weights of Fantasy (goals ×3, assists ×2)
- * and adds a minutes component, but has no Market Value, captain or Manager Points.
+ * Club Mode Player Points. Keeps goals ×3 and assists ×2 (Fantasy now uses a different
+ * match-rating formula) and adds a minutes component, with no captain or Manager Points.
  */
 
-import {
-  POINTS_PER_ASSIST,
-  POINTS_PER_GOAL,
-  roundOneDecimal,
-  type StatLike,
-} from "./scoring";
+import { roundOneDecimal, type StatLike } from "./scoring";
+
+export const CLUB_POINTS_PER_GOAL = 3;
+export const CLUB_POINTS_PER_ASSIST = 2;
 
 export const MAX_MINUTES = 120;
 export const FULL_MATCH_MINUTES = 90;
@@ -72,7 +70,7 @@ export interface ClubPlayerPointsBreakdown {
  * silently define product rules that have not been agreed.
  */
 export function clubPlayerPoints(input: ClubPlayerPointsInput): ClubPlayerPointsBreakdown {
-  const offensive = (input.goals || 0) * POINTS_PER_GOAL + (input.assists || 0) * POINTS_PER_ASSIST;
+  const offensive = (input.goals || 0) * CLUB_POINTS_PER_GOAL + (input.assists || 0) * CLUB_POINTS_PER_ASSIST;
   const minutes = minutesComponent(input.minutes);
   const resultContribution = 0;
   const mvpContribution = 0;

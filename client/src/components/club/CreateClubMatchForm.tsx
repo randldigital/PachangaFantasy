@@ -24,10 +24,11 @@ export default function CreateClubMatchForm({ clubId, onSuccess }: CreateClubMat
     time: "",
     opponentName: "",
     joinOpen: true,
+    isFriendly: false,
   });
 
   const createMatchMutation = useMutation({
-    mutationFn: async (data: { clubId: number; date: string; opponentName?: string; joinOpen: boolean }) => {
+    mutationFn: async (data: { clubId: number; date: string; opponentName?: string; joinOpen: boolean; isFriendly: boolean }) => {
       const response = await apiRequest("POST", "/api/matches", data);
       return response.json();
     },
@@ -58,6 +59,7 @@ export default function CreateClubMatchForm({ clubId, onSuccess }: CreateClubMat
       date: new Date(`${formData.date}T${formData.time}`).toISOString(),
       ...(opponentName ? { opponentName } : {}),
       joinOpen: formData.joinOpen,
+      isFriendly: formData.isFriendly,
     });
   };
 
@@ -118,6 +120,18 @@ export default function CreateClubMatchForm({ clubId, onSuccess }: CreateClubMat
         </Label>
       </div>
       <p className="text-xs text-slate-400">{t("match.joinOpenHint")}</p>
+
+      <div className="flex items-center gap-2">
+        <Switch
+          id="club-match-friendly"
+          checked={formData.isFriendly}
+          onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, isFriendly: checked }))}
+        />
+        <Label htmlFor="club-match-friendly" className="text-white text-sm">
+          {formData.isFriendly ? t("match.friendly") : t("match.official")}
+        </Label>
+      </div>
+      <p className="text-xs text-slate-400">{t("match.friendlyHint")}</p>
 
       <Button
         type="submit"

@@ -10,13 +10,22 @@ export interface StatLike {
   assists?: number | null;
 }
 
-export const POINTS_PER_GOAL = 3;
-export const POINTS_PER_ASSIST = 2;
-export const POINTS_PER_MVP = 2;
+export const POINTS_PER_GOAL = 2;
+export const POINTS_PER_ASSIST = 1;
+export const POINTS_PER_MVP = 3;
+export const POINTS_PER_WIN = 1;
 export const PEER_RATING_MIN = 0;
 export const PEER_RATING_MAX = 10;
 export const PEER_RATING_NEUTRAL = 5;
 export const PEER_RATING_FORCE_DEFAULT = 6.5;
+export const WEAKER_OPPONENT_RATIO = 1.15;
+export const STRONGER_OPPONENT_RATIO = 0.85;
+export const EXPECTANCY_WEAKER = 0.9;
+export const EXPECTANCY_STRONGER = 1.15;
+export const QUALITY_PENALTY = 0.85;
+export const PARTICIPATION_BONUS = 0.15;
+export const MAX_DIFFICULTY_PENALTY = 0.2;
+export const DIFFICULTY_PER_EXTRA_GOAL = 0.05;
 
 export function roundOneDecimal(value: number): number {
   return Math.round(value * 10) / 10;
@@ -95,17 +104,89 @@ export function playerPointsFromStats(stats: StatLike): number {
   return statExtras(stats);
 }
 
+export type FantasyRatingFactors = {
+  difficulty: number;
+  expectancy: number;
+  quality: number;
+  goals: number;
+};
+
+export function isTopQuartileVm(playerVm: number, participantVms: number[]): boolean {
+  if (participantVms.length === 0) {
+    return false;
+  }
+  const sorted = [...participantVms].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.floor(sorted.length * 0.75));
+  return playerVm >= sorted[index];
+}
+
+export function fantasyRatingFactors(input: {
+  won: boolean;
+  ownGoals: number;
+  oppGoals: number;
+  ownAvgVm: number;
+  oppAvgVm: number;
+  playerVm: number;
+  participantVms: number[];
+  goals: number;
+  assists: number;
+}): FantasyRatingFactors {
+  const oppAvg = Math.max(input.oppAvgVm, Number.EPSILON);
+  const ratio = input.ownAvgVm / oppAvg;
+
+  let expectancy = 1;
+  if (ratio >= WEAKER_OPPONENT_RATIO) {
+    expectancy = EXPECTANCY_WEAKER;
+  } else if (ratio <= STRONGER_OPPONENT_RATIO) {
+    expectancy = EXPECTANCY_STRONGER;
+  }
+
+  let difficulty = 1;
+  if (input.won) {
+    const goalDiff = input.ownGoals - input.oppGoals;
+    const penalty = Math.min(
+      MAX_DIFFICULTY_PENALTY,
+      Math.max(0, (goalDiff - 1) * DIFFICULTY_PER_EXTRA_GOAL),
+    );
+    if (ratio >= WEAKER_OPPONENT_RATIO) {
+      difficulty = 1 - penalty;
+    } else if (ratio > STRONGER_OPPONENT_RATIO) {
+      difficulty = 1 - penalty / 2;
+    }
+  }
+
+  const quality =
+    isTopQuartileVm(input.playerVm, input.participantVms) && input.goals + input.assists <= 1
+      ? QUALITY_PENALTY
+      : 1;
+
+  const participation = Math.min(1, (input.goals + input.assists) / Math.max(1, input.ownGoals));
+  return {
+    difficulty,
+    expectancy,
+    quality,
+    goals: 1 + participation * PARTICIPATION_BONUS,
+  };
+}
+
 export function playerMatchRating(input: {
   peerAverage: number;
   goals?: number | null;
   assists?: number | null;
   isMvp: boolean;
+  won?: boolean;
+  factors?: FantasyRatingFactors;
 }): number {
-  return roundOneDecimal(
+  const base =
     input.peerAverage +
-      statExtras(input) +
-      (input.isMvp ? POINTS_PER_MVP : 0),
-  );
+    statExtras(input) +
+    (input.isMvp ? POINTS_PER_MVP : 0) +
+    (input.won ? POINTS_PER_WIN : 0);
+  const factors = input.factors;
+  const scaled = factors
+    ? base * factors.difficulty * factors.expectancy * factors.quality * factors.goals
+    : base;
+  return roundOneDecimal(scaled);
 }
 
 export function validateGoalTotal(

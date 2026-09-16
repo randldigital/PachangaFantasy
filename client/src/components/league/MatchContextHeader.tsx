@@ -25,6 +25,9 @@ import {
 import { matchCapacity, sideSizeOf, teamsAreComplete } from "@shared/domain/teams";
 import type { Match, League, User, Player } from "@shared/schema";
 import MatchJoinToggle from "@/components/MatchJoinToggle";
+import MatchFriendlyToggle from "@/components/MatchFriendlyToggle";
+import CorrectResultButton from "@/components/CorrectResultButton";
+import RecalculateButton from "@/components/RecalculateButton";
 
 const actionButtonClass = "w-full sm:w-auto";
 
@@ -228,6 +231,15 @@ export default function MatchContextHeader({
                     joinOpen={isMatchJoinOpen(match)}
                     leagueId={league.id}
                   />
+                )}
+                {user?.id === league.createdBy && match && (
+                  <MatchFriendlyToggle match={match} />
+                )}
+                {user?.id === league.createdBy && match && (
+                  <>
+                    <CorrectResultButton match={match} className={actionButtonClass} />
+                    <RecalculateButton match={match} className={actionButtonClass} />
+                  </>
                 )}
                 {user?.id === league.createdBy && (
                   <MatchAdminActions

@@ -27,12 +27,14 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
     lineupBudget: number;
     sideSize: SideSize;
     joinOpen: boolean;
+    isFriendly: boolean;
   }>({
     date: '',
     time: '',
     lineupBudget: 100,
     sideSize: DEFAULT_SIDE_SIZE,
     joinOpen: true,
+    isFriendly: false,
   });
 
   const createMatchMutation = useMutation({
@@ -42,6 +44,7 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
       lineupBudget: number;
       sideSize: SideSize;
       joinOpen: boolean;
+      isFriendly: boolean;
     }) => {
       const response = await apiRequest('POST', '/api/matches', data);
       return response.json();
@@ -76,6 +79,7 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
       lineupBudget: formData.lineupBudget,
       sideSize: formData.sideSize,
       joinOpen: formData.joinOpen,
+      isFriendly: formData.isFriendly,
     });
   };
 
@@ -166,6 +170,18 @@ export default function CreateMatchForm({ leagueId, onSuccess }: CreateMatchForm
         </Label>
       </div>
       <p className="text-xs text-slate-400">{t("match.joinOpenHint")}</p>
+
+      <div className="flex items-center gap-2">
+        <Switch
+          id="match-friendly"
+          checked={formData.isFriendly}
+          onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, isFriendly: checked }))}
+        />
+        <Label htmlFor="match-friendly" className="text-white text-sm">
+          {formData.isFriendly ? t("match.friendly") : t("match.official")}
+        </Label>
+      </div>
+      <p className="text-xs text-slate-400">{t("match.friendlyHint")}</p>
 
       <Button
         type="submit"

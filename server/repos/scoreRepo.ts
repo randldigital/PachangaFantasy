@@ -21,16 +21,19 @@ import * as playerRepo from "./playerRepo";
 import * as matchRepo from "./matchRepo";
 import * as lineupRepo from "./lineupRepo";
 import * as ratingRepo from "./ratingRepo";
-import { collectedPeerScores, meanPeerScore, mvpPlayerIds, PEER_RATING_FORCE_DEFAULT, PEER_RATING_NEUTRAL, playerMatchRating, scoreManagerLineup } from "@shared/domain/scoring";
+import { collectedPeerScores, meanPeerScore, mvpPlayerIds, PEER_RATING_FORCE_DEFAULT, PEER_RATING_NEUTRAL, playerMatchRating, fantasyRatingFactors, scoreManagerLineup } from "@shared/domain/scoring";
 import {
+  averageVm,
   computeClubMatchMarketValues,
   computeMatchMarketValues,
   DEFAULT_SCORING_BASELINE,
+  MIN_MARKET_VALUE,
   nextScoringBaseline,
   type MarketValuePlayerResult,
 } from "@shared/domain/marketValue";
 import { seasonOf, sortSeasonKeysDescending } from "@shared/domain/season";
 import { requireLeagueId } from "@shared/domain/context";
+import { scoredReplayChain } from "@shared/domain/matchReplay";
 import {
   clubPlayerPoints,
   clubResultOf,
@@ -75,6 +78,9 @@ export async function getScoredMatchResult(matchId: number): Promise<MatchScoreR
 
 export type ScoreMatchOptions = {
   forceIncompleteRatings?: boolean;
+  refreshVmSnapshot?: boolean;
+  skipVmAndBaseline?: boolean;
+  baselineOverride?: number;
 };
 
 function historyValuesFromMarketResults(matchId: number, marketResults: MarketValuePlayerResult[]) {
@@ -136,6 +142,7 @@ export async function scoreClubMatch(
   if (match.ourGoals == null || match.opponentGoals == null) {
     throw new Error("Record the club match result before scoring");
   }
+  const skipVmAndBaseline = Boolean(options.skipVmAndBaseline) || match.isFriendly;
 
   const [reports, participants, mvpVotes, peerRatings, assignments, club] = await Promise.all([
     statsRepo.getStatReportsForMatch(matchId),
@@ -151,6 +158,9 @@ export async function scoreClubMatch(
     .map((participant) => participant.playerId);
 
   const force = Boolean(options.forceIncompleteRatings);
+  if (options.refreshVmSnapshot) {
+    await ratingRepo.replaceMatchPlayerVmFromRoster(matchId);
+  }
   // Club force-score fills each missing assigned incoming rating with 6.5 and keeps the
   // objective statistics, unlike Fantasy which also omits goals and assists.
   const peerByPlayer = collectedPeerScores({
@@ -188,7 +198,7 @@ export async function scoreClubMatch(
 
   const vmRows = await ratingRepo.snapshotMatchPlayerVm(matchId);
   const preMatchVm = Object.fromEntries(vmRows.map((row) => [row.playerId, row.marketValue]));
-  const baseline = club?.scoringBaseline ?? DEFAULT_SCORING_BASELINE;
+  const baseline = options.baselineOverride ?? club?.scoringBaseline ?? DEFAULT_SCORING_BASELINE;
   const resolvedPeerRatings = force
     ? assignments.map((assignment) => {
         const submitted = peerRatings.find(
@@ -247,25 +257,30 @@ export async function scoreClubMatch(
             .returning()
         : [];
     const history =
-      marketResults.length > 0
+      !skipVmAndBaseline && marketResults.length > 0
         ? await tx
             .insert(playerMarketValueHistory)
             .values(historyValuesFromMarketResults(matchId, marketResults))
             .returning()
         : [];
-    for (const row of marketResults) {
-      await tx
-        .update(players)
-        .set({ marketValue: row.change.vmAfter })
-        .where(eq(players.id, row.playerId));
+    if (!skipVmAndBaseline) {
+      for (const row of marketResults) {
+        await tx
+          .update(players)
+          .set({ marketValue: row.change.vmAfter })
+          .where(eq(players.id, row.playerId));
+      }
+      if (club) {
+        await tx
+          .update(clubs)
+          .set({ scoringBaseline: nextBaseline })
+          .where(eq(clubs.id, club.id));
+      }
     }
-    if (club) {
-      await tx
-        .update(clubs)
-        .set({ scoringBaseline: nextBaseline })
-        .where(eq(clubs.id, club.id));
-    }
-    await tx.update(matches).set({ status: "scored" }).where(eq(matches.id, matchId));
+    await tx
+      .update(matches)
+      .set({ status: match.status === "closed" ? "closed" : "scored" })
+      .where(eq(matches.id, matchId));
     return { inserted: saved, insertedHistory: history };
   });
 
@@ -299,6 +314,7 @@ export async function scoreMatch(matchId: number, options: ScoreMatchOptions = {
   if (!match) {
     throw new Error("Match not found");
   }
+  const skipVmAndBaseline = Boolean(options.skipVmAndBaseline) || match.isFriendly;
 
   const [reports, participants, lineups, league] = await Promise.all([
     statsRepo.getStatReportsForMatch(matchId),
@@ -317,6 +333,19 @@ export async function scoreMatch(matchId: number, options: ScoreMatchOptions = {
     ratingRepo.getRatingAssignments(matchId),
   ]);
   const force = Boolean(options.forceIncompleteRatings);
+  if (options.refreshVmSnapshot) {
+    await ratingRepo.replaceMatchPlayerVmFromRoster(matchId);
+  }
+  const vmRows = await ratingRepo.snapshotMatchPlayerVm(matchId);
+  const preMatchVm = Object.fromEntries(vmRows.map((row) => [row.playerId, row.marketValue]));
+  const teamA = match.matchTeams?.teamA ?? [];
+  const teamB = match.matchTeams?.teamB ?? [];
+  const teamAGoals = match.teamAGoals ?? 0;
+  const teamBGoals = match.teamBGoals ?? 0;
+  const participantVms = acceptedIds.map((id) => preMatchVm[id] ?? MIN_MARKET_VALUE);
+  const ownAvgA = averageVm(teamA, preMatchVm);
+  const ownAvgB = averageVm(teamB, preMatchVm);
+
   const mvps = force ? new Set<number>() : mvpPlayerIds(mvpVotes);
   const peerByPlayer = collectedPeerScores({
     ratings: peerRatings,
@@ -328,14 +357,35 @@ export async function scoreMatch(matchId: number, options: ScoreMatchOptions = {
   const playerRows = reports
     .filter((report) => acceptedIds.includes(report.playerId))
     .map((report) => {
+      const onA = teamA.includes(report.playerId);
+      const onB = teamB.includes(report.playerId);
+      const ownGoals = onA ? teamAGoals : onB ? teamBGoals : 0;
+      const oppGoals = onA ? teamBGoals : onB ? teamAGoals : 0;
+      const won = onA || onB ? ownGoals > oppGoals : false;
+      const goals = force ? 0 : report.goals;
+      const assists = force ? 0 : report.assists;
       const points = playerMatchRating({
         peerAverage: meanPeerScore(
           peerByPlayer.get(report.playerId) ?? [],
           force ? PEER_RATING_FORCE_DEFAULT : PEER_RATING_NEUTRAL,
         ),
-        goals: force ? 0 : report.goals,
-        assists: force ? 0 : report.assists,
+        goals,
+        assists,
         isMvp: mvps.has(report.playerId),
+        won: force ? false : won,
+        factors: force
+          ? { difficulty: 1, expectancy: 1, quality: 1, goals: 1 }
+          : fantasyRatingFactors({
+              won,
+              ownGoals,
+              oppGoals,
+              ownAvgVm: onA ? ownAvgA : onB ? ownAvgB : MIN_MARKET_VALUE,
+              oppAvgVm: onA ? ownAvgB : onB ? ownAvgA : MIN_MARKET_VALUE,
+              playerVm: preMatchVm[report.playerId] ?? MIN_MARKET_VALUE,
+              participantVms,
+              goals: goals ?? 0,
+              assists: assists ?? 0,
+            }),
       });
       playerPointsById.set(report.playerId, points);
       return {
@@ -377,13 +427,9 @@ export async function scoreMatch(matchId: number, options: ScoreMatchOptions = {
     };
   });
 
-  const vmRows = await ratingRepo.snapshotMatchPlayerVm(matchId);
-  const preMatchVm = Object.fromEntries(vmRows.map((row) => [row.playerId, row.marketValue]));
-  const baseline = league?.scoringBaseline ?? DEFAULT_SCORING_BASELINE;
-  const teamA = match.matchTeams?.teamA ?? [];
-  const teamB = match.matchTeams?.teamB ?? [];
+  const baseline = options.baselineOverride ?? league?.scoringBaseline ?? DEFAULT_SCORING_BASELINE;
   const marketResults =
-    teamA.length > 0 && teamB.length > 0
+    !skipVmAndBaseline && teamA.length > 0 && teamB.length > 0
       ? computeMatchMarketValues({
           participantIds: acceptedIds,
           teamA,
@@ -479,14 +525,17 @@ export async function scoreMatch(matchId: number, options: ScoreMatchOptions = {
       }
     }
 
-    if (league) {
+    if (!skipVmAndBaseline && league) {
       await tx
         .update(leagues)
         .set({ scoringBaseline: nextBaseline })
         .where(eq(leagues.id, league.id));
     }
 
-    await tx.update(matches).set({ status: "scored" }).where(eq(matches.id, matchId));
+    await tx
+      .update(matches)
+      .set({ status: match.status === "closed" ? "closed" : "scored" })
+      .where(eq(matches.id, matchId));
     return {
       playerPoints: insertedPlayers,
       managerPoints: insertedManagers,
@@ -494,6 +543,56 @@ export async function scoreMatch(matchId: number, options: ScoreMatchOptions = {
       marketValues: insertedHistory,
     };
   });
+}
+
+export async function recalculateFromMatch(matchId: number): Promise<{ matchIds: number[] }> {
+  const origin = await matchRepo.getMatch(matchId);
+  if (!origin) {
+    throw new Error("Match not found");
+  }
+  if (origin.status !== "scored" && origin.status !== "closed") {
+    throw new Error("Only scored matches can be recalculated");
+  }
+
+  const siblings =
+    origin.leagueId != null
+      ? await matchRepo.getMatchesByLeague(origin.leagueId)
+      : origin.clubId != null
+        ? await matchRepo.getMatchesByClub(origin.clubId)
+        : [];
+  const chain = scoredReplayChain(siblings, origin);
+
+  const history = await ratingRepo.getMarketValueHistory(origin.id);
+  const storedBaseline = history[0]?.baseline;
+  if (storedBaseline != null) {
+    if (origin.leagueId != null) {
+      await leagueRepo.updateLeague(origin.leagueId, { scoringBaseline: storedBaseline });
+    }
+    if (origin.clubId != null) {
+      await clubRepo.updateClub(origin.clubId, { scoringBaseline: storedBaseline });
+    }
+  }
+  await ratingRepo.restorePlayerMarketValuesFromSnapshot(origin.id);
+
+  const matchIds: number[] = [];
+  for (let index = 0; index < chain.length; index += 1) {
+    const current = await matchRepo.getMatch(chain[index].id);
+    if (!current) {
+      continue;
+    }
+    const options: ScoreMatchOptions = {
+      refreshVmSnapshot: index > 0,
+      skipVmAndBaseline: current.isFriendly,
+      baselineOverride: index === 0 && !current.isFriendly ? storedBaseline : undefined,
+    };
+    if (current.clubId != null) {
+      await scoreClubMatch(current.id, options);
+    } else {
+      await scoreMatch(current.id, options);
+    }
+    matchIds.push(current.id);
+  }
+  return { matchIds };
 }
 
 export type MatchRecapPlayer = {
@@ -649,7 +748,12 @@ export async function getPlayerLeaderboard(leagueId: number, season?: string): P
     .from(playerMatchPoints)
     .innerJoin(
       matches,
-      and(eq(playerMatchPoints.matchId, matches.id), eq(matches.leagueId, leagueId), seasonFilter),
+      and(
+        eq(playerMatchPoints.matchId, matches.id),
+        eq(matches.leagueId, leagueId),
+        eq(matches.isFriendly, false),
+        seasonFilter,
+      ),
     )
     .where(inArray(playerMatchPoints.playerId, playerIds))
     .groupBy(playerMatchPoints.playerId);
@@ -668,7 +772,10 @@ export async function getPlayerLeaderboard(leagueId: number, season?: string): P
 
   const leagueMatches = await matchRepo.getMatchesByLeague(leagueId);
   const scoredMatches = leagueMatches.filter(
-    (match) => match.status === "scored" && (!season || seasonKeyOf(match) === season),
+    (match) =>
+      match.status === "scored" &&
+      !match.isFriendly &&
+      (!season || seasonKeyOf(match) === season),
   );
   const scoredIds = scoredMatches.map((match) => match.id);
   const historyRows =
@@ -762,6 +869,7 @@ export async function getManagerLeaderboard(
       and(
         eq(managerMatchPoints.matchId, matches.id),
         eq(matches.leagueId, leagueId),
+        eq(matches.isFriendly, false),
         season ? eq(matches.seasonKey, season) : undefined,
       ),
     )
@@ -839,6 +947,7 @@ export async function getClubPlayerLeaderboard(
       and(
         eq(playerMatchPoints.matchId, matches.id),
         eq(matches.clubId, clubId),
+        eq(matches.isFriendly, false),
         season ? eq(matches.seasonKey, season) : undefined,
       ),
     )
@@ -856,6 +965,7 @@ export async function getClubPlayerLeaderboard(
       and(
         eq(statReports.matchId, matches.id),
         eq(matches.clubId, clubId),
+        eq(matches.isFriendly, false),
         season ? eq(matches.seasonKey, season) : undefined,
       ),
     )
@@ -878,6 +988,7 @@ export async function getClubPlayerLeaderboard(
       and(
         eq(playerMarketValueHistory.matchId, matches.id),
         eq(matches.clubId, clubId),
+        eq(matches.isFriendly, false),
         season ? eq(matches.seasonKey, season) : undefined,
       ),
     )
@@ -952,7 +1063,7 @@ export async function getClubSeasonAggregates(clubId: number): Promise<ClubSeaso
   const bySeason = new Map<string, ClubSeasonAggregate>();
 
   for (const match of clubMatches) {
-    if (match.ourGoals == null || match.opponentGoals == null) {
+    if (match.isFriendly || match.ourGoals == null || match.opponentGoals == null) {
       continue;
     }
     const season = seasonKeyOf(match);
