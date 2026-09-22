@@ -64,7 +64,8 @@ export default function AdSlot({ slot }: { slot: AdSlotId }) {
   const test = Boolean(data?.adsTest);
 
   useEffect(() => {
-    if (!isAdsEnabled(data) || !client) {
+    if (!isAdsEnabled(data) || !client || !unit) {
+      // Display units need a real data-ad-slot from AdSense; pushing without one stays unfilled.
       return;
     }
     let cancelled = false;
@@ -106,13 +107,13 @@ export default function AdSlot({ slot }: { slot: AdSlotId }) {
     <aside className="w-full my-3" aria-label={t("ads.label")}>
       <p className="mb-1 text-xs uppercase tracking-wide text-slate-500">{t("ads.label")}</p>
       <div className="min-h-[90px] w-full overflow-hidden rounded-md border border-slate-700 bg-slate-800/40">
-        {client ? (
+        {client && unit ? (
           <ins
             ref={insRef}
             className="adsbygoogle block w-full"
             style={{ display: "block", minHeight: 90 }}
             data-ad-client={client}
-            data-ad-slot={unit || undefined}
+            data-ad-slot={unit}
             data-ad-format="auto"
             data-full-width-responsive="true"
             data-adtest={test ? "on" : undefined}

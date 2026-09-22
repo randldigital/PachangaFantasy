@@ -22,8 +22,10 @@ Copy `.env.example` to `.env`. Boot needs:
 | `PAYMENTS_ENABLED` | `false` | Checkout and webhook return `501 PAYMENTS_DISABLED`; `/billing` stays read-only |
 | `ADS_ENABLED` | `false` | `GET /api/auth/features` reports `ads: false`; ad slots render nothing |
 | `ADSENSE_CLIENT` | empty | Publisher id (`ca-pub-…` or `pub-…`). Ignored unless `ADS_ENABLED`. Production `index.html` also has the matching `google-adsense-account` meta tag so Google can verify the site without login. |
-| `ADSENSE_SLOT_OVERVIEW` / `ADSENSE_SLOT_HUB` | empty | Optional Display ad-unit ids. Empty ⇒ responsive auto unit |
+| `ADSENSE_SLOT_OVERVIEW` / `ADSENSE_SLOT_HUB` | empty | **Required for Display fill.** Digits from AdSense → Ads → By ad unit → Get code (`data-ad-slot`). Empty ⇒ reserved box stays blank. |
 | `ADS_TEST` | `false` | When true with ads on, units request Google test ads (`data-adtest=on`) |
+
+Serve `client/public/ads.txt` at `https://your-domain/ads.txt` (built into `dist/public`). It must list your publisher id, e.g. `google.com, pub-…, DIRECT, f08c47fec0942fa0`.
 | `FEATURE_DEFAULT_PLAN` | `free` | Used when a billing account has no active subscription |
 | `CORS_ORIGINS` | empty | Same-origin only. Set a comma-separated list when a packaged WebView calls the API |
 | `ANALYTICS_PASSCODE` | `2026` | Unlocks `GET /analytics` (no nav link). Send as `X-Analytics-Passcode`. Change this in production. |
