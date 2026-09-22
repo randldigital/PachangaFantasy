@@ -6,7 +6,7 @@ type AdSlotId = "overview.banner" | "hub.sidebar";
 
 declare global {
   interface Window {
-    adsbygoogle?: Array<Record<string, unknown>>;
+    adsbygoogle?: Array<Record<string, unknown>> & { loaded?: boolean };
   }
 }
 
@@ -18,24 +18,47 @@ function existingAdSenseScript(): HTMLScriptElement | null {
   );
 }
 
-/** Wait for the head script (or inject one) before calling adsbygoogle.push. */
+/**
+ * Resolve only after adsbygoogle.js has loaded (or after a short poll).
+ * Do not treat a pre-load queue array as "ready" — that races with React mount.
+ */
 function loadAdSense(client: string) {
   if (scriptPromise) {
     return scriptPromise;
   }
   scriptPromise = new Promise((resolve, reject) => {
-    const existing = existingAdSenseScript();
-    if (existing) {
-      // Async head script may still be downloading.
-      if (typeof window.adsbygoogle !== "undefined" || existing.dataset.loaded === "1") {
-        resolve();
+    const finish = () => resolve();
+
+    const waitUntilReady = (script: HTMLScriptElement) => {
+      if (window.adsbygoogle?.loaded || script.dataset.loaded === "1") {
+        finish();
         return;
       }
-      existing.addEventListener("load", () => {
-        existing.dataset.loaded = "1";
-        resolve();
-      });
-      existing.addEventListener("error", () => reject(new Error("adsense")));
+      const onLoad = () => {
+        script.dataset.loaded = "1";
+        finish();
+      };
+      script.addEventListener("load", onLoad, { once: true });
+      script.addEventListener("error", () => reject(new Error("adsense")), { once: true });
+
+      // Cached script: 'load' may never fire again — poll briefly then push anyway (queue is fine).
+      let ticks = 0;
+      const poll = window.setInterval(() => {
+        ticks += 1;
+        if (window.adsbygoogle?.loaded || script.dataset.loaded === "1") {
+          window.clearInterval(poll);
+          script.removeEventListener("load", onLoad);
+          finish();
+        } else if (ticks >= 40) {
+          window.clearInterval(poll);
+          finish();
+        }
+      }, 50);
+    };
+
+    const existing = existingAdSenseScript();
+    if (existing) {
+      waitUntilReady(existing);
       return;
     }
 
@@ -44,12 +67,8 @@ function loadAdSense(client: string) {
     script.crossOrigin = "anonymous";
     script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(client)}`;
     script.dataset.adsenseClient = client;
-    script.onload = () => {
-      script.dataset.loaded = "1";
-      resolve();
-    };
-    script.onerror = () => reject(new Error("adsense"));
     document.head.appendChild(script);
+    waitUntilReady(script);
   });
   return scriptPromise;
 }
@@ -58,65 +77,64 @@ export default function AdSlot({ slot }: { slot: AdSlotId }) {
   const { t } = useTranslation();
   const { data } = useAuthFeatures();
   const insRef = useRef<HTMLModElement>(null);
-  const pushed = useRef(false);
+  const adsOn = isAdsEnabled(data);
   const client = data?.adsClient ?? "";
   const unit = data?.adsSlots?.[slot] ?? "";
   const test = Boolean(data?.adsTest);
 
   useEffect(() => {
-    if (!isAdsEnabled(data) || !client || !unit) {
-      // Display units need a real data-ad-slot from AdSense; pushing without one stays unfilled.
+    if (!adsOn || !client || !unit) {
       return;
     }
     let cancelled = false;
 
-    loadAdSense(client)
+    void loadAdSense(client)
       .then(() => {
-        if (cancelled || pushed.current || !insRef.current) {
+        if (cancelled) {
           return;
         }
-        // Let the <ins> lay out before requesting a fill (React mount timing).
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            if (cancelled || pushed.current || !insRef.current) {
-              return;
-            }
-            pushed.current = true;
-            try {
-              (window.adsbygoogle = window.adsbygoogle || []).push({});
-            } catch {
-              /* Duplicate push is harmless; reserved box stays visible. */
-            }
-          });
-        });
+        const node = insRef.current;
+        if (!node) {
+          return;
+        }
+        // Already requested a fill for this DOM node.
+        if (node.getAttribute("data-adsbygoogle-status")) {
+          return;
+        }
+        try {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        } catch {
+          /* Duplicate push is harmless. */
+        }
       })
       .catch(() => {
-        /* Localhost / blockers often fail to load fill; the reserved box stays visible. */
+        /* Blockers / offline leave the reserved box empty. */
       });
 
     return () => {
       cancelled = true;
     };
-  }, [client, data, slot, test, unit]);
+  }, [adsOn, client, unit, test, slot]);
 
-  if (!isAdsEnabled(data)) {
+  if (!adsOn) {
     return null;
   }
 
   return (
     <aside className="w-full my-3" aria-label={t("ads.label")}>
       <p className="mb-1 text-xs uppercase tracking-wide text-slate-500">{t("ads.label")}</p>
-      <div className="min-h-[90px] w-full overflow-hidden rounded-md border border-slate-700 bg-slate-800/40">
+      <div className="min-h-[90px] w-full rounded-md border border-slate-700 bg-slate-800/40">
         {client && unit ? (
           <ins
+            key={`${slot}-${unit}-${test ? "test" : "live"}`}
             ref={insRef}
-            className="adsbygoogle block w-full"
-            style={{ display: "block", minHeight: 90 }}
+            className="adsbygoogle"
+            style={{ display: "block", minHeight: 90, width: "100%" }}
             data-ad-client={client}
             data-ad-slot={unit}
             data-ad-format="auto"
             data-full-width-responsive="true"
-            data-adtest={test ? "on" : undefined}
+            {...(test ? { "data-adtest": "on" } : {})}
           />
         ) : null}
       </div>
