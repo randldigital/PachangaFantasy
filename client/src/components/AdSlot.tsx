@@ -12,21 +12,42 @@ declare global {
 
 let scriptPromise: Promise<void> | null = null;
 
+function existingAdSenseScript(): HTMLScriptElement | null {
+  return document.querySelector<HTMLScriptElement>(
+    'script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"], script[data-adsense-client]',
+  );
+}
+
+/** Wait for the head script (or inject one) before calling adsbygoogle.push. */
 function loadAdSense(client: string) {
   if (scriptPromise) {
     return scriptPromise;
   }
   scriptPromise = new Promise((resolve, reject) => {
-    if (document.querySelector("script[data-adsense-client]")) {
-      resolve();
+    const existing = existingAdSenseScript();
+    if (existing) {
+      // Async head script may still be downloading.
+      if (typeof window.adsbygoogle !== "undefined" || existing.dataset.loaded === "1") {
+        resolve();
+        return;
+      }
+      existing.addEventListener("load", () => {
+        existing.dataset.loaded = "1";
+        resolve();
+      });
+      existing.addEventListener("error", () => reject(new Error("adsense")));
       return;
     }
+
     const script = document.createElement("script");
     script.async = true;
     script.crossOrigin = "anonymous";
     script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(client)}`;
     script.dataset.adsenseClient = client;
-    script.onload = () => resolve();
+    script.onload = () => {
+      script.dataset.loaded = "1";
+      resolve();
+    };
     script.onerror = () => reject(new Error("adsense"));
     document.head.appendChild(script);
   });
@@ -47,17 +68,31 @@ export default function AdSlot({ slot }: { slot: AdSlotId }) {
       return;
     }
     let cancelled = false;
+
     loadAdSense(client)
       .then(() => {
         if (cancelled || pushed.current || !insRef.current) {
           return;
         }
-        pushed.current = true;
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
+        // Let the <ins> lay out before requesting a fill (React mount timing).
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (cancelled || pushed.current || !insRef.current) {
+              return;
+            }
+            pushed.current = true;
+            try {
+              (window.adsbygoogle = window.adsbygoogle || []).push({});
+            } catch {
+              /* Duplicate push is harmless; reserved box stays visible. */
+            }
+          });
+        });
       })
       .catch(() => {
-        /* Localhost often fails to load fill; the reserved box stays visible. */
+        /* Localhost / blockers often fail to load fill; the reserved box stays visible. */
       });
+
     return () => {
       cancelled = true;
     };
