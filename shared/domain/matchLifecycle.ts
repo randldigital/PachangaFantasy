@@ -59,3 +59,22 @@ export function pickActiveMatch<T extends { status: string | null }>(
 ): T | undefined {
   return matches.find((match) => isActiveMatchStatus(match.status));
 }
+
+/** Latest scored or closed match by date then id (Fantasy idle lineup / last manager score). */
+export function pickLatestScoredMatch<
+  T extends { id: number; date?: Date | string | null; status: string | null },
+>(matches: T[]): T | undefined {
+  const scored = matches
+    .filter((match) => {
+      const status = normalizeMatchStatus(match.status);
+      return status === "scored" || status === "closed";
+    })
+    .sort((a, b) => {
+      const byDate = new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime();
+      if (byDate !== 0) {
+        return byDate;
+      }
+      return b.id - a.id;
+    });
+  return scored[0];
+}

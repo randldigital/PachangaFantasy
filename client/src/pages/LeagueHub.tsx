@@ -25,7 +25,7 @@ import MembershipJoinToggle from "@/components/MembershipJoinToggle";
 import PlanChip from "@/components/PlanChip";
 import AdSlot from "@/components/AdSlot";
 import RosterManagerDialog from "@/components/league/RosterManagerDialog";
-import { pickActiveMatch } from "@shared/domain/matchLifecycle";
+import { pickActiveMatch, pickLatestScoredMatch } from "@shared/domain/matchLifecycle";
 import { pickStatsMatch } from "@shared/domain/stats";
 import { shouldRenderHubAd } from "@shared/domain/entitlements";
 import type { HubTab } from "@shared/domain/primaryAction";
@@ -73,6 +73,7 @@ export default function LeagueHub() {
 
   const activeMatch = pickActiveMatch(matches);
   const statsMatch = pickStatsMatch(matches);
+  const lastScoredMatch = activeMatch ? undefined : pickLatestScoredMatch(matches);
   const headerMatch = activeMatch ?? (statsMatch?.status === "completed" ? statsMatch : undefined);
 
   if (leagueLoading) {
@@ -218,10 +219,11 @@ export default function LeagueHub() {
           <TabsContent value="lineup" className="mt-0">
             <LineupSection
               match={activeMatch}
+              lastScoredMatch={lastScoredMatch}
               league={league}
               players={players}
               user={user || undefined}
-              isLoading={playersLoading}
+              isLoading={playersLoading || matchesLoading}
               onCreateMatch={isAdmin ? () => setShowCreateMatch(true) : undefined}
             />
           </TabsContent>

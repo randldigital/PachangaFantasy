@@ -18,6 +18,8 @@ import type { Match, League, Player, User, Lineup } from "@shared/schema";
 
 interface LineupSectionProps {
   match?: Match;
+  /** When idle (no open/started match), show this scored match's manager score + lineup. */
+  lastScoredMatch?: Match;
   league: League;
   players: Player[];
   user?: User;
@@ -30,8 +32,109 @@ interface Participant {
   status: string;
 }
 
+type MatchRecapPayload = {
+  managers: { userId: number; points: number; lineupStatus: string }[];
+};
+
+function LastScoredLineupSummary({
+  match,
+  players,
+  user,
+  onCreateMatch,
+}: {
+  match: Match;
+  players: Player[];
+  user?: User;
+  onCreateMatch?: () => void;
+}) {
+  const { t } = useTranslation();
+
+  const { data: existingLineup, isLoading: lineupLoading } = useQuery<Lineup | null>({
+    queryKey: queryKeys.matchLineup(match.id),
+    queryFn: () => api.get<Lineup | null>(`/api/matches/${match.id}/lineup`),
+  });
+
+  const { data: recap, isLoading: recapLoading } = useQuery<MatchRecapPayload>({
+    queryKey: queryKeys.matchRecap(match.id),
+    queryFn: () => api.get<MatchRecapPayload>(`/api/matches/${match.id}/recap`),
+  });
+
+  if (lineupLoading || recapLoading) {
+    return (
+      <Card className="bg-slate-800/50 border-slate-700">
+        <CardContent className="p-8 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto mb-4" />
+          <p className="text-white">{t("common.loading")}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const managerRow = user
+    ? recap?.managers.find((row) => row.userId === user.id)
+    : undefined;
+  const budget = match.lineupBudget || 100;
+  const totalCost = existingLineup
+    ? lineupTotalCost(existingLineup.playerIds || [], players)
+    : 0;
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-slate-800/50 border-slate-700">
+        <CardContent className="p-6 text-center space-y-3">
+          <h3 className="text-white font-medium text-lg">{t("lineup.lastScoreTitle")}</h3>
+          {managerRow ? (
+            <>
+              <p className="text-emerald-400 text-3xl font-bold">
+                {t("lineup.lastScorePoints", { points: managerRow.points })}
+              </p>
+              {managerRow.lineupStatus === "invalid" && (
+                <p className="text-amber-400 text-sm">{t("lineup.lastScoreInvalid")}</p>
+              )}
+            </>
+          ) : (
+            <p className="text-slate-400">{t("lineup.lastScoreNoScore")}</p>
+          )}
+          <p className="text-slate-400 text-sm">{t("lineup.lastScoreWaiting")}</p>
+          {onCreateMatch && (
+            <Button onClick={onCreateMatch} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              {t("lineup.noMatchAdminCta")}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {existingLineup ? (
+        <FootballFieldLineup
+          lineup={existingLineup}
+          players={players}
+          budget={budget}
+        />
+      ) : (
+        <Card className="bg-slate-800/50 border-slate-700">
+          <CardContent className="p-6 text-center">
+            <p className="text-slate-400">{t("lineup.lastScoreNoLineup")}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {existingLineup && (
+        <Card className="bg-slate-800/50 border-slate-700">
+          <CardContent className="p-4 flex justify-between text-sm text-slate-300">
+            <span>{t("lineup.budget")}</span>
+            <span>
+              {formatDisplayMarketValue(totalCost)}/{formatDisplayMarketValue(budget)}
+            </span>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export default function LineupSection({
   match,
+  lastScoredMatch,
   players,
   user,
   isLoading,
@@ -164,6 +267,16 @@ export default function LineupSection({
   };
 
   if (!match) {
+    if (lastScoredMatch) {
+      return (
+        <LastScoredLineupSummary
+          match={lastScoredMatch}
+          players={players}
+          user={user}
+          onCreateMatch={onCreateMatch}
+        />
+      );
+    }
     return (
       <Card className="bg-slate-800/50 border-slate-700">
         <CardContent className="p-8 text-center">

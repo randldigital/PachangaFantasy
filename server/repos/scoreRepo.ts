@@ -665,6 +665,12 @@ export type MatchRecapPlayer = {
   delta: number | null;
 };
 
+export type MatchRecapManager = {
+  userId: number;
+  points: number;
+  lineupStatus: string;
+};
+
 export type MatchRecap = {
   matchId: number;
   context: "league" | "club";
@@ -677,6 +683,8 @@ export type MatchRecap = {
   ourGoals: number | null;
   opponentGoals: number | null;
   players: MatchRecapPlayer[];
+  /** Fantasy only; empty for Club matches. */
+  managers: MatchRecapManager[];
 };
 
 export async function getMatchRecap(matchId: number): Promise<MatchRecap | null> {
@@ -685,15 +693,17 @@ export async function getMatchRecap(matchId: number): Promise<MatchRecap | null>
     return null;
   }
 
-  const [participants, roster, reports, pointRows, history, votes, peerRatings] = await Promise.all([
-    matchRepo.getMatchParticipants(matchId),
-    playerRepo.getRosterFor(match),
-    statsRepo.getStatReportsForMatch(matchId),
-    getPlayerPointsForMatch(matchId),
-    ratingRepo.getMarketValueHistory(matchId),
-    ratingRepo.getMvpVotes(matchId),
-    ratingRepo.getPeerRatings(matchId),
-  ]);
+  const [participants, roster, reports, pointRows, history, votes, peerRatings, managerRows] =
+    await Promise.all([
+      matchRepo.getMatchParticipants(matchId),
+      playerRepo.getRosterFor(match),
+      statsRepo.getStatReportsForMatch(matchId),
+      getPlayerPointsForMatch(matchId),
+      ratingRepo.getMarketValueHistory(matchId),
+      ratingRepo.getMvpVotes(matchId),
+      ratingRepo.getPeerRatings(matchId),
+      match.clubId != null ? Promise.resolve([]) : getManagerPointsForMatch(matchId),
+    ]);
 
   const names = new Map(roster.map((player) => [player.id, player.name]));
   const userIds = new Map(roster.map((player) => [player.id, player.userId ?? null]));
@@ -762,6 +772,11 @@ export async function getMatchRecap(matchId: number): Promise<MatchRecap | null>
     ourGoals: match.ourGoals,
     opponentGoals: match.opponentGoals,
     players,
+    managers: managerRows.map((row) => ({
+      userId: row.userId,
+      points: row.points,
+      lineupStatus: row.lineupStatus,
+    })),
   };
 }
 

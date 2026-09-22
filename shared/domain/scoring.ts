@@ -23,6 +23,7 @@ export const STRONGER_OPPONENT_RATIO = 0.85;
 export const EXPECTANCY_WEAKER = 0.9;
 export const EXPECTANCY_STRONGER = 1.15;
 export const QUALITY_PENALTY = 0.85;
+export const QUALITY_BONUS = 1.15;
 export const PARTICIPATION_BONUS = 0.15;
 export const MAX_DIFFICULTY_PENALTY = 0.2;
 export const DIFFICULTY_PER_EXTRA_GOAL = 0.05;
@@ -111,13 +112,17 @@ export type FantasyRatingFactors = {
   goals: number;
 };
 
-export function isTopQuartileVm(playerVm: number, participantVms: number[]): boolean {
+import { MIN_MARKET_VALUE } from "./marketValue";
+
+/** Continuous quality: cheaper than match average → boost, dearer → cut. */
+export function continuousQualityFactor(playerVm: number, participantVms: number[]): number {
   if (participantVms.length === 0) {
-    return false;
+    return 1;
   }
-  const sorted = [...participantVms].sort((a, b) => a - b);
-  const index = Math.min(sorted.length - 1, Math.floor(sorted.length * 0.75));
-  return playerVm >= sorted[index];
+  const avgVm = participantVms.reduce((sum, value) => sum + value, 0) / participantVms.length;
+  const safeVm = Math.max(playerVm, MIN_MARKET_VALUE, Number.EPSILON);
+  const raw = avgVm / safeVm;
+  return Math.min(QUALITY_BONUS, Math.max(QUALITY_PENALTY, raw));
 }
 
 export function fantasyRatingFactors(input: {
@@ -155,10 +160,7 @@ export function fantasyRatingFactors(input: {
     }
   }
 
-  const quality =
-    isTopQuartileVm(input.playerVm, input.participantVms) && input.goals + input.assists <= 1
-      ? QUALITY_PENALTY
-      : 1;
+  const quality = continuousQualityFactor(input.playerVm, input.participantVms);
 
   const participation = Math.min(1, (input.goals + input.assists) / Math.max(1, input.ownGoals));
   return {

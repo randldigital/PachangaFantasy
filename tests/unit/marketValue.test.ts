@@ -61,34 +61,48 @@ describe("resultComponent", () => {
 });
 
 describe("applyMarketValueChange", () => {
-  it("gives a D-tier player +5 at MVP-level 0.75+", () => {
+  it("gives a D-tier player a soft upside at MVP-level 0.75+", () => {
     const first = applyMarketValueChange(8, 0.75);
-    expect(first.rawChange).toBe(5);
+    expect(first.rawChange).toBeCloseTo(1.3125);
     expect(first.multiplier).toBe(1);
-    expect(first.vmAfter).toBe(13);
+    expect(first.vmAfter).toBe(9.5);
   });
 
-  it("reaches about 18 VM after two MVP-level matches from 8", () => {
+  it("climbs gradually from 8 with consecutive MVP-level matches", () => {
     const first = applyMarketValueChange(8, 1);
-    expect(first.vmAfter).toBe(13);
+    expect(first.vmAfter).toBe(10.5);
     const second = applyMarketValueChange(first.vmAfter, 1);
-    expect(second.vmAfter).toBe(18);
+    expect(second.vmAfter).toBe(13);
   });
 
-  it("gives high-VM players little upside and full downside", () => {
+  it("gives high-VM players little upside and a capped soft downside", () => {
     expect(vmPositionX(28)).toBe(1);
     const up = applyMarketValueChange(28, 1);
     expect(up.multiplier).toBeCloseTo(0.35);
-    expect(up.delta).toBeLessThanOrEqual(4);
+    expect(up.delta).toBeLessThanOrEqual(1);
     const down = applyMarketValueChange(28, 0);
-    expect(down.multiplier).toBeCloseTo(1);
-    expect(down.delta).toBe(-3);
+    expect(down.multiplier).toBeCloseTo(0.8);
+    expect(down.delta).toBe(-1.5);
   });
 
-  it("limits low-VM downside", () => {
+  it("limits low-VM downside via deadzone and soft loss multiplier", () => {
     const down = applyMarketValueChange(8, 0);
-    expect(down.multiplier).toBeCloseTo(0.35);
+    expect(down.multiplier).toBeCloseTo(0.1);
     expect(down.vmAfter).toBe(8);
+    expect(down.delta).toBe(0);
+  });
+
+  it("calibrates match-10-like performances for Chema, Lope, and Pablo S", () => {
+    // Performance scores reconstructed from Gazpachangas match 10 (pre-VM 22 / 17 / 20).
+    expect(applyMarketValueChange(22, 0.24761005291005292).vmAfter).toBe(21);
+    expect(applyMarketValueChange(17, 0.2941444444444445).vmAfter).toBe(17);
+    expect(applyMarketValueChange(20, 0.33130493827160495).vmAfter).toBe(19.5);
+  });
+
+  it("persists half-point VM steps", () => {
+    const change = applyMarketValueChange(20, 0.33130493827160495);
+    expect(change.delta).toBe(-0.5);
+    expect(change.vmAfter).toBe(19.5);
   });
 });
 

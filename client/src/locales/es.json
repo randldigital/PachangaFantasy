@@ -244,7 +244,7 @@
     },
     "vote_match": {
       "title": "Vota el jugador del partido",
-      "description": "Elige el MVP y puntúa al compañero y al rival que te han asignado.",
+      "description": "Elige el MVP y puntúa a los dos compañeros y dos rivales que te han asignado.",
       "cta": "Ir a Estadísticas"
     },
     "score_match": {
@@ -465,6 +465,12 @@
     "noMatch": "No hay partido activo",
     "noMatchDescription": "Espera a que se cree un partido para formar tu alineación",
     "noMatchAdminCta": "Crear un partido",
+    "lastScoreTitle": "Último partido",
+    "lastScoreWaiting": "Esperando el próximo partido",
+    "lastScorePoints": "{{points}} puntos de manager",
+    "lastScoreNoScore": "No hay puntuación de manager para ese partido",
+    "lastScoreInvalid": "Tu alineación no era válida (0 puntos)",
+    "lastScoreNoLineup": "No guardaste alineación en ese partido",
     "joinFirst": "Únete al partido primero",
     "joinFirstDescription": "Podrás elegir jugadores cuando te inscribas en este partido.",
     "players": "Jugadores",

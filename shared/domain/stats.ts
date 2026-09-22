@@ -1,4 +1,4 @@
-import { normalizeMatchStatus } from "./matchLifecycle";
+import { isFinishedStatus, normalizeMatchStatus } from "./matchLifecycle";
 
 export type ParticipantStatsState = "pending" | "submitted";
 export type MatchStatsState = "pending" | "submitted" | "inconsistent" | "validated";
@@ -7,12 +7,19 @@ export function isStatsEditable(status: string | null | undefined): boolean {
   return normalizeMatchStatus(status) === "completed";
 }
 
-export function pickStatsMatch<T extends { status: string | null }>(matches: T[]): T | undefined {
-  return (
-    matches.find((match) => normalizeMatchStatus(match.status) === "completed") ??
-    matches.find((match) => normalizeMatchStatus(match.status) === "scored") ??
-    matches.find((match) => normalizeMatchStatus(match.status) === "closed")
-  );
+export function pickStatsMatch<T extends { id: number; date?: Date | string | null; status: string | null }>(
+  matches: T[],
+): T | undefined {
+  const finished = matches
+    .filter((match) => isFinishedStatus(match.status))
+    .sort((a, b) => {
+      const byDate = new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime();
+      if (byDate !== 0) {
+        return byDate;
+      }
+      return b.id - a.id;
+    });
+  return finished[0];
 }
 
 export type StatsSideInput = {

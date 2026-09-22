@@ -6,44 +6,48 @@ import {
 } from "@shared/domain/ratingAssignments";
 
 describe("assignMatchRatings", () => {
-  it("gives each voter a teammate and a rival when both exist", () => {
+  it("gives each voter two teammates and two rivals on a full 5v5", () => {
+    const teamA = [1, 2, 3, 4, 5];
+    const teamB = [6, 7, 8, 9, 10];
     const assignments = assignMatchRatings({
       matchId: 10,
-      teamA: [1, 2, 3],
-      teamB: [4, 5, 6],
-      voterPlayerIds: [1, 2, 3, 4, 5, 6],
-      participantIds: [1, 2, 3, 4, 5, 6],
+      teamA,
+      teamB,
+      voterPlayerIds: [...teamA, ...teamB],
+      participantIds: [...teamA, ...teamB],
     });
 
-    for (const voter of [1, 2, 3, 4, 5, 6]) {
+    for (const voter of [...teamA, ...teamB]) {
       const outgoing = assignments.filter((row) => row.raterPlayerId === voter);
-      expect(outgoing.some((row) => row.kind === "teammate")).toBe(true);
-      expect(outgoing.some((row) => row.kind === "rival")).toBe(true);
+      expect(outgoing.filter((row) => row.kind === "teammate")).toHaveLength(2);
+      expect(outgoing.filter((row) => row.kind === "rival")).toHaveLength(2);
     }
   });
 
-  it("targets two incoming ratings per player when enough voters exist", () => {
+  it("targets four incoming ratings per player when enough voters exist", () => {
+    const teamA = [1, 2, 3, 4, 5];
+    const teamB = [6, 7, 8, 9, 10];
     const assignments = assignMatchRatings({
       matchId: 11,
-      teamA: [1, 2, 3],
-      teamB: [4, 5],
-      voterPlayerIds: [1, 2, 3, 4, 5],
-      participantIds: [1, 2, 3, 4, 5],
+      teamA,
+      teamB,
+      voterPlayerIds: [...teamA, ...teamB],
+      participantIds: [...teamA, ...teamB],
     });
 
-    for (const playerId of [1, 2, 3, 4, 5]) {
+    for (const playerId of [...teamA, ...teamB]) {
       const incoming = assignments.filter((row) => row.rateePlayerId === playerId);
-      expect(incoming.length).toBeGreaterThanOrEqual(2);
+      expect(incoming.length).toBeGreaterThanOrEqual(4);
     }
   });
 
   it("lets guests be rated without making them voters", () => {
     const assignments = assignMatchRatings({
       matchId: 12,
-      teamA: [1, 2, 99],
-      teamB: [3, 4],
-      voterPlayerIds: [1, 2, 3, 4],
-      participantIds: [1, 2, 3, 4, 99],
+      teamA: [1, 2, 99, 3, 4],
+      teamB: [5, 6, 7, 8, 9],
+      voterPlayerIds: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+      participantIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 99],
     });
 
     expect(assignments.every((row) => row.raterPlayerId !== 99)).toBe(true);
@@ -53,25 +57,25 @@ describe("assignMatchRatings", () => {
   it("is stable for the same match id", () => {
     const input = {
       matchId: 44,
-      teamA: [1, 2],
-      teamB: [3, 4],
-      voterPlayerIds: [1, 2, 3, 4],
-      participantIds: [1, 2, 3, 4],
+      teamA: [1, 2, 3, 4, 5],
+      teamB: [6, 7, 8, 9, 10],
+      voterPlayerIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      participantIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     };
     expect(assignMatchRatings(input)).toEqual(assignMatchRatings(input));
   });
 
-  it("assigns two rivals when a voter has no teammate", () => {
+  it("assigns rivals to fill the ballot when a voter has no teammate", () => {
     const assignments = assignMatchRatings({
       matchId: 8,
       teamA: [1],
-      teamB: [2, 3, 4],
-      voterPlayerIds: [1, 2, 3, 4],
-      participantIds: [1, 2, 3, 4],
+      teamB: [2, 3, 4, 5],
+      voterPlayerIds: [1, 2, 3, 4, 5],
+      participantIds: [1, 2, 3, 4, 5],
     });
     const fromLone = assignments.filter((row) => row.raterPlayerId === 1);
     expect(fromLone.every((row) => row.kind === "rival")).toBe(true);
-    expect(fromLone.length).toBeGreaterThanOrEqual(2);
+    expect(fromLone.length).toBeGreaterThanOrEqual(4);
   });
 });
 

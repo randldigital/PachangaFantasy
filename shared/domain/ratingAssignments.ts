@@ -112,6 +112,36 @@ function addAssignment(
   return true;
 }
 
+export const TARGET_OUTGOING_TEAMMATES = 2;
+export const TARGET_OUTGOING_RIVALS = 2;
+export const TARGET_INCOMING = 4;
+
+function assignFromPool(
+  assignments: RatingAssignment[],
+  voter: number,
+  pool: number[],
+  kind: RatingKind,
+  count: number,
+  rng: () => number,
+) {
+  let remaining = count;
+  while (remaining > 0) {
+    const available = pool.filter((id) => !hasPair(assignments, voter, id));
+    if (available.length === 0) {
+      break;
+    }
+    const pick = pickLeastRated(available, assignments, rng);
+    if (pick == null) {
+      break;
+    }
+    if (addAssignment(assignments, voter, pick, kind)) {
+      remaining -= 1;
+    } else {
+      break;
+    }
+  }
+}
+
 export function assignMatchRatings(input: RatingAssignmentInput): RatingAssignment[] {
   const assignments: RatingAssignment[] = [];
   const rng = mulberry32(input.matchId * 10007 + input.voterPlayerIds.length * 13 + 7);
@@ -124,35 +154,19 @@ export function assignMatchRatings(input: RatingAssignmentInput): RatingAssignme
     const mateOptions = teammates(voter, input.teamA, input.teamB);
     const rivalOptions = rivals(voter, input.teamA, input.teamB);
 
-    if (mateOptions.length > 0) {
-      const mate = pickLeastRated(mateOptions, assignments, rng);
-      if (mate != null) {
-        addAssignment(assignments, voter, mate, "teammate");
-      }
-    }
+    assignFromPool(assignments, voter, mateOptions, "teammate", TARGET_OUTGOING_TEAMMATES, rng);
+    assignFromPool(assignments, voter, rivalOptions, "rival", TARGET_OUTGOING_RIVALS, rng);
 
-    if (rivalOptions.length > 0) {
-      const rival = pickLeastRated(rivalOptions, assignments, rng);
-      if (rival != null) {
-        addAssignment(assignments, voter, rival, "rival");
-      }
-    }
-
-    if (mateOptions.length === 0 && rivalOptions.length > 0) {
-      const extraRival = pickLeastRated(
-        rivalOptions.filter((id) => !hasPair(assignments, voter, id)),
-        assignments,
-        rng,
-      );
-      if (extraRival != null) {
-        addAssignment(assignments, voter, extraRival, "rival");
-      }
+    // Lone player on a side: fill remaining outgoing slots with rivals.
+    const outgoing = outgoingCount(assignments, voter);
+    const need = TARGET_OUTGOING_TEAMMATES + TARGET_OUTGOING_RIVALS - outgoing;
+    if (need > 0 && rivalOptions.length > 0) {
+      assignFromPool(assignments, voter, rivalOptions, "rival", need, rng);
     }
   }
 
-  const TARGET_INCOMING = 2;
   let guard = 0;
-  while (guard < 200) {
+  while (guard < 400) {
     guard += 1;
     const under = input.participantIds.filter(
       (id) => incomingCount(assignments, id) < TARGET_INCOMING,

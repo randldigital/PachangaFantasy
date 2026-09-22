@@ -247,7 +247,7 @@
     },
     "vote_match": {
       "title": "Vote Player of the Match",
-      "description": "Pick the MVP and rate the teammate and rival assigned to you.",
+      "description": "Pick the MVP and rate the two teammates and two rivals assigned to you.",
       "cta": "Go to Statistics"
     },
     "score_match": {
@@ -468,6 +468,12 @@
     "noMatch": "No active match",
     "noMatchDescription": "Wait for a match to be created before building your lineup",
     "noMatchAdminCta": "Create a match",
+    "lastScoreTitle": "Last match",
+    "lastScoreWaiting": "Waiting for the next match",
+    "lastScorePoints": "{{points}} manager points",
+    "lastScoreNoScore": "No manager score recorded for that match",
+    "lastScoreInvalid": "Your lineup was invalid (0 points)",
+    "lastScoreNoLineup": "You did not save a lineup for that match",
     "joinFirst": "Join the match first",
     "joinFirstDescription": "You can pick players after you join this match.",
     "players": "Players",

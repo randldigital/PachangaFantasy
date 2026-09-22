@@ -78,7 +78,7 @@ describe("playerMatchRating", () => {
     });
     expect(factors.difficulty).toBe(0.85);
     expect(factors.expectancy).toBe(0.9);
-    expect(factors.quality).toBe(1);
+    expect(factors.quality).toBe(0.85);
     expect(factors.goals).toBe(1.075);
     expect(
       playerMatchRating({
@@ -89,7 +89,7 @@ describe("playerMatchRating", () => {
         won: true,
         factors,
       }),
-    ).toBe(12.3);
+    ).toBe(10.5);
   });
 
   it("does not apply the blowout penalty vs a stronger side", () => {
@@ -106,10 +106,11 @@ describe("playerMatchRating", () => {
     });
     expect(factors.difficulty).toBe(1);
     expect(factors.expectancy).toBe(1.15);
+    expect(factors.quality).toBe(1.15);
   });
 
-  it("penalises a star with at most one goal or assist", () => {
-    const factors = fantasyRatingFactors({
+  it("cuts expensive players and boosts cheap ones continuously", () => {
+    const expensive = fantasyRatingFactors({
       won: false,
       ownGoals: 1,
       oppGoals: 1,
@@ -120,7 +121,7 @@ describe("playerMatchRating", () => {
       goals: 0,
       assists: 0,
     });
-    expect(factors.quality).toBe(0.85);
+    expect(expensive.quality).toBe(0.85);
     expect(
       playerMatchRating({
         peerAverage: 8,
@@ -128,9 +129,32 @@ describe("playerMatchRating", () => {
         assists: 0,
         isMvp: false,
         won: false,
-        factors,
+        factors: expensive,
       }),
     ).toBe(6.8);
+
+    const cheap = fantasyRatingFactors({
+      won: false,
+      ownGoals: 1,
+      oppGoals: 1,
+      ownAvgVm: 18,
+      oppAvgVm: 18,
+      playerVm: 10,
+      participantVms: [10, 12, 18, 28],
+      goals: 0,
+      assists: 0,
+    });
+    expect(cheap.quality).toBe(1.15);
+    expect(
+      playerMatchRating({
+        peerAverage: 8,
+        goals: 0,
+        assists: 0,
+        isMvp: false,
+        won: false,
+        factors: cheap,
+      }),
+    ).toBe(9.2);
   });
 
   it("rewards the lone scorer in a 1–0", () => {
@@ -147,7 +171,7 @@ describe("playerMatchRating", () => {
     });
     expect(factors.difficulty).toBe(1);
     expect(factors.expectancy).toBe(1);
-    expect(factors.quality).toBe(1);
+    expect(factors.quality).toBeCloseTo(15 / 14);
     expect(factors.goals).toBe(1.15);
     expect(
       playerMatchRating({
@@ -158,7 +182,22 @@ describe("playerMatchRating", () => {
         won: true,
         factors,
       }),
-    ).toBe(10.4);
+    ).toBe(11.1);
+  });
+
+  it("is about 1 when the player sits at the match average VM", () => {
+    const factors = fantasyRatingFactors({
+      won: false,
+      ownGoals: 1,
+      oppGoals: 1,
+      ownAvgVm: 16,
+      oppAvgVm: 16,
+      playerVm: 16,
+      participantVms: [12, 14, 16, 18, 20],
+      goals: 0,
+      assists: 0,
+    });
+    expect(factors.quality).toBeCloseTo(1);
   });
 });
 

@@ -8,6 +8,7 @@ import {
   isMatchJoinOpen,
   normalizeMatchStatus,
   pickActiveMatch,
+  pickLatestScoredMatch,
 } from "@shared/domain/matchLifecycle";
 
 describe("match lifecycle", () => {
@@ -38,5 +39,16 @@ describe("match lifecycle", () => {
     expect(isMatchJoinOpen(undefined)).toBe(true);
     expect(isMatchJoinOpen({ joinOpen: true })).toBe(true);
     expect(isMatchJoinOpen({ joinOpen: false })).toBe(false);
+  });
+
+  it("picks the latest scored or closed match by date then id", () => {
+    const matches = [
+      { id: 1, status: "scored", date: "2026-09-01T12:00:00.000Z" },
+      { id: 2, status: "completed", date: "2026-09-20T12:00:00.000Z" },
+      { id: 10, status: "scored", date: "2026-09-21T12:00:00.000Z" },
+      { id: 11, status: "open", date: "2026-09-22T12:00:00.000Z" },
+    ];
+    expect(pickLatestScoredMatch(matches)?.id).toBe(10);
+    expect(pickLatestScoredMatch([{ id: 1, status: "completed", date: "2026-09-01T12:00:00.000Z" }])).toBeUndefined();
   });
 });

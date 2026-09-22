@@ -5,9 +5,15 @@ export const ASSIST_WEIGHT = 0.8;
 export const EXPECTED_AT_MAX_VM = 0.33;
 export const VM_SPAN = 20;
 export const PERFORMANCE_NEUTRAL = 0.5;
-export const RAW_CHANGE_SCALE = 20;
-export const MIN_VM_DELTA = -3;
+/** Softer than the old ×20 so mid/sub-neutral nights do not all slam into the floor. */
+export const RAW_CHANGE_SCALE = 5.25;
+export const MIN_VM_DELTA = -1.5;
 export const MAX_VM_DELTA = 5;
+/** Ignore tiny moves so solid mid performances stay put. */
+export const VM_DELTA_DEADZONE = 0.45;
+/** Loss multiplier = LOSS_MULT_BASE + LOSS_MULT_SLOPE * vmPositionX (expensive fall more, but softly). */
+export const LOSS_MULT_BASE = 0.1;
+export const LOSS_MULT_SLOPE = 0.7;
 export const MVP_WEIGHT = 0.4;
 export const PEER_WEIGHT = 0.25;
 export const OFFENSIVE_WEIGHT = 0.25;
@@ -15,6 +21,10 @@ export const RESULT_WEIGHT = 0.1;
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+export function roundToHalf(value: number): number {
+  return Math.round(value * 2) / 2;
 }
 
 export function vmPositionX(vm: number): number {
@@ -165,19 +175,28 @@ export type MarketValueChange = {
 export function applyMarketValueChange(currentVm: number, score: number): MarketValueChange {
   const rawChange = RAW_CHANGE_SCALE * (score - PERFORMANCE_NEUTRAL);
   const x = vmPositionX(currentVm);
+  // Upside shrinks with VM; downside grows with VM, but softer than the old full-scale slam.
   const multiplier =
-    rawChange > 0 ? 1 - 0.65 * x : rawChange < 0 ? 0.35 + 0.65 * x : 1;
-  const unclampedDelta = rawChange * multiplier;
+    rawChange > 0
+      ? 1 - 0.65 * x
+      : rawChange < 0
+        ? LOSS_MULT_BASE + LOSS_MULT_SLOPE * x
+        : 1;
+  let unclampedDelta = rawChange * multiplier;
+  if (Math.abs(unclampedDelta) < VM_DELTA_DEADZONE) {
+    unclampedDelta = 0;
+  }
   const clampedDelta = clamp(unclampedDelta, MIN_VM_DELTA, MAX_VM_DELTA);
+  const steppedDelta = roundToHalf(clampedDelta);
   const vmAfter = clamp(
-    Math.round(currentVm + clampedDelta),
+    roundToHalf(currentVm + steppedDelta),
     MIN_MARKET_VALUE,
     MAX_DYNAMIC_MARKET_VALUE,
   );
   return {
     vmBefore: currentVm,
     vmAfter,
-    delta: vmAfter - Math.round(currentVm),
+    delta: roundToHalf(vmAfter - currentVm),
     rawChange,
     multiplier,
     unclampedDelta,

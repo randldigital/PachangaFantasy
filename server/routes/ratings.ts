@@ -156,7 +156,7 @@ export function registerRatingRoutes(app: Express) {
           message:
             access.context === "club"
               ? "Rate exactly the peers you were assigned"
-              : "Rate exactly the assigned teammate and rival",
+              : "Rate exactly the assigned teammates and rivals",
           code: "RATINGS_INVALID",
         });
       }
