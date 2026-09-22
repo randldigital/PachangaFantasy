@@ -56,7 +56,7 @@ export const players = pgTable("players", {
   name: text("name").notNull(),
   leagueId: integer("league_id"),
   clubId: integer("club_id"),
-  marketValue: integer("market_value").default(0),
+  marketValue: doublePrecision("market_value").default(0),
   emoji: text("emoji").notNull().default("⚽"),
   isExternal: boolean("is_external").default(false),
   createdBy: integer("created_by"),
@@ -152,7 +152,7 @@ export const lineups = pgTable("lineups", {
   userId: integer("user_id").notNull().references(() => users.id),
   playerIds: integer("player_ids").array().notNull(),
   captainId: integer("captain_id").notNull(),
-  totalCost: integer("total_cost").notNull(),
+  totalCost: doublePrecision("total_cost").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -197,7 +197,7 @@ export const managerMatchPoints = pgTable("manager_match_points", {
 export const matchPlayerVm = pgTable("match_player_vm", {
   matchId: integer("match_id").notNull().references(() => matches.id),
   playerId: integer("player_id").notNull().references(() => players.id),
-  marketValue: integer("market_value").notNull(),
+  marketValue: doublePrecision("market_value").notNull(),
 }, (table) => ({
   pk: primaryKey({ columns: [table.matchId, table.playerId] }),
 }));
@@ -233,9 +233,9 @@ export const playerMarketValueHistory = pgTable("player_market_value_history", {
   id: serial("id").primaryKey(),
   matchId: integer("match_id").notNull().references(() => matches.id),
   playerId: integer("player_id").notNull().references(() => players.id),
-  vmBefore: integer("vm_before").notNull(),
-  vmAfter: integer("vm_after").notNull(),
-  delta: integer("delta").notNull(),
+  vmBefore: doublePrecision("vm_before").notNull(),
+  vmAfter: doublePrecision("vm_after").notNull(),
+  delta: doublePrecision("delta").notNull(),
   mvp: doublePrecision("mvp").notNull(),
   peer: doublePrecision("peer").notNull(),
   offensive: doublePrecision("offensive").notNull(),
