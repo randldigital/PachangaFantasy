@@ -11,6 +11,7 @@ import AdminStatsOverview, { type ParticipantDetail } from "./AdminStatsOverview
 import CorrectResultButton from "@/components/CorrectResultButton";
 import ReopenStatsButton from "@/components/ReopenStatsButton";
 import { isClubMatch } from "@/lib/matchQueries";
+import { teamSideTextClass } from "@/lib/teamSide";
 import { normalizeMatchStatus } from "@shared/domain/matchLifecycle";
 import type { StatsStatus } from "@shared/domain/stats";
 import type { Match, Player, StatReport, User } from "@shared/schema";
@@ -75,13 +76,8 @@ export default function StatsSection({
   const matchStatus = normalizeMatchStatus(match.status);
   const showCorrectResult =
     isAdmin && (matchStatus === "completed" || matchStatus === "scored" || matchStatus === "closed");
-  const scoreLabel = clubMatch
-    ? match.ourGoals != null && match.opponentGoals != null
-      ? `${match.ourGoals} – ${match.opponentGoals}`
-      : null
-    : match.teamAGoals != null && match.teamBGoals != null
-      ? `${match.teamAGoals} – ${match.teamBGoals}`
-      : null;
+  const fantasyScoreReady = match.teamAGoals != null && match.teamBGoals != null;
+  const clubScoreReady = match.ourGoals != null && match.opponentGoals != null;
   const ownPlayer = players.find((player) => player.userId === user?.id);
   const ownParticipant = participants.find(
     (participant) => participant.playerId === ownPlayer?.id && participant.status === "accepted",
@@ -99,8 +95,17 @@ export default function StatsSection({
         )}
         {showCorrectResult && (
           <div className="flex flex-wrap items-center gap-2">
-            {scoreLabel && (
-              <span className="text-white font-semibold tabular-nums">{scoreLabel}</span>
+            {clubMatch && clubScoreReady && (
+              <span className="text-white font-semibold tabular-nums">
+                {match.ourGoals} – {match.opponentGoals}
+              </span>
+            )}
+            {!clubMatch && fantasyScoreReady && (
+              <span className="font-semibold tabular-nums">
+                <span className={teamSideTextClass("A")}>{match.teamAGoals}</span>
+                <span className="text-slate-500 mx-1">–</span>
+                <span className={teamSideTextClass("B")}>{match.teamBGoals}</span>
+              </span>
             )}
             <CorrectResultButton match={match} />
             <ReopenStatsButton match={match} matches={matches} />

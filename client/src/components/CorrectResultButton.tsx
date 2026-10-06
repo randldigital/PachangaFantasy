@@ -22,6 +22,7 @@ import { invalidateMatchQueries, isClubMatch } from "@/lib/matchQueries";
 import { useToast } from "@/hooks/use-toast";
 import { Target } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { teamSideTextClass } from "@/lib/teamSide";
 import type { Match } from "@shared/schema";
 import { normalizeMatchStatus } from "@shared/domain/matchLifecycle";
 
@@ -166,7 +167,9 @@ export default function CorrectResultButton({
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor={`correct-a-${match.id}`}>{t("match.teamAGoals")}</Label>
+                <Label htmlFor={`correct-a-${match.id}`} className={teamSideTextClass("A")}>
+                  {t("match.teamAGoals")}
+                </Label>
                 <Input
                   id={`correct-a-${match.id}`}
                   type="number"
@@ -177,7 +180,9 @@ export default function CorrectResultButton({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor={`correct-b-${match.id}`}>{t("match.teamBGoals")}</Label>
+                <Label htmlFor={`correct-b-${match.id}`} className={teamSideTextClass("B")}>
+                  {t("match.teamBGoals")}
+                </Label>
                 <Input
                   id={`correct-b-${match.id}`}
                   type="number"

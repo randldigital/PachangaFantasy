@@ -21,6 +21,7 @@ import {
 } from "@shared/domain/teams";
 import type { Match, User, Player } from "@shared/schema";
 import { requireLeagueId } from "@shared/domain/context";
+import { teamSideShortKey, teamSideTextClass } from "@/lib/teamSide";
 
 interface ParticipantWithUser {
   matchId: number;
@@ -166,13 +167,23 @@ export default function TeamAssignmentPreview({
         {canEdit && (
           <div className="flex gap-1">
             {side !== "A" && (
-              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => moveTo(participant.playerId, "A")}>
-                A
+              <Button
+                size="sm"
+                variant="outline"
+                className={`h-7 px-2 text-xs border-red-500/50 ${teamSideTextClass("A")}`}
+                onClick={() => moveTo(participant.playerId, "A")}
+              >
+                {t(teamSideShortKey("A"))}
               </Button>
             )}
             {side !== "B" && (
-              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => moveTo(participant.playerId, "B")}>
-                B
+              <Button
+                size="sm"
+                variant="outline"
+                className={`h-7 px-2 text-xs border-sky-500/50 ${teamSideTextClass("B")}`}
+                onClick={() => moveTo(participant.playerId, "B")}
+              >
+                {t(teamSideShortKey("B"))}
               </Button>
             )}
             {side !== "none" && (
@@ -243,13 +254,13 @@ export default function TeamAssignmentPreview({
               {unassigned.map((participant) => renderPlayer(participant, "none"))}
             </div>
             <div className="space-y-2">
-              <p className="text-emerald-400 text-sm font-medium">
+              <p className={`text-sm font-medium ${teamSideTextClass("A")}`}>
                 {t("match.teamA")} ({teamA.length}/{sideSize}) · {formatDisplayMarketValue(sumA)}
               </p>
               {accepted.filter((participant) => teamA.includes(participant.playerId)).map((participant) => renderPlayer(participant, "A"))}
             </div>
             <div className="space-y-2">
-              <p className="text-sky-400 text-sm font-medium">
+              <p className={`text-sm font-medium ${teamSideTextClass("B")}`}>
                 {t("match.teamB")} ({teamB.length}/{sideSize}) · {formatDisplayMarketValue(sumB)}
               </p>
               {accepted.filter((participant) => teamB.includes(participant.playerId)).map((participant) => renderPlayer(participant, "B"))}

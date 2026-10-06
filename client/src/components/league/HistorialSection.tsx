@@ -16,6 +16,7 @@ import CorrectResultButton from "@/components/CorrectResultButton";
 import RecalculateButton from "@/components/RecalculateButton";
 import ReopenStatsButton from "@/components/ReopenStatsButton";
 import MatchFriendlyToggle from "@/components/MatchFriendlyToggle";
+import { teamSideTextClass } from "@/lib/teamSide";
 
 interface MatchRecap {
   matchId: number;
@@ -193,8 +194,10 @@ export default function HistorialSection({
                               <span className="text-slate-500 mx-1">–</span>
                               {b}
                             </div>
-                            <div className="text-[10px] uppercase tracking-wide text-slate-400">
-                              {t("match.teamA")} / {t("match.teamB")}
+                            <div className="text-[10px] uppercase tracking-wide">
+                              <span className={teamSideTextClass("A")}>{t("match.teamA")}</span>
+                              <span className="text-slate-500"> / </span>
+                              <span className={teamSideTextClass("B")}>{t("match.teamB")}</span>
                             </div>
                           </div>
                         )}

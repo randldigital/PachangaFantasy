@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
+import { teamSideTextClass } from "@/lib/teamSide";
 import { useToast } from "@/hooks/use-toast";
 import { CircleStop, Target, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -132,7 +133,9 @@ export default function EndMatchButton({ match, leagueId, isLeagueCreator, class
         <div className="space-y-4 py-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="teamAGoals">{t("match.teamAGoals")}</Label>
+              <Label htmlFor="teamAGoals" className={teamSideTextClass("A")}>
+                {t("match.teamAGoals")}
+              </Label>
               <Input
                 id="teamAGoals"
                 type="number"
@@ -143,7 +146,9 @@ export default function EndMatchButton({ match, leagueId, isLeagueCreator, class
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="teamBGoals">{t("match.teamBGoals")}</Label>
+              <Label htmlFor="teamBGoals" className={teamSideTextClass("B")}>
+                {t("match.teamBGoals")}
+              </Label>
               <Input
                 id="teamBGoals"
                 type="number"

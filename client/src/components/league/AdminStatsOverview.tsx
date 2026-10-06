@@ -10,6 +10,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { invalidateMatchQueries, isClubMatch, isRatingsPhase } from "@/lib/matchQueries";
 import { useToast } from "@/hooks/use-toast";
 import { Calculator, CheckCircle, Clock, Lock, Users, AlertTriangle } from "lucide-react";
+import { teamSideTextClass } from "@/lib/teamSide";
 import SubmitMyStats from "./SubmitMyStats";
 import CorrectResultButton from "@/components/CorrectResultButton";
 import { canCloseMatch, isClosedStatus } from "@shared/domain/matchLifecycle";
@@ -159,7 +160,13 @@ export default function AdminStatsOverview({
           {(status.sides?.length ? status.sides : []).map((side) => (
             <div key={side.key} className="space-y-1">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">
+                <span
+                  className={
+                    clubMatch
+                      ? "text-slate-400"
+                      : teamSideTextClass(side.key === "b" ? "B" : "A")
+                  }
+                >
                   {clubMatch
                     ? t("club.ourGoals")
                     : side.key === "b"
