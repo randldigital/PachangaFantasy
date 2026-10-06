@@ -1,23 +1,32 @@
 export const DEFAULT_SCORING_BASELINE = 5;
 export const MIN_MARKET_VALUE = 8;
-export const MAX_DYNAMIC_MARKET_VALUE = 28;
+/** Soft saturation for expectancy / multipliers only — VM itself has no ceiling. */
+export const VM_SPAN = 20;
 export const ASSIST_WEIGHT = 0.8;
 export const EXPECTED_AT_MAX_VM = 0.33;
-export const VM_SPAN = 20;
 export const PERFORMANCE_NEUTRAL = 0.5;
 /** Softer than the old ×20 so mid/sub-neutral nights do not all slam into the floor. */
 export const RAW_CHANGE_SCALE = 5.25;
 export const MIN_VM_DELTA = -1.5;
 export const MAX_VM_DELTA = 5;
 /** Ignore tiny moves so solid mid performances stay put. */
-export const VM_DELTA_DEADZONE = 0.45;
+export const VM_DELTA_DEADZONE = 0.3;
 /** Loss multiplier = LOSS_MULT_BASE + LOSS_MULT_SLOPE * vmPositionX (expensive fall more, but softly). */
 export const LOSS_MULT_BASE = 0.1;
 export const LOSS_MULT_SLOPE = 0.7;
-export const MVP_WEIGHT = 0.4;
-export const PEER_WEIGHT = 0.25;
-export const OFFENSIVE_WEIGHT = 0.25;
+/** Upside shrinks with VM: multiplier = 1 - UPSIDE_SLOPE * x */
+export const UPSIDE_SLOPE = 0.65;
+export const MVP_WEIGHT = 0.28;
+export const PEER_WEIGHT = 0.3;
+export const OFFENSIVE_WEIGHT = 0.32;
 export const RESULT_WEIGHT = 0.1;
+/** Non-top MVP share: floor + (1 - floor) * (votes / maxVotes). */
+export const MVP_SHARE_FLOOR = 0.35;
+export const STAR_PEER_THRESHOLD = 0.8;
+export const STAR_DELTA_BONUS = 1;
+/** On a loss at/above this VM, delta is at most -1 (soft elite tax). */
+export const ELITE_VM_THRESHOLD = 28;
+export const ELITE_LOSS_MIN_DELTA = -1;
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -118,16 +127,16 @@ export function mvpComponents(
     counts.set(vote.mvpPlayerId, (counts.get(vote.mvpPlayerId) ?? 0) + 1);
   }
   const maxVotes = Math.max(...counts.values());
-  const total = votes.length;
 
   for (const id of participantIds) {
     const count = counts.get(id) ?? 0;
-    if (count === 0) {
-      scores.set(id, 0);
-    } else if (count === maxVotes) {
+    if (count === maxVotes && count > 0) {
       scores.set(id, 1);
+    } else if (count === 0) {
+      // Played the match but got no MVP ballots — not a disaster, just not the standout.
+      scores.set(id, MVP_SHARE_FLOOR);
     } else {
-      scores.set(id, count / total);
+      scores.set(id, count / maxVotes);
     }
   }
   return scores;
@@ -172,13 +181,23 @@ export type MarketValueChange = {
   unclampedDelta: number;
 };
 
-export function applyMarketValueChange(currentVm: number, score: number): MarketValueChange {
+export type ApplyMarketValueOptions = {
+  lost?: boolean;
+  mvp?: number;
+  peer?: number;
+};
+
+export function applyMarketValueChange(
+  currentVm: number,
+  score: number,
+  options: ApplyMarketValueOptions = {},
+): MarketValueChange {
+  const workingVm = Math.max(MIN_MARKET_VALUE, currentVm);
   const rawChange = RAW_CHANGE_SCALE * (score - PERFORMANCE_NEUTRAL);
-  const x = vmPositionX(currentVm);
-  // Upside shrinks with VM; downside grows with VM, but softer than the old full-scale slam.
+  const x = vmPositionX(workingVm);
   const multiplier =
     rawChange > 0
-      ? 1 - 0.65 * x
+      ? 1 - UPSIDE_SLOPE * x
       : rawChange < 0
         ? LOSS_MULT_BASE + LOSS_MULT_SLOPE * x
         : 1;
@@ -186,17 +205,21 @@ export function applyMarketValueChange(currentVm: number, score: number): Market
   if (Math.abs(unclampedDelta) < VM_DELTA_DEADZONE) {
     unclampedDelta = 0;
   }
-  const clampedDelta = clamp(unclampedDelta, MIN_VM_DELTA, MAX_VM_DELTA);
-  const steppedDelta = roundToHalf(clampedDelta);
-  const vmAfter = clamp(
-    roundToHalf(currentVm + steppedDelta),
-    MIN_MARKET_VALUE,
-    MAX_DYNAMIC_MARKET_VALUE,
-  );
+  let steppedDelta = roundToHalf(clamp(unclampedDelta, MIN_VM_DELTA, MAX_VM_DELTA));
+
+  if ((options.mvp ?? 0) >= 1 && (options.peer ?? 0) >= STAR_PEER_THRESHOLD) {
+    steppedDelta = roundToHalf(steppedDelta + STAR_DELTA_BONUS);
+  }
+
+  if (options.lost && workingVm >= ELITE_VM_THRESHOLD) {
+    steppedDelta = Math.min(steppedDelta, ELITE_LOSS_MIN_DELTA);
+  }
+
+  const vmAfter = Math.max(MIN_MARKET_VALUE, roundToHalf(workingVm + steppedDelta));
   return {
     vmBefore: currentVm,
     vmAfter,
-    delta: roundToHalf(vmAfter - currentVm),
+    delta: roundToHalf(vmAfter - workingVm),
     rawChange,
     multiplier,
     unclampedDelta,
@@ -301,7 +324,11 @@ export function computeMatchMarketValues(input: MarketValueMatchInput): MarketVa
       result: resultComponent(ownGoals, oppGoals, ownAvg, oppAvg),
     };
     const score = performanceScore(parts);
-    const change = applyMarketValueChange(vm, score);
+    const change = applyMarketValueChange(vm, score, {
+      lost: ownGoals < oppGoals,
+      mvp: parts.mvp,
+      peer: parts.peer,
+    });
     const peerAverage =
       received.length === 0
         ? null
@@ -377,7 +404,11 @@ export function computeClubMatchMarketValues(
       result: resultComponent(input.ourGoals, input.opponentGoals, squadAvg, squadAvg),
     };
     const score = performanceScore(parts);
-    const change = applyMarketValueChange(vm, score);
+    const change = applyMarketValueChange(vm, score, {
+      lost: input.ourGoals < input.opponentGoals,
+      mvp: parts.mvp,
+      peer: parts.peer,
+    });
     const peerAverage =
       received.length === 0
         ? null
