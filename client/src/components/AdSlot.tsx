@@ -73,7 +73,16 @@ function loadAdSense(client: string) {
   return scriptPromise;
 }
 
-export default function AdSlot({ slot }: { slot: AdSlotId }) {
+export default function AdSlot({
+  slot,
+  alwaysReserve = false,
+  className,
+}: {
+  slot: AdSlotId;
+  /** Keep the reserved box even when ads are globally off (e.g. public landing). */
+  alwaysReserve?: boolean;
+  className?: string;
+}) {
   const { t } = useTranslation();
   const { data } = useAuthFeatures();
   const insRef = useRef<HTMLModElement>(null);
@@ -81,9 +90,10 @@ export default function AdSlot({ slot }: { slot: AdSlotId }) {
   const client = data?.adsClient ?? "";
   const unit = data?.adsSlots?.[slot] ?? "";
   const test = Boolean(data?.adsTest);
+  const canFill = adsOn && Boolean(client && unit);
 
   useEffect(() => {
-    if (!adsOn || !client || !unit) {
+    if (!canFill) {
       return;
     }
     let cancelled = false;
@@ -114,17 +124,17 @@ export default function AdSlot({ slot }: { slot: AdSlotId }) {
     return () => {
       cancelled = true;
     };
-  }, [adsOn, client, unit, test, slot]);
+  }, [canFill, client, unit, test, slot]);
 
-  if (!adsOn) {
+  if (!adsOn && !alwaysReserve) {
     return null;
   }
 
   return (
-    <aside className="w-full my-3" aria-label={t("ads.label")}>
+    <aside className={className ?? "w-full my-3"} aria-label={t("ads.label")}>
       <p className="mb-1 text-xs uppercase tracking-wide text-slate-500">{t("ads.label")}</p>
       <div className="min-h-[90px] w-full rounded-md border border-slate-700 bg-slate-800/40">
-        {client && unit ? (
+        {canFill ? (
           <ins
             key={`${slot}-${unit}-${test ? "test" : "live"}`}
             ref={insRef}

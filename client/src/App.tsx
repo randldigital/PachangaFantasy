@@ -17,19 +17,25 @@ import LeagueHub from "@/pages/LeagueHub";
 import ClubHub from "@/pages/ClubHub";
 import Billing from "@/pages/Billing";
 import Analytics from "@/pages/Analytics";
+import Landing from "@/pages/Landing";
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
 import NotFound from "@/pages/not-found";
 import "./lib/i18n";
 
 function Router() {
   return (
     <Switch>
+      <Route path="/" component={Landing} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/terms" component={Terms} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/verify" component={VerifyEmail} />
       <Route path="/forgot" component={ForgotPassword} />
       <Route path="/reset" component={ResetPassword} />
       <Route path="/analytics" component={Analytics} />
-      
+
       {/* Protected Routes */}
       <Route path="/overview">
         <ProtectedRoute>
@@ -37,21 +43,21 @@ function Router() {
           <Overview />
         </ProtectedRoute>
       </Route>
-      
+
       <Route path="/leagues">
         <ProtectedRoute>
           <Navbar />
           <Overview />
         </ProtectedRoute>
       </Route>
-      
+
       <Route path="/league/:id">
         <ProtectedRoute>
           <Navbar />
           <LeagueHub />
         </ProtectedRoute>
       </Route>
-      
+
       <Route path="/club/:id">
         <ProtectedRoute>
           <Navbar />
@@ -72,14 +78,7 @@ function Router() {
           <Billing />
         </ProtectedRoute>
       </Route>
-      
-      <Route path="/">
-        <ProtectedRoute>
-          <Navbar />
-          <Overview />
-        </ProtectedRoute>
-      </Route>
-      
+
       <Route component={NotFound} />
     </Switch>
   );

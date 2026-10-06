@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 
 export const BRAND_ICON_SRC = "/brand/icon.png";
 export const BRAND_LOGO_SRC = "/brand/logo.png";
+export const BRAND_OG_SRC = "/brand/og.png";
 
 export function BrandIcon({ className }: { className?: string }) {
   return (

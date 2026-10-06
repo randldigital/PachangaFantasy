@@ -439,3 +439,138 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(195, 100%, 50%, 0.5);
 }
+
+/* Public landing */
+.landing-page {
+  --landing-pitch: hsl(152, 28%, 6%);
+  --landing-ink: hsl(160, 20%, 92%);
+  background-color: var(--landing-pitch);
+  color: var(--landing-ink);
+  font-family: "Figtree", ui-sans-serif, system-ui, sans-serif;
+}
+
+.landing-hero-atmosphere {
+  background:
+    radial-gradient(ellipse 70% 60% at 18% 28%, hsl(152, 55%, 22% / 0.55), transparent 62%),
+    radial-gradient(ellipse 55% 50% at 78% 18%, hsl(195, 60%, 28% / 0.32), transparent 58%),
+    radial-gradient(ellipse 50% 40% at 55% 75%, hsl(145, 40%, 14% / 0.45), transparent 70%),
+    linear-gradient(160deg, hsl(152, 34%, 9%) 0%, hsl(152, 30%, 5%) 48%, hsl(155, 28%, 4%) 100%);
+  animation: landing-atmosphere 18s ease-in-out infinite alternate;
+}
+
+.landing-hero-pitch {
+  opacity: 0.22;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 47px,
+      hsl(150, 30%, 70% / 0.04) 47px,
+      hsl(150, 30%, 70% / 0.04) 48px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 47px,
+      hsl(150, 30%, 70% / 0.035) 47px,
+      hsl(150, 30%, 70% / 0.035) 48px
+    );
+  mask-image: radial-gradient(ellipse 75% 70% at 40% 45%, #000 20%, transparent 75%);
+}
+
+.landing-hero-vignette {
+  background:
+    radial-gradient(ellipse 85% 75% at 40% 42%, transparent 35%, hsl(152, 40%, 3% / 0.72) 100%),
+    linear-gradient(180deg, hsl(152, 30%, 4% / 0.35) 0%, transparent 18%, transparent 78%, hsl(152, 30%, 4% / 0.55) 100%);
+}
+
+.landing-hero-frame {
+  position: relative;
+}
+
+.landing-hero-frame::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -12%;
+  width: min(72%, 22rem);
+  height: 58%;
+  border-radius: 50%;
+  background: radial-gradient(circle, hsl(152, 70%, 36% / 0.22), transparent 68%);
+  filter: blur(2px);
+  pointer-events: none;
+  z-index: -1;
+  transform: translateX(-50%);
+  animation: landing-glow 10s ease-in-out infinite alternate;
+}
+
+.landing-hero-mark {
+  max-height: min(22svh, 13rem);
+}
+
+@keyframes landing-atmosphere {
+  from {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.04) translate3d(-1%, 0.5%, 0);
+  }
+}
+
+@keyframes landing-glow {
+  from {
+    opacity: 0.7;
+    transform: translateX(-50%) translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translate3d(0, 1%, 0) scale(1.08);
+  }
+}
+
+.landing-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: landing-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.landing-reveal-1 {
+  animation-delay: 0.05s;
+}
+.landing-reveal-2 {
+  animation-delay: 0.18s;
+}
+.landing-reveal-3 {
+  animation-delay: 0.3s;
+}
+.landing-reveal-4 {
+  animation-delay: 0.42s;
+}
+
+@keyframes landing-rise {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.landing-fade {
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-reveal,
+  .landing-hero-atmosphere,
+  .landing-hero-frame::before {
+    animation: none;
+  }
+
+  .landing-reveal {
+    opacity: 1;
+    transform: none;
+  }
+
+  .landing-hero-atmosphere {
+    transform: none;
+  }
+}

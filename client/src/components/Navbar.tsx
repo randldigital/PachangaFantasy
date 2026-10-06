@@ -19,7 +19,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center space-x-8">
-            <Link href="/" className="flex items-center space-x-2">
+            <Link href="/overview" className="flex items-center space-x-2">
               <BrandIcon className="h-10 w-10" />
               <span className="hidden sm:inline text-xl font-bold text-text-primary">{t("app.title")}</span>
             </Link>

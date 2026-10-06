@@ -836,5 +836,33 @@
     "pulseValuation": "Valuation submitted",
     "pulseToday": "today",
     "pulseDaysAgo": "{{count}} days ago"
+  },
+  "landing": {
+    "docTitle": "Pachanga Fantasy — Fantasy leagues and clubs for your group",
+    "docDescription": "Create fantasy leagues with friends, run club squads, set lineups, rate players, and track match stats. Free to start.",
+    "navLogin": "Sign in",
+    "headline": "Fantasy football for the people you actually play with.",
+    "lead": "Build a league or a club, set lineups before kickoff, rate your mates, and watch market values move after every match.",
+    "ctaRegister": "Create free account",
+    "ctaLogin": "I already have an account",
+    "fantasyTitle": "Fantasy leagues",
+    "fantasyBody": "Invite friends with a code, draft or claim players, and compete match by match.\n\nBefore each game you set a lineup within budget. After the whistle, managers rate performances and vote for player of the match. Scores and market values update from those ratings — so the table reflects how your group really played.",
+    "clubTitle": "Club mode",
+    "clubBody": "Keep a standing squad for your amateur side: roster, standings, and match history in one place.\n\nCreate matches against opponents, record the result, log goals and assists, and keep a season ranking that your whole group can follow.",
+    "matchTitle": "How a match works",
+    "matchBody": "1. An admin opens a match and players join.\n2. Everyone locks a lineup (Fantasy) or confirms they are in (Club).\n3. When the match starts, lineups freeze.\n4. After the game, enter stats, rate teammates, and close the round so points and values update.",
+    "whoTitle": "Who it is for",
+    "whoBody": "Weekend groups, company leagues, and amateur clubs that want a simple app instead of spreadsheets — peer ratings, clear standings, and a bit of rivalry without needing a pro fantasy platform.",
+    "footerBrand": "© Pachanga Fantasy",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "backHome": "Back to home"
+  },
+  "legal": {
+    "updated": "Last updated: October 6, 2026",
+    "privacyTitle": "Privacy Policy",
+    "privacyBody": "Pachanga Fantasy (“we”, “the app”) helps groups run fantasy leagues and amateur clubs. This policy explains what we collect and how we use it.\n\nAccount data. When you register we store your email, username, password hash (or Google account link), and preference settings such as language. We use this to authenticate you, send account emails (verification and password reset), and operate the service.\n\nCompetition data. League and club names, rosters, lineups, ratings, match statistics, and standings are stored so your group can use the product. Other members of the same league or club can see the competition data you submit there.\n\nUsage and technical data. We may process basic logs (IP address, browser type, timestamps) to keep the service secure and reliable.\n\nAdvertising. On free plans we may show third-party ads served by Google AdSense. Google and its partners may use cookies or similar technologies to serve and measure ads according to Google’s policies. You can learn more and manage ad personalization at Google’s Ads Settings. Paid or ad-free plans, when available, may reduce or remove ads for that league or club.\n\nCookies. We use cookies or local storage that are necessary for sessions and preferences. Advertising partners may set additional cookies when ads are shown.\n\nRetention. We keep account and competition data while your account is active. You can request deletion of your account by contacting us; some records may be retained briefly for security or legal reasons.\n\nSharing. We do not sell your personal information. We share data with processors that help us run the app (hosting, email delivery, analytics if enabled, and ad networks when ads are shown), only as needed to provide the service.\n\nChildren. The service is not directed at children under 13 (or the minimum age required in your country). Do not create an account if you do not meet that age.\n\nYour rights. Depending on where you live, you may have rights to access, correct, or delete personal data. Contact us at privacy@pachanga.fyi to make a request.\n\nChanges. We may update this policy; the “Last updated” date above will change when we do. Continued use of the app after changes means you accept the updated policy.\n\nContact. privacy@pachanga.fyi",
+    "termsTitle": "Terms of Service",
+    "termsBody": "By using Pachanga Fantasy you agree to these terms.\n\nThe service. Pachanga Fantasy provides tools to create fantasy leagues and club competitions, manage matches, lineups, ratings, and related features. Features may change as we improve the product.\n\nAccounts. You must provide accurate registration information and keep your credentials secure. You are responsible for activity under your account. We may suspend or close accounts that abuse the service, harass others, or break the law.\n\nAcceptable use. Do not attempt to disrupt the service, scrape it abusively, or use it for illegal activity. Competition admins are responsible for how they run their leagues and clubs within the app.\n\nContent. You retain rights to content you submit (names, ratings, stats). You grant us a license to host and display that content as needed to operate the service for your group.\n\nPlans and ads. Some features may be free and supported by advertising; other plans may be offered later. Prices and inclusions will be shown before any paid purchase. Ads, when shown, are provided by third parties and we are not responsible for their content.\n\nAvailability. We aim for reliable uptime but do not guarantee uninterrupted access. We may maintain, update, or discontinue parts of the service with reasonable notice when practical.\n\nDisclaimer. The app is provided “as is” without warranties of any kind to the fullest extent permitted by law. Fantasy scores and market values are for entertainment within your group.\n\nLimitation of liability. To the fullest extent permitted by law, we are not liable for indirect, incidental, or consequential damages arising from use of the service.\n\nGoverning law. These terms are governed by the laws of Spain, without regard to conflict-of-law rules, unless mandatory consumer rules in your country say otherwise.\n\nContact. For questions about these terms: legal@pachanga.fyi"
   }
 }
