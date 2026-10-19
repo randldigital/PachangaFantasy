@@ -27,9 +27,7 @@ describe("2.1 auth, membership and billing", () => {
     delete process.env.PAYMENTS_ENABLED;
     delete process.env.ADS_ENABLED;
     delete process.env.ADS_TEST;
-    delete process.env.ADSENSE_CLIENT;
-    delete process.env.ADSENSE_SLOT_OVERVIEW;
-    delete process.env.ADSENSE_SLOT_HUB;
+    delete process.env.ADSTERRA_ZONE;
     delete process.env.GOOGLE_CLIENT_ID;
     delete process.env.GOOGLE_CLIENT_SECRET;
     delete process.env.CORS_ORIGINS;
@@ -194,7 +192,10 @@ describe("2.1 auth, membership and billing", () => {
     const features = await request(app).get("/api/auth/features");
     expect(features.status).toBe(200);
     expect(features.body.ads).toBe(false);
-    expect(features.body.adsClient).toBe("");
+    expect(features.body.adsSlots).toEqual({
+      "overview.banner": "",
+      "hub.sidebar": "",
+    });
     expect(features.body.adsTest).toBe(false);
     expect(features.body.google).toBe(false);
     expect(features.body.payments).toBe(false);
@@ -202,21 +203,19 @@ describe("2.1 auth, membership and billing", () => {
     expect(ads.status).toBe(404);
   });
 
-  it("reports the AdSense client when ads are enabled", async () => {
+  it("reports the Adsterra zone when ads are enabled", async () => {
     process.env.ADS_ENABLED = "true";
-    process.env.ADSENSE_CLIENT = "pub-1018924272217472";
+    process.env.ADSTERRA_ZONE = "27a4278c259edd606079094765f18579";
     process.env.ADS_TEST = "true";
-    process.env.ADSENSE_SLOT_OVERVIEW = "111";
-    process.env.ADSENSE_SLOT_HUB = "222";
     const features = await request(app).get("/api/auth/features");
     expect(features.status).toBe(200);
     expect(features.body.ads).toBe(true);
-    expect(features.body.adsClient).toBe("ca-pub-1018924272217472");
     expect(features.body.adsTest).toBe(true);
     expect(features.body.adsSlots).toEqual({
-      "overview.banner": "111",
-      "hub.sidebar": "222",
+      "overview.banner": "27a4278c259edd606079094765f18579",
+      "hub.sidebar": "27a4278c259edd606079094765f18579",
     });
+    expect(features.body.adsClient).toBeUndefined();
     const ads = await request(app).get("/api/ads");
     expect(ads.status).toBe(404);
   });
