@@ -9,11 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
-import { formatDisplayMarketValue } from "@shared/domain/displayValue";
+import { formatDisplayMarketValue, formatDisplayMarketValueDelta } from "@shared/domain/displayValue";
 import { currentSeasonKey } from "@shared/domain/season";
 
 export type PlayerProfile = {
@@ -155,10 +155,27 @@ export function PlayerProfileDialog({
                     <YAxis
                       tickLine={false}
                       axisLine={false}
-                      width={36}
-                      domain={["dataMin - 1", "dataMax + 1"]}
+                      width={48}
+                      domain={["dataMin - 0.5", "dataMax + 0.5"]}
+                      tickFormatter={(value) => formatDisplayMarketValue(Number(value))}
                     />
-                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartTooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) {
+                          return null;
+                        }
+                        const point = payload[0];
+                        const label = String(point.payload?.label ?? "");
+                        return (
+                          <div className="rounded-lg border border-slate-600 bg-slate-900 px-2.5 py-1.5 text-xs shadow-xl">
+                            {label ? <p className="text-slate-400">{label}</p> : null}
+                            <p className="font-medium tabular-nums text-emerald-400">
+                              {formatDisplayMarketValue(Number(point.value))}
+                            </p>
+                          </div>
+                        );
+                      }}
+                    />
                     <Line
                       type="monotone"
                       dataKey="vm"
@@ -209,8 +226,7 @@ export function PlayerProfileDialog({
                               !deltaPositive && !deltaNegative && "text-slate-400",
                             )}
                           >
-                            {deltaPositive ? "+" : ""}
-                            {formatDisplayMarketValue(row.delta)}
+                            {formatDisplayMarketValueDelta(row.delta)}
                           </p>
                         </div>
                       </li>
