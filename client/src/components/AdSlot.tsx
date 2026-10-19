@@ -4,73 +4,52 @@ import { isAdsEnabled, useAuthFeatures } from "@/lib/features";
 
 type AdSlotId = "overview.banner" | "hub.sidebar";
 
-declare global {
-  interface Window {
-    adsbygoogle?: Array<Record<string, unknown>> & { loaded?: boolean };
-  }
+const SCRIPT_ATTR = "data-adsterra-zone";
+
+function existingZoneScript(zone: string): HTMLScriptElement | null {
+  return document.querySelector<HTMLScriptElement>(`script[${SCRIPT_ATTR}="${zone}"]`);
 }
 
-let scriptPromise: Promise<void> | null = null;
-
-function existingAdSenseScript(): HTMLScriptElement | null {
-  return document.querySelector<HTMLScriptElement>(
-    'script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"], script[data-adsense-client]',
-  );
+function existingZoneContainer(zone: string): HTMLElement | null {
+  return document.getElementById(`container-${zone}`);
 }
 
 /**
- * Resolve only after adsbygoogle.js has loaded (or after a short poll).
- * Do not treat a pre-load queue array as "ready" — that races with React mount.
+ * Load Adsterra adjustable unit: #container-{zone} + async script.
+ * SPA-safe: remove the script and clear the container on unmount so a later mount can re-inject.
  */
-function loadAdSense(client: string) {
-  if (scriptPromise) {
-    return scriptPromise;
+function injectAdsterra(zone: string, host: HTMLElement): () => void {
+  const containerId = `container-${zone}`;
+  const other = existingZoneContainer(zone);
+  if (other && other !== host) {
+    // Another live slot already owns this zone id — do not duplicate.
+    return () => undefined;
   }
-  scriptPromise = new Promise((resolve, reject) => {
-    const finish = () => resolve();
 
-    const waitUntilReady = (script: HTMLScriptElement) => {
-      if (window.adsbygoogle?.loaded || script.dataset.loaded === "1") {
-        finish();
-        return;
-      }
-      const onLoad = () => {
-        script.dataset.loaded = "1";
-        finish();
-      };
-      script.addEventListener("load", onLoad, { once: true });
-      script.addEventListener("error", () => reject(new Error("adsense")), { once: true });
+  host.id = containerId;
+  host.replaceChildren();
 
-      // Cached script: 'load' may never fire again — poll briefly then push anyway (queue is fine).
-      let ticks = 0;
-      const poll = window.setInterval(() => {
-        ticks += 1;
-        if (window.adsbygoogle?.loaded || script.dataset.loaded === "1") {
-          window.clearInterval(poll);
-          script.removeEventListener("load", onLoad);
-          finish();
-        } else if (ticks >= 40) {
-          window.clearInterval(poll);
-          finish();
-        }
-      }, 50);
-    };
-
-    const existing = existingAdSenseScript();
-    if (existing) {
-      waitUntilReady(existing);
-      return;
-    }
-
-    const script = document.createElement("script");
+  let script = existingZoneScript(zone);
+  let createdScript = false;
+  if (!script) {
+    script = document.createElement("script");
     script.async = true;
-    script.crossOrigin = "anonymous";
-    script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(client)}`;
-    script.dataset.adsenseClient = client;
-    document.head.appendChild(script);
-    waitUntilReady(script);
-  });
-  return scriptPromise;
+    script.setAttribute("data-cfasync", "false");
+    script.setAttribute(SCRIPT_ATTR, zone);
+    script.src = `https://bicea.org/21/${zone}`;
+    document.body.appendChild(script);
+    createdScript = true;
+  }
+
+  return () => {
+    if (createdScript && script?.parentNode) {
+      script.parentNode.removeChild(script);
+    }
+    if (host.id === containerId) {
+      host.replaceChildren();
+      host.removeAttribute("id");
+    }
+  };
 }
 
 export default function AdSlot({
@@ -85,46 +64,21 @@ export default function AdSlot({
 }) {
   const { t } = useTranslation();
   const { data } = useAuthFeatures();
-  const insRef = useRef<HTMLModElement>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
   const adsOn = isAdsEnabled(data);
-  const client = data?.adsClient ?? "";
   const unit = data?.adsSlots?.[slot] ?? "";
-  const test = Boolean(data?.adsTest);
-  const canFill = adsOn && Boolean(client && unit);
+  const canFill = adsOn && Boolean(unit);
 
   useEffect(() => {
     if (!canFill) {
       return;
     }
-    let cancelled = false;
-
-    void loadAdSense(client)
-      .then(() => {
-        if (cancelled) {
-          return;
-        }
-        const node = insRef.current;
-        if (!node) {
-          return;
-        }
-        // Already requested a fill for this DOM node.
-        if (node.getAttribute("data-adsbygoogle-status")) {
-          return;
-        }
-        try {
-          (window.adsbygoogle = window.adsbygoogle || []).push({});
-        } catch {
-          /* Duplicate push is harmless. */
-        }
-      })
-      .catch(() => {
-        /* Blockers / offline leave the reserved box empty. */
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [canFill, client, unit, test, slot]);
+    const host = hostRef.current;
+    if (!host) {
+      return;
+    }
+    return injectAdsterra(unit, host);
+  }, [canFill, unit, slot]);
 
   if (!adsOn && !alwaysReserve) {
     return null;
@@ -134,19 +88,7 @@ export default function AdSlot({
     <aside className={className ?? "w-full my-3"} aria-label={t("ads.label")}>
       <p className="mb-1 text-xs uppercase tracking-wide text-slate-500">{t("ads.label")}</p>
       <div className="min-h-[90px] w-full rounded-md border border-slate-700 bg-slate-800/40">
-        {canFill ? (
-          <ins
-            key={`${slot}-${unit}-${test ? "test" : "live"}`}
-            ref={insRef}
-            className="adsbygoogle"
-            style={{ display: "block", minHeight: 90, width: "100%" }}
-            data-ad-client={client}
-            data-ad-slot={unit}
-            data-ad-format="auto"
-            data-full-width-responsive="true"
-            {...(test ? { "data-adtest": "on" } : {})}
-          />
-        ) : null}
+        {canFill ? <div ref={hostRef} className="min-h-[90px] w-full" /> : null}
       </div>
     </aside>
   );

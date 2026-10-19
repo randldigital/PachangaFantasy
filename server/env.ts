@@ -82,26 +82,9 @@ export function adsTest(): boolean {
   return readFlag("ADS_TEST");
 }
 
-export function adsenseClient(): string {
-  const raw = (process.env.ADSENSE_CLIENT ?? "").trim();
-  if (!raw) {
-    return "";
-  }
-  if (raw.startsWith("ca-pub-")) {
-    return raw;
-  }
-  if (raw.startsWith("pub-")) {
-    return `ca-${raw}`;
-  }
-  return raw;
-}
-
-export function adsenseSlotOverview(): string {
-  return (process.env.ADSENSE_SLOT_OVERVIEW ?? "").trim();
-}
-
-export function adsenseSlotHub(): string {
-  return (process.env.ADSENSE_SLOT_HUB ?? "").trim();
+/** Adsterra zone hex id (from the container/script path segment). */
+export function adsterraZone(): string {
+  return (process.env.ADSTERRA_ZONE ?? "").trim();
 }
 
 export function analyticsPasscode(): string {

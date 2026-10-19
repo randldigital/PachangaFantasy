@@ -7,7 +7,6 @@ export type AuthFeatures = {
   payments: boolean;
   ads: boolean;
   email: boolean;
-  adsClient?: string;
   adsSlots?: {
     "overview.banner"?: string;
     "hub.sidebar"?: string;
