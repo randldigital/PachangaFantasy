@@ -14,7 +14,7 @@ import DeleteClubButton from "@/components/club/DeleteClubButton";
 import LeaveOrganisationButton from "@/components/LeaveOrganisationButton";
 import MembershipJoinToggle from "@/components/MembershipJoinToggle";
 import PlanChip from "@/components/PlanChip";
-import AdSlot from "@/components/AdSlot";
+import { HubAdSlot } from "@/components/AdSlot";
 import AddPlayerForm from "@/components/league/AddPlayerForm";
 import RosterManagerDialog from "@/components/league/RosterManagerDialog";
 import StatsSection from "@/components/league/StatsSection";
@@ -163,7 +163,7 @@ export default function ClubHub() {
           </div>
         </div>
 
-        {shouldRenderHubAd(billing?.planCode) ? <AdSlot slot="hub.sidebar" /> : null}
+        {shouldRenderHubAd(billing?.planCode) ? <HubAdSlot /> : null}
         <ClubMatchBanner
           club={club}
           match={bannerMatch}

@@ -23,7 +23,7 @@ import DeleteLeagueButton from "@/components/league/DeleteLeagueButton";
 import LeaveOrganisationButton from "@/components/LeaveOrganisationButton";
 import MembershipJoinToggle from "@/components/MembershipJoinToggle";
 import PlanChip from "@/components/PlanChip";
-import AdSlot from "@/components/AdSlot";
+import { HubAdSlot } from "@/components/AdSlot";
 import RosterManagerDialog from "@/components/league/RosterManagerDialog";
 import { pickActiveMatch, pickLatestScoredMatch } from "@shared/domain/matchLifecycle";
 import { pickStatsMatch } from "@shared/domain/stats";
@@ -167,7 +167,7 @@ export default function LeagueHub() {
       </div>
 
       <div className="container mx-auto space-y-4 px-4 pt-3 pb-20 lg:pb-6">
-        {shouldRenderHubAd(billing?.planCode) ? <AdSlot slot="hub.sidebar" className="w-full my-0" /> : null}
+        {shouldRenderHubAd(billing?.planCode) ? <HubAdSlot className="w-full my-0" /> : null}
         <PrimaryActionBanner
           league={league}
           matches={matches}

@@ -24,6 +24,8 @@ Copy `.env.example` to `.env`. Boot needs:
 | `ADSTERRA_OVERVIEW_KEY` | empty | Adsterra 300×250 iframe key for `overview.banner` (Overview, Billing, Landing). Ignored unless `ADS_ENABLED`. |
 | `ADSTERRA_HUB_KEY` | empty | Adsterra 320×50 iframe key for `hub.sidebar` (League/Club hub). Ignored unless `ADS_ENABLED`. Empty key ⇒ reserved box stays blank. |
 | `ADS_TEST` | `false` | Kept on `/api/auth/features` for API stability; Adsterra units do not use Google `data-adtest`. |
+
+Ad creatives load through a same-origin sandboxed iframe (`/ads/frame.html`). Clicks may open the advertiser in a **new tab**; the sandbox omits top-navigation permissions so ads cannot replace or redirect the app. Overview/Billing/Landing always use the 300×250 unit. League/Club hubs use 300×250 on desktop (`lg+`) and 320×50 on smaller screens.
 | `FEATURE_DEFAULT_PLAN` | `free` | Used when a billing account has no active subscription |
 | `CORS_ORIGINS` | empty | Same-origin only. Set a comma-separated list when a packaged WebView calls the API |
 | `ANALYTICS_PASSCODE` | `2026` | Unlocks `GET /analytics` (no nav link). Send as `X-Analytics-Passcode`. Change this in production. |

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Ad</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        overflow: hidden;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var key = (params.get("key") || "").trim();
+        var width = parseInt(params.get("width") || "", 10);
+        var height = parseInt(params.get("height") || "", 10);
+
+        if (!/^[a-f0-9]{32}$/i.test(key)) {
+          return;
+        }
+        if (!Number.isFinite(width) || width < 1 || width > 1200) {
+          return;
+        }
+        if (!Number.isFinite(height) || height < 1 || height > 1200) {
+          return;
+        }
+
+        window.atOptions = {
+          key: key,
+          format: "iframe",
+          height: height,
+          width: width,
+          params: {},
+        };
+
+        var script = document.createElement("script");
+        script.async = true;
+        script.setAttribute("data-cfasync", "false");
+        script.src = "https://bicea.org/22/" + encodeURIComponent(key);
+        document.body.appendChild(script);
+      })();
+    </script>
+  </body>
+</html>
