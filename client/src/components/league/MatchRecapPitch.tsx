@@ -1,6 +1,7 @@
 import { Crown, Handshake, Coins, Target } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PlayerNameButton } from "@/components/league/PlayerProfileDialog";
 import { cn } from "@/lib/utils";
 import { formatDisplayMarketValue } from "@shared/domain/displayValue";
 
@@ -197,9 +198,11 @@ function PlayerToken({ player, side }: { player: MatchRecapPlayer; side: "A" | "
         </div>
       </div>
 
-      <p className="mt-1 max-w-full truncate text-[10px] sm:text-[11px] font-semibold text-white bg-black/65 rounded-full px-1.5 py-0.5 text-center leading-tight">
-        {player.name}
-      </p>
+      <PlayerNameButton
+        playerId={player.playerId}
+        name={player.name}
+        className="mt-1 max-w-full truncate rounded-full bg-black/65 px-1.5 py-0.5 text-center text-[10px] font-semibold leading-tight sm:text-[11px]"
+      />
       <div className="flex items-center gap-1 text-[9px] text-white/90 leading-tight">
         {market && (
           <span className="flex items-center gap-0.5" title={t("historial.ratingThen")}>

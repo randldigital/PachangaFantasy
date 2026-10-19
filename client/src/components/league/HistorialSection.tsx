@@ -167,16 +167,16 @@ export default function HistorialSection({
                   <CollapsibleTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="w-full p-4 h-auto justify-between hover:bg-slate-800/80 text-left rounded-none"
+                      className="h-auto w-full flex-col items-stretch gap-2 whitespace-normal rounded-none p-4 text-left hover:bg-slate-800/80 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="hidden sm:flex h-12 w-12 rounded-full bg-emerald-500/15 items-center justify-center">
-                          <Calendar className="w-5 h-5 text-emerald-400" />
+                      <div className="flex min-w-0 items-center gap-4">
+                        <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 sm:flex">
+                          <Calendar className="h-5 w-5 text-emerald-400" />
                         </div>
                         <div className="min-w-0">
-                          <div className="text-white font-medium truncate">{formatDate(match.date)}</div>
-                          <div className="text-slate-400 text-sm flex items-center gap-2">
-                            <Clock className="w-3 h-3" />
+                          <div className="truncate font-medium text-white">{formatDate(match.date)}</div>
+                          <div className="flex items-center gap-2 text-sm text-slate-400">
+                            <Clock className="h-3 w-3 shrink-0" />
                             <span>{formatTime(match.date)}</span>
                             {mvpHint > 0 && (
                               <span>
@@ -186,15 +186,15 @@ export default function HistorialSection({
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex flex-wrap items-center gap-3 self-stretch sm:shrink-0 sm:self-auto sm:justify-end">
                         {a != null && b != null && (
-                          <div className="text-right">
-                            <div className="text-xl font-bold text-white tabular-nums">
+                          <div className="text-left sm:text-right">
+                            <div className="text-xl font-bold tabular-nums text-white">
                               {a}
-                              <span className="text-slate-500 mx-1">–</span>
+                              <span className="mx-1 text-slate-500">–</span>
                               {b}
                             </div>
-                            <div className="text-[10px] uppercase tracking-wide">
+                            <div className="hidden text-[10px] uppercase tracking-wide sm:block">
                               <span className={teamSideTextClass("A")}>{t("match.teamA")}</span>
                               <span className="text-slate-500"> / </span>
                               <span className={teamSideTextClass("B")}>{t("match.teamB")}</span>
@@ -208,9 +208,9 @@ export default function HistorialSection({
                           <Badge className="bg-sky-700 text-white">{t("match.friendly")}</Badge>
                         )}
                         {isExpanded ? (
-                          <ChevronUp className="w-4 h-4 text-slate-400" />
+                          <ChevronUp className="h-4 w-4 text-slate-400" />
                         ) : (
-                          <ChevronDown className="w-4 h-4 text-slate-400" />
+                          <ChevronDown className="h-4 w-4 text-slate-400" />
                         )}
                       </div>
                     </Button>

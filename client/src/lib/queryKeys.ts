@@ -4,6 +4,8 @@ export const queryKeys = {
   league: (id: number) => [`/api/leagues/${id}`] as const,
   leagueMatches: (leagueId: number) => [`/api/leagues/${leagueId}/matches`] as const,
   leaguePlayers: (leagueId: number) => [`/api/players/${leagueId}`] as const,
+  playerProfile: (playerId: number, season?: string | null) =>
+    [`/api/players/${playerId}/profile`, season ?? "all"] as const,
   // Season is part of the key; invalidate with the prefix helpers below to hit every season.
   leagueRankings: (leagueId: number, season?: string) =>
     [`/api/leagues/${leagueId}/rankings`, season ?? "all"] as const,

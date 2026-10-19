@@ -14,6 +14,7 @@ import { lineupTotalCost, validateLineup, type LineupViolation } from "@shared/d
 import { isLineupEditable } from "@shared/domain/matchLifecycle";
 import { formatDisplayMarketValue } from "@shared/domain/displayValue";
 import FootballFieldLineup from "./FootballFieldLineup";
+import { PlayerNameButton } from "@/components/league/PlayerProfileDialog";
 import type { Match, League, Player, User, Lineup } from "@shared/schema";
 
 interface LineupSectionProps {
@@ -409,7 +410,11 @@ export default function LineupSection({
                       <div className="text-2xl">{player.emoji || "👤"}</div>
                       <div>
                         <div className="flex items-center space-x-2">
-                          <span className="text-white font-medium">{player.name}</span>
+                          <PlayerNameButton
+                            playerId={player.id}
+                            name={player.name}
+                            stopPropagation
+                          />
                           {isCaptain && (
                             <Star className="w-4 h-4 text-yellow-500 fill-current" />
                           )}

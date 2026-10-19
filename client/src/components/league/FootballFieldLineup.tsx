@@ -2,6 +2,7 @@ import React from 'react';
 import { Star, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PlayerNameButton } from '@/components/league/PlayerProfileDialog';
 import type { Player, Lineup } from '@shared/schema';
 import { formatDisplayMarketValue } from '@shared/domain/displayValue';
 
@@ -103,10 +104,15 @@ export default function FootballFieldLineup({ lineup, players, className = "", b
                 </div>
 
                 {/* Player name */}
-                <div className="mt-1 max-w-[4.5rem] truncate text-xs text-center text-white font-medium bg-black bg-opacity-60 rounded px-1 py-0.5">
-                  {player.name}
+                <div className="mt-1 flex max-w-[4.5rem] items-center justify-center gap-0.5 rounded bg-black/60 px-1 py-0.5 text-center text-xs font-medium text-white">
+                  <PlayerNameButton
+                    playerId={player.id}
+                    name={player.name}
+                    className="max-w-full truncate text-center text-xs"
+                    stopPropagation
+                  />
                   {isCaptain && (
-                    <span className="ml-1 text-yellow-400">(C)</span>
+                    <span className="shrink-0 text-yellow-400">(C)</span>
                   )}
                 </div>
 

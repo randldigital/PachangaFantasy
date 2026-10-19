@@ -22,6 +22,7 @@ import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import SeasonSwitcher, { ALL_SEASONS, defaultSeason } from "@/components/SeasonSwitcher";
 import UserAvatar from "@/components/UserAvatar";
+import { PlayerNameButton } from "@/components/league/PlayerProfileDialog";
 import type { User as AppUser } from "@shared/schema";
 
 interface ClasificacionSectionProps {
@@ -84,18 +85,22 @@ function BoardRow({
   position,
   highlight,
   userId,
+  playerId,
   title,
   subtitle,
   value,
   valueLabel,
+  season,
 }: {
   position: number;
   highlight: boolean;
   userId: number | null;
+  playerId?: number;
   title: string;
   subtitle: string;
   value: number;
   valueLabel: string;
+  season?: string | null;
 }) {
   const { t } = useTranslation();
   return (
@@ -109,7 +114,11 @@ function BoardRow({
         <UserAvatar userId={userId} name={title} className="w-10 h-10" />
         <div className="min-w-0">
           <div className="flex items-center space-x-2">
-            <span className="text-white font-medium truncate">{title}</span>
+            {playerId != null ? (
+              <PlayerNameButton playerId={playerId} name={title} season={season} className="truncate" />
+            ) : (
+              <span className="truncate font-medium text-white">{title}</span>
+            )}
             {highlight && (
               <Badge variant="secondary" className="bg-emerald-600 text-white text-xs">
                 {t("clasificacion.you")}
@@ -237,6 +246,7 @@ export default function ClasificacionSection({ leagueId, currentUser, onPlayMatc
                   position={index + 1}
                   highlight={player.userId === currentUser?.id}
                   userId={player.userId}
+                  playerId={player.playerId}
                   title={player.name}
                   subtitle={t("clasificacion.playerDetail", {
                     goals: player.goals,
@@ -245,6 +255,7 @@ export default function ClasificacionSection({ leagueId, currentUser, onPlayMatc
                   })}
                   value={player[sortKey] ?? 0}
                   valueLabel={sortOptions.find((option) => option.key === sortKey)?.label ?? t("clasificacion.points")}
+                  season={activeSeason === ALL_SEASONS ? null : activeSeason}
                 />
                 <div className="flex flex-wrap gap-3 px-4 text-xs text-slate-400">
                   <span className="flex items-center gap-1">

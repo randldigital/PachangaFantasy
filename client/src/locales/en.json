@@ -538,6 +538,15 @@
     "players": "players",
     "noTeam": "No team"
   },
+  "playerProfile": {
+    "loading": "Player",
+    "loadError": "Could not load profile",
+    "marketValue": "Market value",
+    "season": "Season",
+    "valueEvolution": "Value evolution",
+    "matchHistory": "Match history",
+    "noHistory": "No scored matches in this season yet"
+  },
   "tierlist": {
     "title": "Player Valuation",
     "submit": "Submit valuation",

@@ -3,7 +3,9 @@ import {
   matchRatingAssignments,
   matchMvpVotes,
   matchPeerRatings,
+  matches,
   playerMarketValueHistory,
+  playerMatchPoints,
   type MatchMvpVote,
   type MatchPeerRating,
   type MatchPlayerVm,
@@ -11,12 +13,27 @@ import {
   type PlayerMarketValueHistory,
 } from "@shared/schema";
 import { db } from "../db";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import * as matchRepo from "./matchRepo";
 import * as playerRepo from "./playerRepo";
 import { assignMatchRatings, ratingsAreComplete } from "@shared/domain/ratingAssignments";
 import { assignClubRatings } from "@shared/domain/clubRatingAssignments";
 import type { RatingAssignment } from "@shared/domain/ratingAssignments";
+
+export type PlayerMarketValueHistoryRow = {
+  matchId: number;
+  date: Date | string | null;
+  seasonKey: string | null;
+  vmBefore: number;
+  vmAfter: number;
+  delta: number;
+  goals: number;
+  assists: number;
+  points: number;
+  mvpVotes: number;
+  peerAverage: number | null;
+  performanceScore: number;
+};
 
 export async function snapshotMatchPlayerVm(matchId: number): Promise<MatchPlayerVm[]> {
   const existing = await db.select().from(matchPlayerVm).where(eq(matchPlayerVm.matchId, matchId));
@@ -184,6 +201,61 @@ export async function getMarketValueHistory(matchId: number): Promise<PlayerMark
     .select()
     .from(playerMarketValueHistory)
     .where(eq(playerMarketValueHistory.matchId, matchId));
+}
+
+/** Non-friendly scored matches for one player, chronological (for VM charts). */
+export async function getPlayerMarketValueHistory(
+  playerId: number,
+  season?: string,
+): Promise<PlayerMarketValueHistoryRow[]> {
+  const rows = await db
+    .select({
+      matchId: playerMarketValueHistory.matchId,
+      date: matches.date,
+      seasonKey: matches.seasonKey,
+      vmBefore: playerMarketValueHistory.vmBefore,
+      vmAfter: playerMarketValueHistory.vmAfter,
+      delta: playerMarketValueHistory.delta,
+      mvpVotes: playerMarketValueHistory.mvpVotes,
+      peerAverage: playerMarketValueHistory.peerAverage,
+      performanceScore: playerMarketValueHistory.performanceScore,
+      goals: playerMatchPoints.goals,
+      assists: playerMatchPoints.assists,
+      points: playerMatchPoints.points,
+    })
+    .from(playerMarketValueHistory)
+    .innerJoin(
+      matches,
+      and(
+        eq(playerMarketValueHistory.matchId, matches.id),
+        eq(matches.isFriendly, false),
+        season ? eq(matches.seasonKey, season) : undefined,
+      ),
+    )
+    .leftJoin(
+      playerMatchPoints,
+      and(
+        eq(playerMatchPoints.matchId, playerMarketValueHistory.matchId),
+        eq(playerMatchPoints.playerId, playerMarketValueHistory.playerId),
+      ),
+    )
+    .where(eq(playerMarketValueHistory.playerId, playerId))
+    .orderBy(asc(matches.date), asc(playerMarketValueHistory.id));
+
+  return rows.map((row) => ({
+    matchId: row.matchId,
+    date: row.date,
+    seasonKey: row.seasonKey,
+    vmBefore: Number(row.vmBefore),
+    vmAfter: Number(row.vmAfter),
+    delta: Number(row.delta),
+    goals: Number(row.goals ?? 0),
+    assists: Number(row.assists ?? 0),
+    points: Number(row.points ?? 0),
+    mvpVotes: Number(row.mvpVotes ?? 0),
+    peerAverage: row.peerAverage == null ? null : Number(row.peerAverage),
+    performanceScore: Number(row.performanceScore ?? 0),
+  }));
 }
 
 export function assignmentRows(rows: MatchRatingAssignment[]): RatingAssignment[] {

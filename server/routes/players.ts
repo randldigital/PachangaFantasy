@@ -1,5 +1,6 @@
 import type { Express, Response } from "express";
 import type { MatchContext } from "@shared/domain/context";
+import { isSeasonKey } from "@shared/domain/season";
 import { aliasSchema, insertPlayerSchema, resolveClaimSchema, updateAliasSchema, type Player } from "@shared/schema";
 import { logger } from "../logger";
 import { isLeagueAdmin, requireAuth, requireUser } from "../middleware/auth";
@@ -8,6 +9,8 @@ import * as claimRepo from "../repos/claimRepo";
 import * as clubRepo from "../repos/clubRepo";
 import * as leagueRepo from "../repos/leagueRepo";
 import * as playerRepo from "../repos/playerRepo";
+import * as ratingRepo from "../repos/ratingRepo";
+import * as scoreRepo from "../repos/scoreRepo";
 import * as userRepo from "../repos/userRepo";
 import type { AuthRequest } from "../types";
 
@@ -46,6 +49,92 @@ async function listClaimRequests(res: Response, ref: { leagueId?: number; clubId
 }
 
 export function registerPlayerRoutes(app: Express) {
+  app.get("/api/players/:playerId/profile", requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      const playerId = parseInt(req.params.playerId, 10);
+      if (!Number.isFinite(playerId)) {
+        return res.status(400).json({ message: "Invalid player" });
+      }
+
+      const player = await playerRepo.getPlayer(playerId);
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      const owner = await organisationOf(player);
+      if (!owner) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      if (owner.context === "league") {
+        const access = await loadLeagueMember(req, res, owner.organisation.id);
+        if (!access) return;
+      } else {
+        const access = await loadClubMember(req, res, owner.organisation.id);
+        if (!access) return;
+      }
+
+      const seasonRaw = typeof req.query.season === "string" ? req.query.season : undefined;
+      const season = seasonRaw && isSeasonKey(seasonRaw) ? seasonRaw : undefined;
+
+      const history = await ratingRepo.getPlayerMarketValueHistory(playerId, season);
+      let totals = {
+        totalPoints: 0,
+        goals: 0,
+        assists: 0,
+        matchesPlayed: 0,
+        mvps: 0,
+        victories: 0,
+      };
+
+      if (owner.context === "league") {
+        const board = await scoreRepo.getPlayerLeaderboard(owner.organisation.id, season);
+        const row = board.find((entry) => entry.playerId === playerId);
+        if (row) {
+          totals = {
+            totalPoints: row.totalPoints,
+            goals: row.goals,
+            assists: row.assists,
+            matchesPlayed: row.matchesPlayed,
+            mvps: row.mvps,
+            victories: row.victories,
+          };
+        }
+      } else {
+        const board = await scoreRepo.getClubPlayerLeaderboard(owner.organisation.id, season);
+        const row = board.find((entry) => entry.playerId === playerId);
+        if (row) {
+          totals = {
+            totalPoints: row.totalPoints,
+            goals: row.goals,
+            assists: row.assists,
+            matchesPlayed: row.matchesPlayed,
+            mvps: row.mvps,
+            victories: 0,
+          };
+        }
+      }
+
+      res.json({
+        player: {
+          id: player.id,
+          name: player.name,
+          emoji: player.emoji,
+          userId: player.userId ?? null,
+          leagueId: player.leagueId ?? null,
+          clubId: player.clubId ?? null,
+          marketValue: player.marketValue,
+        },
+        season: season ?? null,
+        totals,
+        marketValueHistory: history,
+      });
+    } catch (error) {
+      logger.error("Player profile error", error);
+      res.status(500).json({ message: "Failed to load player profile" });
+    }
+  });
+
   app.post("/api/players/:leagueId", requireAuth, async (req: AuthRequest, res: Response) => {
     try {
       const leagueId = parseInt(req.params.leagueId);

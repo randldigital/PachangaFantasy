@@ -21,6 +21,7 @@ import { api } from "@/lib/api";
 import { describeApiError } from "@/lib/apiError";
 import { queryKeys } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
+import { PlayerNameButton } from "@/components/league/PlayerProfileDialog";
 import {
   type PlayerTierPlacement,
   type ValuationTier,
@@ -356,7 +357,7 @@ export default function TierListSection({
                 <div className="flex items-center space-x-3 min-w-0">
                   <div className="text-2xl">{player.emoji || "👤"}</div>
                   <div className="min-w-0">
-                    <div className="text-white font-medium truncate">{player.name}</div>
+                    <PlayerNameButton playerId={player.id} name={player.name} className="truncate" />
                     {unplaced && (
                       <div className="text-slate-500 text-sm">{t("tierlist.unplaced")}</div>
                     )}

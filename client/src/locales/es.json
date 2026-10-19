@@ -535,6 +535,15 @@
     "players": "jugadores",
     "noTeam": "Sin equipo"
   },
+  "playerProfile": {
+    "loading": "Jugador",
+    "loadError": "No se pudo cargar el perfil",
+    "marketValue": "Valor de mercado",
+    "season": "Temporada",
+    "valueEvolution": "Evolución del valor",
+    "matchHistory": "Historial de partidos",
+    "noHistory": "Aún no hay partidos puntuados en esta temporada"
+  },
   "tierlist": {
     "title": "Valoración de jugadores",
     "submit": "Enviar valoración",
