@@ -182,7 +182,7 @@ export default function MatchContextHeader({
   if (match) {
     return (
       <>
-        <Card className={`mx-4 my-4 overflow-hidden ${
+        <Card className={`overflow-hidden ${
           isFinishedStatus(match.status)
             ? 'bg-gradient-to-r from-green-500/20 to-emerald-600/20 border-green-500/50' 
             : 'bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 border-emerald-500/30'
@@ -381,7 +381,7 @@ export default function MatchContextHeader({
   if (league.createdBy === user?.id) {
     return (
       <>
-        <Card className="mx-4 my-4 overflow-hidden bg-slate-800/50 border-slate-700">
+        <Card className="overflow-hidden bg-slate-800/50 border-slate-700">
           <CardContent className="p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
@@ -405,7 +405,7 @@ export default function MatchContextHeader({
 
   return (
     <>
-      <Card className="mx-4 my-4 bg-slate-800/50 border-slate-700">
+      <Card className="bg-slate-800/50 border-slate-700">
         <CardContent className="p-4">
           <div className="text-center">
             <h3 className="text-white font-medium mb-2">{t("match.noActiveMatch")}</h3>

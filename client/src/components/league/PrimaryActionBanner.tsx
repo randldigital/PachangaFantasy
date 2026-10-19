@@ -190,7 +190,7 @@ export default function PrimaryActionBanner({
   };
 
   return (
-    <Card className="mx-4 mt-4 border-emerald-500/40 bg-slate-800">
+    <Card className="border-emerald-500/40 bg-slate-800">
       <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">

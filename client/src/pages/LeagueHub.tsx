@@ -166,52 +166,50 @@ export default function LeagueHub() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4">
-        {shouldRenderHubAd(billing?.planCode) ? <AdSlot slot="hub.sidebar" /> : null}
-      </div>
-      <PrimaryActionBanner
-        league={league}
-        matches={matches}
-        players={players}
-        user={user || undefined}
-        onTabChange={setActiveTab}
-        onOpenAddPlayer={() => setShowAddPlayer(true)}
-        onOpenCreateMatch={() => setShowCreateMatch(true)}
-        onOpenMatchDetails={() => setShowMatchDetails(true)}
-      />
+      <div className="container mx-auto space-y-4 px-4 pt-3 pb-20 lg:pb-6">
+        {shouldRenderHubAd(billing?.planCode) ? <AdSlot slot="hub.sidebar" className="w-full my-0" /> : null}
+        <PrimaryActionBanner
+          league={league}
+          matches={matches}
+          players={players}
+          user={user || undefined}
+          onTabChange={setActiveTab}
+          onOpenAddPlayer={() => setShowAddPlayer(true)}
+          onOpenCreateMatch={() => setShowCreateMatch(true)}
+          onOpenMatchDetails={() => setShowMatchDetails(true)}
+        />
 
-      <MatchContextHeader
-        match={headerMatch}
-        league={league}
-        user={user || undefined}
-        players={players || []}
-        createMatchOpen={showCreateMatch}
-        onCreateMatchOpenChange={setShowCreateMatch}
-        matchDetailsOpen={showMatchDetails}
-        onMatchDetailsOpenChange={setShowMatchDetails}
-      />
+        <MatchContextHeader
+          match={headerMatch}
+          league={league}
+          user={user || undefined}
+          players={players || []}
+          createMatchOpen={showCreateMatch}
+          onCreateMatchOpenChange={setShowCreateMatch}
+          matchDetailsOpen={showMatchDetails}
+          onMatchDetailsOpenChange={setShowMatchDetails}
+        />
 
-      <div className="container mx-auto px-4 py-6 pb-20 lg:pb-6">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as HubTab)} className="w-full">
-          <TabsList className="hidden lg:grid w-full grid-cols-5 bg-slate-800 border-slate-700 mb-6">
+          <TabsList className="mb-6 hidden w-full grid-cols-5 border-slate-700 bg-slate-800 lg:grid">
             <TabsTrigger value="lineup" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-              <Target className="w-4 h-4 mr-2" />
+              <Target className="mr-2 h-4 w-4" />
               {t("league.tabs.lineup")}
             </TabsTrigger>
             <TabsTrigger value="clasificacion" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-              <Trophy className="w-4 h-4 mr-2" />
+              <Trophy className="mr-2 h-4 w-4" />
               {t("league.tabs.clasificacion")}
             </TabsTrigger>
             <TabsTrigger value="historial" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-              <History className="w-4 h-4 mr-2" />
+              <History className="mr-2 h-4 w-4" />
               {t("league.tabs.historial")}
             </TabsTrigger>
             <TabsTrigger value="tierlist" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-              <List className="w-4 h-4 mr-2" />
+              <List className="mr-2 h-4 w-4" />
               {t("league.tabs.tierlist")}
             </TabsTrigger>
             <TabsTrigger value="stats" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-              <User className="w-4 h-4 mr-2" />
+              <User className="mr-2 h-4 w-4" />
               {t("league.tabs.stats")}
             </TabsTrigger>
           </TabsList>

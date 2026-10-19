@@ -81,7 +81,7 @@ export default function AdSlot({
     <aside className={className ?? "w-full my-3"} aria-label={t("ads.label")}>
       <p className="mb-1 text-xs uppercase tracking-wide text-slate-500">{t("ads.label")}</p>
       <div
-        className="flex w-full items-center justify-center rounded-md border border-slate-700 bg-slate-800/40"
+        className="flex w-full items-center justify-center rounded-lg border border-slate-700 bg-slate-800/40"
         style={{ minHeight: height }}
       >
         {canFill ? (
