@@ -87,12 +87,25 @@ export function PlayerProfileDialog({
     enabled,
   });
 
-  const chartData =
-    data?.marketValueHistory.map((row) => ({
-      label: formatShortDate(String(row.date), i18n.language),
-      vm: row.vmAfter,
-      delta: row.delta,
-    })) ?? [];
+  const chartData = (() => {
+    const history = data?.marketValueHistory ?? [];
+    if (history.length === 0) {
+      return [];
+    }
+    const first = history[0];
+    return [
+      {
+        label: t("playerProfile.initial"),
+        vm: first.vmBefore,
+        delta: 0,
+      },
+      ...history.map((row) => ({
+        label: formatShortDate(String(row.date), i18n.language),
+        vm: row.vmAfter,
+        delta: row.delta,
+      })),
+    ];
+  })();
 
   const historyNewestFirst = data ? [...data.marketValueHistory].reverse() : [];
 
@@ -177,11 +190,13 @@ export function PlayerProfileDialog({
                       }}
                     />
                     <Line
-                      type="monotone"
+                      type="linear"
                       dataKey="vm"
                       stroke="var(--color-vm)"
                       strokeWidth={2}
-                      dot={{ r: 3 }}
+                      connectNulls
+                      isAnimationActive={false}
+                      dot={{ r: 3, fill: "var(--color-vm)" }}
                       activeDot={{ r: 5 }}
                     />
                   </LineChart>

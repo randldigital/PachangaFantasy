@@ -542,7 +542,8 @@
     "season": "Temporada",
     "valueEvolution": "Evolución del valor",
     "matchHistory": "Historial de partidos",
-    "noHistory": "Aún no hay partidos puntuados en esta temporada"
+    "noHistory": "Aún no hay partidos puntuados en esta temporada",
+    "initial": "Inicio"
   },
   "tierlist": {
     "title": "Valoración de jugadores",

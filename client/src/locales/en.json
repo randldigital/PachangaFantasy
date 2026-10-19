@@ -545,7 +545,8 @@
     "season": "Season",
     "valueEvolution": "Value evolution",
     "matchHistory": "Match history",
-    "noHistory": "No scored matches in this season yet"
+    "noHistory": "No scored matches in this season yet",
+    "initial": "Start"
   },
   "tierlist": {
     "title": "Player Valuation",
