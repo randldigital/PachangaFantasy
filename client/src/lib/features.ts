@@ -2,14 +2,20 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 
+export type AdsterraSlotUnit = {
+  key: string;
+  width: number;
+  height: number;
+};
+
 export type AuthFeatures = {
   google: boolean;
   payments: boolean;
   ads: boolean;
   email: boolean;
   adsSlots?: {
-    "overview.banner"?: string;
-    "hub.sidebar"?: string;
+    "overview.banner"?: AdsterraSlotUnit;
+    "hub.sidebar"?: AdsterraSlotUnit;
   };
   adsTest?: boolean;
 };

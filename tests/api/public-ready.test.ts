@@ -27,7 +27,8 @@ describe("2.1 auth, membership and billing", () => {
     delete process.env.PAYMENTS_ENABLED;
     delete process.env.ADS_ENABLED;
     delete process.env.ADS_TEST;
-    delete process.env.ADSTERRA_ZONE;
+    delete process.env.ADSTERRA_OVERVIEW_KEY;
+    delete process.env.ADSTERRA_HUB_KEY;
     delete process.env.GOOGLE_CLIENT_ID;
     delete process.env.GOOGLE_CLIENT_SECRET;
     delete process.env.CORS_ORIGINS;
@@ -193,8 +194,8 @@ describe("2.1 auth, membership and billing", () => {
     expect(features.status).toBe(200);
     expect(features.body.ads).toBe(false);
     expect(features.body.adsSlots).toEqual({
-      "overview.banner": "",
-      "hub.sidebar": "",
+      "overview.banner": { key: "", width: 300, height: 250 },
+      "hub.sidebar": { key: "", width: 320, height: 50 },
     });
     expect(features.body.adsTest).toBe(false);
     expect(features.body.google).toBe(false);
@@ -203,17 +204,26 @@ describe("2.1 auth, membership and billing", () => {
     expect(ads.status).toBe(404);
   });
 
-  it("reports the Adsterra zone when ads are enabled", async () => {
+  it("reports Adsterra iframe keys when ads are enabled", async () => {
     process.env.ADS_ENABLED = "true";
-    process.env.ADSTERRA_ZONE = "27a4278c259edd606079094765f18579";
+    process.env.ADSTERRA_OVERVIEW_KEY = "1ca4a58e11cc66f6bb9035d37e046f4a";
+    process.env.ADSTERRA_HUB_KEY = "c3abff8d3ddab370e8e14a744ff1971d";
     process.env.ADS_TEST = "true";
     const features = await request(app).get("/api/auth/features");
     expect(features.status).toBe(200);
     expect(features.body.ads).toBe(true);
     expect(features.body.adsTest).toBe(true);
     expect(features.body.adsSlots).toEqual({
-      "overview.banner": "27a4278c259edd606079094765f18579",
-      "hub.sidebar": "27a4278c259edd606079094765f18579",
+      "overview.banner": {
+        key: "1ca4a58e11cc66f6bb9035d37e046f4a",
+        width: 300,
+        height: 250,
+      },
+      "hub.sidebar": {
+        key: "c3abff8d3ddab370e8e14a744ff1971d",
+        width: 320,
+        height: 50,
+      },
     });
     expect(features.body.adsClient).toBeUndefined();
     const ads = await request(app).get("/api/ads");

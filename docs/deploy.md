@@ -21,7 +21,8 @@ Copy `.env.example` to `.env`. Boot needs:
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | empty | `/api/auth/google` returns `501`; the Google button is hidden |
 | `PAYMENTS_ENABLED` | `false` | Checkout and webhook return `501 PAYMENTS_DISABLED`; `/billing` stays read-only |
 | `ADS_ENABLED` | `false` | `GET /api/auth/features` reports `ads: false`; ad slots render nothing |
-| `ADSTERRA_ZONE` | empty | Adsterra zone hex id (path segment in the adjustable snippet). Ignored unless `ADS_ENABLED`. Same zone is used for `overview.banner` and `hub.sidebar`. Empty ⇒ reserved box stays blank. |
+| `ADSTERRA_OVERVIEW_KEY` | empty | Adsterra 300×250 iframe key for `overview.banner` (Overview, Billing, Landing). Ignored unless `ADS_ENABLED`. |
+| `ADSTERRA_HUB_KEY` | empty | Adsterra 320×50 iframe key for `hub.sidebar` (League/Club hub). Ignored unless `ADS_ENABLED`. Empty key ⇒ reserved box stays blank. |
 | `ADS_TEST` | `false` | Kept on `/api/auth/features` for API stability; Adsterra units do not use Google `data-adtest`. |
 | `FEATURE_DEFAULT_PLAN` | `free` | Used when a billing account has no active subscription |
 | `CORS_ORIGINS` | empty | Same-origin only. Set a comma-separated list when a packaged WebView calls the API |

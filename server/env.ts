@@ -82,9 +82,29 @@ export function adsTest(): boolean {
   return readFlag("ADS_TEST");
 }
 
-/** Adsterra zone hex id (from the container/script path segment). */
-export function adsterraZone(): string {
-  return (process.env.ADSTERRA_ZONE ?? "").trim();
+export type AdsterraSlotConfig = {
+  key: string;
+  width: number;
+  height: number;
+};
+
+/** Fixed iframe units: overview 300×250, hub 320×50. */
+export function adsterraSlots(): {
+  "overview.banner": AdsterraSlotConfig;
+  "hub.sidebar": AdsterraSlotConfig;
+} {
+  return {
+    "overview.banner": {
+      key: (process.env.ADSTERRA_OVERVIEW_KEY ?? "").trim(),
+      width: 300,
+      height: 250,
+    },
+    "hub.sidebar": {
+      key: (process.env.ADSTERRA_HUB_KEY ?? "").trim(),
+      width: 320,
+      height: 50,
+    },
+  };
 }
 
 export function analyticsPasscode(): string {

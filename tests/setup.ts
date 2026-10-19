@@ -14,6 +14,7 @@ delete process.env.SMTP_USER;
 delete process.env.SMTP_PASS;
 delete process.env.ADS_ENABLED;
 delete process.env.ADS_TEST;
-delete process.env.ADSTERRA_ZONE;
+delete process.env.ADSTERRA_OVERVIEW_KEY;
+delete process.env.ADSTERRA_HUB_KEY;
 
 installTestMailer();

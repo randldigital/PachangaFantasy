@@ -3,7 +3,7 @@ import { insertUserSchema, loginSchema, forgotPasswordSchema, resetPasswordSchem
 import type { User } from "@shared/schema";
 import {
   adsEnabled,
-  adsterraZone,
+  adsterraSlots,
   adsTest,
   env,
   googleConfigured,
@@ -83,16 +83,18 @@ function issueToken(user: User) {
 export function registerAuthRoutes(app: Express) {
   app.get("/api/auth/features", (_req, res: Response) => {
     const ads = adsEnabled();
-    const zone = ads ? adsterraZone() : "";
+    const slots = adsterraSlots();
     res.json({
       google: googleConfigured(),
       payments: paymentsEnabled(),
       ads,
       email: isMailConfigured(),
-      adsSlots: {
-        "overview.banner": zone,
-        "hub.sidebar": zone,
-      },
+      adsSlots: ads
+        ? slots
+        : {
+            "overview.banner": { ...slots["overview.banner"], key: "" },
+            "hub.sidebar": { ...slots["hub.sidebar"], key: "" },
+          },
       adsTest: ads && adsTest(),
     });
   });
