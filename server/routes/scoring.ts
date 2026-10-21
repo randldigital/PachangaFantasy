@@ -7,6 +7,7 @@ import * as matchRepo from "../repos/matchRepo";
 import * as scoreRepo from "../repos/scoreRepo";
 import * as statsRepo from "../repos/statsRepo";
 import * as ratingRepo from "../repos/ratingRepo";
+import * as collectionRepo from "../repos/collectionRepo";
 import type { AuthRequest } from "../types";
 
 export function registerScoringRoutes(app: Express) {
@@ -80,6 +81,7 @@ export function registerScoringRoutes(app: Express) {
       const result = isClub
         ? await scoreRepo.scoreClubMatch(matchId, options)
         : await scoreRepo.scoreMatch(matchId, options);
+      await collectionRepo.syncMatch(matchId);
       res.json(result);
     } catch (error) {
       logger.error("Error calculating match scores", error);

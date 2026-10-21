@@ -16,6 +16,8 @@ export const users = pgTable("users", {
   // Vestigial: users may belong to many leagues. Phase 2.
   leagueId: integer("league_id"),
   avatarPath: text("avatar_path"),
+  /** Bumped on every avatar upload or removal so clients can bypass the image cache. */
+  avatarVersion: integer("avatar_version").notNull().default(0),
   emailVerifiedAt: timestamp("email_verified_at"),
 });
 
@@ -254,6 +256,79 @@ export const playerMarketValueHistory = pgTable("player_market_value_history", {
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   matchPlayerUnique: uniqueIndex("player_market_value_history_match_player").on(table.matchId, table.playerId),
+}));
+
+/** One permanent album per League or Club. Card rows are definitions, not pictures. */
+export const collections = pgTable("collections", {
+  id: serial("id").primaryKey(),
+  leagueId: integer("league_id").references(() => leagues.id, { onDelete: "cascade" }),
+  clubId: integer("club_id").references(() => clubs.id, { onDelete: "cascade" }),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  leagueUnique: uniqueIndex("collections_league_unique").on(table.leagueId).where(sql`${table.leagueId} is not null`),
+  clubUnique: uniqueIndex("collections_club_unique").on(table.clubId).where(sql`${table.clubId} is not null`),
+}));
+
+export const collectionCards = pgTable("collection_cards", {
+  id: serial("id").primaryKey(),
+  collectionId: integer("collection_id").notNull().references(() => collections.id, { onDelete: "cascade" }),
+  sourceKey: text("source_key").notNull(),
+  cardType: text("card_type").notNull(),
+  rarity: text("rarity").notNull(),
+  status: text("status").$type<"active" | "error" | "retired">().notNull().default("active"),
+  playerId: integer("player_id").references(() => players.id, { onDelete: "set null" }),
+  matchId: integer("match_id").references(() => matches.id, { onDelete: "set null" }),
+  seasonKey: text("season_key"),
+  occurredAt: timestamp("occurred_at").notNull(),
+  periodKey: text("period_key"),
+  sortRank: integer("sort_rank").notNull(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  title: text("title"),
+  subtitle: text("subtitle"),
+  body: text("body"),
+  imagePath: text("image_path"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  sourceUnique: uniqueIndex("collection_cards_source").on(table.collectionId, table.sourceKey),
+  packIdx: index("collection_cards_pack").on(table.collectionId, table.status, table.rarity),
+  albumIdx: index("collection_cards_album").on(table.collectionId, table.sortRank, table.occurredAt, table.id),
+}));
+
+export const collectionOwnership = pgTable("collection_ownership", {
+  collectionId: integer("collection_id").notNull().references(() => collections.id, { onDelete: "cascade" }),
+  cardId: integer("card_id").notNull().references(() => collectionCards.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  quantity: integer("quantity").notNull(),
+  firstAcquiredAt: timestamp("first_acquired_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.userId, table.cardId] }),
+}));
+
+export const collectionPackState = pgTable("collection_pack_state", {
+  collectionId: integer("collection_id").notNull().references(() => collections.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  nextPackAt: timestamp("next_pack_at"),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.collectionId, table.userId] }),
+}));
+
+export const collectionPackOpenings = pgTable("collection_pack_openings", {
+  id: serial("id").primaryKey(),
+  collectionId: integer("collection_id").notNull().references(() => collections.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  openedAt: timestamp("opened_at").defaultNow().notNull(),
+  cardIds: integer("card_ids").array().notNull(),
+  rarities: text("rarities").array().notNull(),
+});
+
+export const collectionPeriods = pgTable("collection_periods", {
+  collectionId: integer("collection_id").notNull().references(() => collections.id, { onDelete: "cascade" }),
+  periodKey: text("period_key").notNull(),
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.collectionId, table.periodKey] }),
 }));
 
 export const emailVerificationTokens = pgTable("email_verification_tokens", {
@@ -617,6 +692,9 @@ export type Lineup = typeof lineups.$inferSelect;
 export type InsertLineup = typeof lineups.$inferInsert;
 export type StatReport = typeof statReports.$inferSelect;
 export type InsertStatReport = typeof statReports.$inferInsert;
+export type Collection = typeof collections.$inferSelect;
+export type CollectionCard = typeof collectionCards.$inferSelect;
+export type CollectionOwnership = typeof collectionOwnership.$inferSelect;
 export type PlayerMatchPoints = typeof playerMatchPoints.$inferSelect;
 export type ManagerMatchPoints = typeof managerMatchPoints.$inferSelect;
 export type SubmitStatsInput = z.infer<typeof submitStatsSchema>;

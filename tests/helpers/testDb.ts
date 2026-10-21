@@ -57,6 +57,7 @@ export async function resetTestSchema() {
       role text NOT NULL DEFAULT 'player',
       league_id integer,
       avatar_path text,
+      avatar_version integer NOT NULL DEFAULT 0,
       email_verified_at timestamp
     );
     CREATE TABLE IF NOT EXISTS leagues (
@@ -288,6 +289,62 @@ export async function resetTestSchema() {
       status text NOT NULL DEFAULT 'pending',
       created_at timestamp DEFAULT now()
     );
+    CREATE TABLE IF NOT EXISTS collections (
+      id serial PRIMARY KEY,
+      league_id integer,
+      club_id integer,
+      created_by integer NOT NULL,
+      created_at timestamp DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS collection_cards (
+      id serial PRIMARY KEY,
+      collection_id integer NOT NULL,
+      source_key text NOT NULL,
+      card_type text NOT NULL,
+      rarity text NOT NULL,
+      status text NOT NULL DEFAULT 'active',
+      player_id integer,
+      match_id integer,
+      season_key text,
+      occurred_at timestamp NOT NULL,
+      period_key text,
+      sort_rank integer NOT NULL,
+      payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+      title text,
+      subtitle text,
+      body text,
+      image_path text,
+      created_at timestamp DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS collection_ownership (
+      collection_id integer NOT NULL,
+      card_id integer NOT NULL,
+      user_id integer NOT NULL,
+      quantity integer NOT NULL,
+      first_acquired_at timestamp NOT NULL DEFAULT now(),
+      updated_at timestamp NOT NULL DEFAULT now(),
+      PRIMARY KEY (user_id, card_id)
+    );
+    CREATE TABLE IF NOT EXISTS collection_pack_state (
+      collection_id integer NOT NULL,
+      user_id integer NOT NULL,
+      next_pack_at timestamp,
+      PRIMARY KEY (collection_id, user_id)
+    );
+    CREATE TABLE IF NOT EXISTS collection_pack_openings (
+      id serial PRIMARY KEY,
+      collection_id integer NOT NULL,
+      user_id integer NOT NULL,
+      opened_at timestamp NOT NULL DEFAULT now(),
+      card_ids integer[] NOT NULL,
+      rarities text[] NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS collection_periods (
+      collection_id integer NOT NULL,
+      period_key text NOT NULL,
+      generated_at timestamp NOT NULL DEFAULT now(),
+      PRIMARY KEY (collection_id, period_key)
+    );
   `);
 
   await client.unsafe(`ALTER TABLE players DROP COLUMN IF EXISTS position`);
@@ -334,6 +391,7 @@ export async function resetTestSchema() {
   await client.unsafe(`ALTER TABLE player_match_points ALTER COLUMN points TYPE double precision USING points::double precision`);
   await client.unsafe(`ALTER TABLE manager_match_points ALTER COLUMN points TYPE double precision USING points::double precision`);
   await client.unsafe(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_path text`);
+  await client.unsafe(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_version integer NOT NULL DEFAULT 0`);
   await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS season_key text`);
   await client.unsafe(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS side_size integer NOT NULL DEFAULT 5`);
   await client.unsafe(`ALTER TABLE leagues ALTER COLUMN invite_code TYPE text`);
@@ -373,9 +431,34 @@ export async function resetTestSchema() {
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS auth_identities_provider_user ON auth_identities (provider, provider_user_id)`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS billing_accounts_subject ON billing_accounts (subject_type, subject_id)`);
   await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_billing_account ON subscriptions (billing_account_id)`);
+  await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS collections_league_unique ON collections (league_id) WHERE league_id IS NOT NULL`);
+  await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS collections_club_unique ON collections (club_id) WHERE club_id IS NOT NULL`);
+  await client.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS collection_cards_source ON collection_cards (collection_id, source_key)`);
+  await client.unsafe(`ALTER TABLE collections DROP CONSTRAINT IF EXISTS collections_league_xor_club`);
+  await client.unsafe(`ALTER TABLE collections ADD CONSTRAINT collections_league_xor_club CHECK ((league_id IS NULL) <> (club_id IS NULL))`);
+  await client.unsafe(`ALTER TABLE collection_cards DROP CONSTRAINT IF EXISTS collection_cards_status`);
+  await client.unsafe(`ALTER TABLE collection_cards ADD CONSTRAINT collection_cards_status CHECK (status IN ('active', 'error', 'retired'))`);
+  await client.unsafe(`ALTER TABLE collection_ownership DROP CONSTRAINT IF EXISTS collection_ownership_quantity`);
+  await client.unsafe(`ALTER TABLE collection_ownership ADD CONSTRAINT collection_ownership_quantity CHECK (quantity >= 1)`);
+  await client.unsafe(`ALTER TABLE collection_cards DROP CONSTRAINT IF EXISTS collection_cards_match_fk`);
+  await client.unsafe(`ALTER TABLE collection_cards ADD CONSTRAINT collection_cards_match_fk FOREIGN KEY (match_id) REFERENCES matches (id) ON DELETE SET NULL`);
+  await client.unsafe(`ALTER TABLE collection_cards DROP CONSTRAINT IF EXISTS collection_cards_player_fk`);
+  await client.unsafe(`ALTER TABLE collection_cards ADD CONSTRAINT collection_cards_player_fk FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE SET NULL`);
+  await client.unsafe(`ALTER TABLE collection_cards DROP CONSTRAINT IF EXISTS collection_cards_collection_fk`);
+  await client.unsafe(`ALTER TABLE collection_cards ADD CONSTRAINT collection_cards_collection_fk FOREIGN KEY (collection_id) REFERENCES collections (id) ON DELETE CASCADE`);
+  await client.unsafe(`ALTER TABLE collections DROP CONSTRAINT IF EXISTS collections_league_fk`);
+  await client.unsafe(`ALTER TABLE collections ADD CONSTRAINT collections_league_fk FOREIGN KEY (league_id) REFERENCES leagues (id) ON DELETE CASCADE`);
+  await client.unsafe(`ALTER TABLE collections DROP CONSTRAINT IF EXISTS collections_club_fk`);
+  await client.unsafe(`ALTER TABLE collections ADD CONSTRAINT collections_club_fk FOREIGN KEY (club_id) REFERENCES clubs (id) ON DELETE CASCADE`);
 
   await client.unsafe(`
     TRUNCATE TABLE
+      collection_pack_openings,
+      collection_pack_state,
+      collection_ownership,
+      collection_periods,
+      collection_cards,
+      collections,
       payments,
       subscriptions,
       billing_accounts,

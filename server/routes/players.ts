@@ -9,6 +9,7 @@ import * as claimRepo from "../repos/claimRepo";
 import * as clubRepo from "../repos/clubRepo";
 import * as leagueRepo from "../repos/leagueRepo";
 import * as playerRepo from "../repos/playerRepo";
+import * as collectionRepo from "../repos/collectionRepo";
 import * as ratingRepo from "../repos/ratingRepo";
 import * as scoreRepo from "../repos/scoreRepo";
 import * as userRepo from "../repos/userRepo";
@@ -159,6 +160,7 @@ export function registerPlayerRoutes(app: Express) {
         isExternal,
         userId: undefined,
       });
+      await collectionRepo.syncPlayer(player);
 
       logger.info("League creator added player", {
         league: leagueId,

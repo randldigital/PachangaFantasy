@@ -341,7 +341,98 @@
     "MATCH_NOT_CORRECTABLE": "The result can be corrected after the match is finished.",
     "MATCH_NOT_RECALCULABLE": "Recalculate is available after the match is scored.",
     "MATCH_NOT_REOPENABLE": "Stats can be reopened after the match is scored.",
-    "MATCH_NOT_LAST_FINISHED": "Only the last finished match can be reopened."
+    "MATCH_NOT_LAST_FINISHED": "Only the last finished match can be reopened.",
+    "COLLECTION_EXISTS": "This collection already exists.",
+    "COLLECTION_NOT_FOUND": "This collection has not been created yet.",
+    "PACK_COOLDOWN": "The next pack is not ready yet.",
+    "PACK_EMPTY": "There are no cards available to open.",
+    "EXTRA_IMAGE_INVALID": "Use a JPEG, PNG, or WebP image.",
+    "ADMIN_ONLY": "Only the administrator can do that."
+  },
+  "collection": {
+    "title": "Collection",
+    "open": "Collection",
+    "create": "Create collection",
+    "createError": "Could not create the collection",
+    "missingAdmin": "This community does not have a collection yet. Creating it adds every card that history already earned.",
+    "missingMember": "The administrator has not created a collection yet.",
+    "packTitle": "Daily pack",
+    "packReady": "Two cards are ready.",
+    "packWait": "Next pack at {{time}}.",
+    "openPack": "Open pack",
+    "packError": "Could not open the pack",
+    "packCooldown": "Wait until the timer ends.",
+    "packReveal": "Your cards",
+    "more": "Load more",
+    "unknownPlayer": "Player",
+    "retired": "RETIRED",
+    "locked": "Locked",
+    "lockedLabel": "{{type}}, {{rarity}}, locked",
+    "progress": "{{owned}} / {{existing}} discovered",
+    "sectionProgress": "{{owned}} / {{existing}}",
+    "sections": {
+      "players": { "title": "Players", "subtitle": "One card for every player" },
+      "matches": { "title": "Matches", "subtitle": "Official results" },
+      "awards": { "title": "Awards", "subtitle": "MVP and Team of the Month" },
+      "performances": { "title": "Performances", "subtitle": "Hat-tricks" },
+      "extras": { "title": "Extras", "subtitle": "Special cards" }
+    },
+    "badges": {
+      "player": "Player",
+      "match": "Match",
+      "mvp": "MVP",
+      "hattrick": "Hat-trick",
+      "totm": "TOTM",
+      "extra": "Extra"
+    },
+    "sides": {
+      "us": "Us",
+      "opponent": "Opp"
+    },
+    "extraTitle": "Extra card",
+    "extraCreate": "Add extra card",
+    "extraError": "Could not save the extra card",
+    "extraImageRequired": "Choose an image.",
+    "extraFields": {
+      "title": "Title",
+      "subtitle": "Subtitle",
+      "body": "Description"
+    },
+    "filters": {
+      "type": "All types",
+      "rarity": "All rarities",
+      "status": "All statuses",
+      "ownership": "Owned and missing",
+      "owned": "Owned",
+      "unowned": "Missing"
+    },
+    "rarity": {
+      "common": "Common",
+      "rare": "Rare",
+      "epic": "Epic",
+      "legendary": "Legendary"
+    },
+    "types": {
+      "player": "Player",
+      "match": "Match",
+      "mvp": "MVP",
+      "hattrick": "Hat-trick",
+      "totm": "Team of the Month",
+      "extra": "Extra"
+    },
+    "status": {
+      "active": "Active",
+      "error": "Error",
+      "retired": "Retired"
+    },
+    "cards": {
+      "mvp": "MVP {{name}}",
+      "hattrick": "Hat-trick {{name}}",
+      "hattrickGoals": "Hat-trick · {{count}} goals",
+      "totm": "{{name}} · {{month}}",
+      "match": "Match",
+      "extra": "Extra"
+    }
   },
   "match": {
     "noActiveMatch": "No active matches",

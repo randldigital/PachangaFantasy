@@ -81,7 +81,7 @@ export async function setAvatarPath(
 ): Promise<User | undefined> {
   const [updated] = await db
     .update(users)
-    .set({ avatarPath })
+    .set({ avatarPath, avatarVersion: sql`${users.avatarVersion} + 1` })
     .where(eq(users.id, userId))
     .returning();
   return updated || undefined;

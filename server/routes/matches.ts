@@ -21,6 +21,7 @@ import {
 import * as clubRepo from "../repos/clubRepo";
 import * as leagueRepo from "../repos/leagueRepo";
 import * as matchRepo from "../repos/matchRepo";
+import * as collectionRepo from "../repos/collectionRepo";
 import * as playerRepo from "../repos/playerRepo";
 import * as ratingRepo from "../repos/ratingRepo";
 import * as scoreRepo from "../repos/scoreRepo";
@@ -215,6 +216,7 @@ export function registerMatchRoutes(app: Express) {
         return;
       }
 
+      await collectionRepo.detachMatch(matchId);
       await matchRepo.deleteMatch(matchId);
       logger.info("Match deleted", {
         match: matchId,
@@ -428,6 +430,7 @@ export function registerMatchRoutes(app: Express) {
         const status = normalizeMatchStatus(access.match.status);
         if (status === "scored" || status === "closed") {
           const replay = await scoreRepo.recalculateFromMatch(matchId);
+          await collectionRepo.syncMatches(replay.matchIds);
           logger.info("Match result corrected and replayed", {
             match: matchId,
             replayed: replay.matchIds,
@@ -466,6 +469,7 @@ export function registerMatchRoutes(app: Express) {
       const status = normalizeMatchStatus(access.match.status);
       if (status === "scored" || status === "closed") {
         const replay = await scoreRepo.recalculateFromMatch(matchId);
+        await collectionRepo.syncMatches(replay.matchIds);
         logger.info("Match result corrected and replayed", {
           match: matchId,
           replayed: replay.matchIds,
@@ -504,6 +508,7 @@ export function registerMatchRoutes(app: Express) {
       }
 
       const replay = await scoreRepo.recalculateFromMatch(matchId);
+      await collectionRepo.syncMatches(replay.matchIds);
       logger.info("Match recalculated", { match: matchId, replayed: replay.matchIds });
       res.json({
         message: "Match and later scored matches recalculated",
@@ -546,6 +551,7 @@ export function registerMatchRoutes(app: Express) {
       }
 
       const match = await scoreRepo.reopenMatchStats(matchId);
+      await collectionRepo.syncMatch(matchId);
       logger.info("Match stats reopened", { match: matchId });
       res.json({
         message: "Stats and votes are open again",
@@ -576,6 +582,7 @@ export function registerMatchRoutes(app: Express) {
       const status = normalizeMatchStatus(access.match.status);
       if (status === "scored" || status === "closed") {
         const replay = await scoreRepo.recalculateFromMatch(matchId);
+        await collectionRepo.syncMatches(replay.matchIds);
         logger.info("Friendly flag updated and replayed", {
           match: matchId,
           isFriendly: parsed.data.isFriendly,
@@ -590,6 +597,7 @@ export function registerMatchRoutes(app: Express) {
         });
       }
 
+      await collectionRepo.syncMatch(matchId);
       res.json({
         message: parsed.data.isFriendly ? "Marked as friendly" : "Marked as official",
         match: updated,
@@ -627,6 +635,7 @@ export function registerMatchRoutes(app: Express) {
       }
 
       const updated = await matchRepo.updateMatch(matchId, { status: "closed" });
+      await collectionRepo.syncMatch(matchId);
       logger.info("Club match closed", { match: matchId, club: access.organisation.id });
       res.json({ message: "Match closed", match: updated });
     } catch (error) {

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { apiUrl } from "@/lib/apiBase";
 
 /** Avatar endpoints require a bearer token, so the image is fetched into an object URL. */
-export function useAvatarUrl(userId: number | null | undefined): string | undefined {
+export function useAvatarUrl(userId: number | null | undefined, version?: number): string | undefined {
   const [url, setUrl] = useState<string>();
 
   useEffect(() => {
@@ -16,8 +16,9 @@ export function useAvatarUrl(userId: number | null | undefined): string | undefi
     let objectUrl: string | undefined;
     let cancelled = false;
     const token = localStorage.getItem("token");
+    const query = version == null ? "" : `?v=${version}`;
 
-    fetch(apiUrl(`/api/users/${userId}/avatar`), {
+    fetch(apiUrl(`/api/users/${userId}/avatar${query}`), {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       credentials: "include",
     })
@@ -35,7 +36,7 @@ export function useAvatarUrl(userId: number | null | undefined): string | undefi
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [userId]);
+  }, [userId, version]);
 
   return url;
 }
@@ -61,7 +62,7 @@ interface UserAvatarProps {
 }
 
 export default function UserAvatar({ userId, name, className, version }: UserAvatarProps) {
-  const url = useAvatarUrl(userId);
+  const url = useAvatarUrl(userId, version);
   return (
     <Avatar className={cn("h-8 w-8", className)}>
       {url && <AvatarImage src={version ? `${url}#${version}` : url} alt={name} />}

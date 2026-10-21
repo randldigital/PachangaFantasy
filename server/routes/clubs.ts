@@ -6,6 +6,7 @@ import { requireAuth, requireUser } from "../middleware/auth";
 import * as clubRepo from "../repos/clubRepo";
 import * as matchRepo from "../repos/matchRepo";
 import * as playerRepo from "../repos/playerRepo";
+import * as collectionRepo from "../repos/collectionRepo";
 import type { AuthRequest } from "../types";
 
 export function registerClubRoutes(app: Express) {
@@ -76,6 +77,7 @@ export function registerClubRoutes(app: Express) {
         createdBy: requireUser(req).id,
         isExternal: playerData.isExternal ?? true,
       });
+      await collectionRepo.syncPlayer(player);
       res.json(player);
     } catch (error) {
       logger.error("Add club player error", error);

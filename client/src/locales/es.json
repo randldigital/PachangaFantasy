@@ -338,7 +338,98 @@
     "MATCH_NOT_CORRECTABLE": "El resultado se puede corregir cuando el partido ha terminado.",
     "MATCH_NOT_RECALCULABLE": "Recalcular está disponible cuando el partido ya está puntuado.",
     "MATCH_NOT_REOPENABLE": "Las estadísticas se pueden reabrir cuando el partido ya está puntuado.",
-    "MATCH_NOT_LAST_FINISHED": "Solo se puede reabrir el último partido terminado."
+    "MATCH_NOT_LAST_FINISHED": "Solo se puede reabrir el último partido terminado.",
+    "COLLECTION_EXISTS": "Esta colección ya existe.",
+    "COLLECTION_NOT_FOUND": "Esta colección todavía no se ha creado.",
+    "PACK_COOLDOWN": "El siguiente sobre aún no está listo.",
+    "PACK_EMPTY": "No hay cartas disponibles.",
+    "EXTRA_IMAGE_INVALID": "Usa una imagen JPEG, PNG o WebP.",
+    "ADMIN_ONLY": "Solo el administrador puede hacer eso."
+  },
+  "collection": {
+    "title": "Colección",
+    "open": "Colección",
+    "create": "Crear colección",
+    "createError": "No se ha podido crear la colección",
+    "missingAdmin": "Esta comunidad aún no tiene colección. Crearla añade todas las cartas que el historial ya ha ganado.",
+    "missingMember": "El administrador todavía no ha creado la colección.",
+    "packTitle": "Sobre diario",
+    "packReady": "Hay dos cartas listas.",
+    "packWait": "Siguiente sobre a las {{time}}.",
+    "openPack": "Abrir sobre",
+    "packError": "No se ha podido abrir el sobre",
+    "packCooldown": "Espera a que termine el tiempo.",
+    "packReveal": "Tus cartas",
+    "more": "Cargar más",
+    "unknownPlayer": "Jugador",
+    "retired": "RETIRADA",
+    "locked": "Cerrada",
+    "lockedLabel": "{{type}}, {{rarity}}, cerrada",
+    "progress": "{{owned}} / {{existing}} descubiertas",
+    "sectionProgress": "{{owned}} / {{existing}}",
+    "sections": {
+      "players": { "title": "Jugadores", "subtitle": "Una carta por jugador" },
+      "matches": { "title": "Partidos", "subtitle": "Resultados oficiales" },
+      "awards": { "title": "Premios", "subtitle": "MVP y equipo del mes" },
+      "performances": { "title": "Actuaciones", "subtitle": "Hat-tricks" },
+      "extras": { "title": "Extras", "subtitle": "Cartas especiales" }
+    },
+    "badges": {
+      "player": "Jugador",
+      "match": "Partido",
+      "mvp": "MVP",
+      "hattrick": "Hat-trick",
+      "totm": "MES",
+      "extra": "Extra"
+    },
+    "sides": {
+      "us": "Nos",
+      "opponent": "Rival"
+    },
+    "extraTitle": "Carta extra",
+    "extraCreate": "Añadir carta extra",
+    "extraError": "No se ha podido guardar la carta extra",
+    "extraImageRequired": "Elige una imagen.",
+    "extraFields": {
+      "title": "Título",
+      "subtitle": "Subtítulo",
+      "body": "Descripción"
+    },
+    "filters": {
+      "type": "Todos los tipos",
+      "rarity": "Todas las rarezas",
+      "status": "Todos los estados",
+      "ownership": "Con y sin carta",
+      "owned": "Conseguidas",
+      "unowned": "Sin conseguir"
+    },
+    "rarity": {
+      "common": "Común",
+      "rare": "Rara",
+      "epic": "Épica",
+      "legendary": "Legendaria"
+    },
+    "types": {
+      "player": "Jugador",
+      "match": "Partido",
+      "mvp": "MVP",
+      "hattrick": "Hat-trick",
+      "totm": "Equipo del mes",
+      "extra": "Extra"
+    },
+    "status": {
+      "active": "Activa",
+      "error": "Error",
+      "retired": "Retirada"
+    },
+    "cards": {
+      "mvp": "MVP {{name}}",
+      "hattrick": "Hat-trick {{name}}",
+      "hattrickGoals": "Hat-trick · {{count}} goles",
+      "totm": "{{name}} · {{month}}",
+      "match": "Partido",
+      "extra": "Extra"
+    }
   },
   "match": {
     "noActiveMatch": "No hay partidos activos",

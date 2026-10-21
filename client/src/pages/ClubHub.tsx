@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, BarChart3, Code, History, List, Trophy, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, BarChart3, Code, History, Layers, List, Trophy, UserPlus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -119,6 +119,12 @@ export default function ClubHub() {
             </Button>
           </Link>
           <h1 className="text-2xl font-bold text-white">{club.name}</h1>
+          <Link href={`/club/${club.id}/collection`}>
+            <Button size="sm" variant="outline" className="border-sky-500 text-sky-300 hover:bg-sky-600 hover:text-white">
+              <Layers className="mr-2 h-4 w-4" />
+              {t("collection.open")}
+            </Button>
+          </Link>
           <Badge variant="secondary" className="bg-sky-600 text-white border-0">
             {t("club.badge")}
           </Badge>

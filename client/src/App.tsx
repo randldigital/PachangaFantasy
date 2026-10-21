@@ -15,6 +15,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import Overview from "@/pages/Overview";
 import LeagueHub from "@/pages/LeagueHub";
 import ClubHub from "@/pages/ClubHub";
+import CollectionPage from "@/pages/CollectionPage";
 import Billing from "@/pages/Billing";
 import Analytics from "@/pages/Analytics";
 import Landing from "@/pages/Landing";
@@ -51,10 +52,24 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
+      <Route path="/league/:id/collection">
+        <ProtectedRoute>
+          <Navbar />
+          <CollectionPage kind="league" />
+        </ProtectedRoute>
+      </Route>
+
       <Route path="/league/:id">
         <ProtectedRoute>
           <Navbar />
           <LeagueHub />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/club/:id/collection">
+        <ProtectedRoute>
+          <Navbar />
+          <CollectionPage kind="club" />
         </ProtectedRoute>
       </Route>
 

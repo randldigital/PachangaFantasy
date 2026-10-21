@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Plus, Users, Code, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +26,7 @@ export default function Overview() {
   const [showCreateLeague, setShowCreateLeague] = useState(false);
   const [showCreateClub, setShowCreateClub] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
+  const [, setLocation] = useLocation();
 
   const { data: leagues = [], isLoading: loadingLeagues } = useQuery<League[]>({
     queryKey: queryKeys.leagues,
@@ -207,6 +208,19 @@ export default function Overview() {
                               <span className="font-mono text-xs">{league.inviteCode}</span>
                             </div>
                           </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="mt-3 border-emerald-600 text-emerald-300 hover:bg-emerald-600 hover:text-white"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setLocation(`/league/${league.id}/collection`);
+                            }}
+                          >
+                            {t("collection.open")}
+                          </Button>
                         </CardContent>
                       </Card>
                     </Link>
@@ -252,6 +266,19 @@ export default function Overview() {
                               <span className="font-mono text-xs">{club.inviteCode}</span>
                             </div>
                           </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="mt-3 border-sky-600 text-sky-300 hover:bg-sky-600 hover:text-white"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setLocation(`/club/${club.id}/collection`);
+                            }}
+                          >
+                            {t("collection.open")}
+                          </Button>
                         </CardContent>
                       </Card>
                     </Link>

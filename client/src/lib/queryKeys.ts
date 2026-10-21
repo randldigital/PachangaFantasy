@@ -44,4 +44,6 @@ export const queryKeys = {
   billingOverview: ["/api/billing/overview"] as const,
   billingPlans: ["/api/billing/plans"] as const,
   billingSubject: (type: string, id: number) => [`/api/billing/subject/${type}/${id}`] as const,
+  collection: (kind: "league" | "club", id: number, query = "") =>
+    [`/api/${kind}s/${id}/collection`, query] as const,
 };

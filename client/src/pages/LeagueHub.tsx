@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
-import { ArrowLeft, Users, Trophy, List, User, Target, History, UserPlus } from "lucide-react";
+import { ArrowLeft, History, Layers, List, Target, Trophy, User, UserPlus, Users } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -123,6 +123,12 @@ export default function LeagueHub() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <Link href={`/league/${league.id}/collection`}>
+                <Button size="sm" variant="outline" className="border-emerald-600 text-emerald-300 hover:bg-emerald-600 hover:text-white">
+                  <Layers className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">{t("collection.open")}</span>
+                </Button>
+              </Link>
               {isAdmin && (
                 <>
                 <Button

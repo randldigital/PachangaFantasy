@@ -558,6 +558,37 @@
   transition: opacity 0.2s ease, color 0.2s ease;
 }
 
+@keyframes collection-shimmer {
+  0% { transform: translateX(-130%); }
+  100% { transform: translateX(130%); }
+}
+
+.collection-portrait-frame {
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%);
+}
+
+.collection-shimmer {
+  overflow: hidden;
+}
+
+.collection-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: -20% -40%;
+  background: linear-gradient(110deg, transparent 36%, rgba(255, 220, 140, 0.28) 48%, transparent 60%);
+  animation: collection-shimmer 3.6s ease-in-out infinite;
+}
+
+@keyframes collection-reveal {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.collection-card-reveal {
+  animation: collection-reveal 0.35s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-reveal,
   .landing-hero-atmosphere,
@@ -572,5 +603,10 @@
 
   .landing-hero-atmosphere {
     transform: none;
+  }
+
+  .collection-shimmer::after,
+  .collection-card-reveal {
+    animation: none;
   }
 }

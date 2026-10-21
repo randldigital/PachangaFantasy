@@ -14,6 +14,7 @@ import { registerStatsRoutes } from "./stats";
 import { registerScoringRoutes } from "./scoring";
 import { registerRatingRoutes } from "./ratings";
 import { registerLeaderboardRoutes } from "./leaderboards";
+import { registerCollectionRoutes } from "./collections";
 
 export function registerRoutes(app: Express) {
   registerAuthRoutes(app);
@@ -31,4 +32,5 @@ export function registerRoutes(app: Express) {
   registerRatingRoutes(app);
   registerScoringRoutes(app);
   registerLeaderboardRoutes(app);
+  registerCollectionRoutes(app);
 }

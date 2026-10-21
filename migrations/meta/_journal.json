@@ -127,6 +127,13 @@
       "when": 1788884000000,
       "tag": "0017_password_reset_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788887000000,
+      "tag": "0021_collections",
+      "breakpoints": true
     }
   ]
 }
