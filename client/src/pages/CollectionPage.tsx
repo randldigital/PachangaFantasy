@@ -201,6 +201,7 @@ export default function CollectionPage({ kind }: { kind: Kind }) {
                             key={`${card.id}-${card.ownedQuantity}-${card.status}`}
                             card={card}
                             mode={ownedCard ? "thumbnail" : "placeholder"}
+                            contextName={orgQuery.data?.name}
                             onOpen={ownedCard ? () => setSelected(card) : undefined}
                           />
                         );
@@ -228,7 +229,7 @@ export default function CollectionPage({ kind }: { kind: Kind }) {
           </DialogHeader>
           {selected && selected.ownedQuantity > 0 ? (
             <div className="mx-auto w-full max-w-[18rem]">
-              <CollectionCard card={selected} mode="full" />
+              <CollectionCard card={selected} mode="full" contextName={orgQuery.data?.name} />
             </div>
           ) : null}
         </DialogContent>
@@ -244,7 +245,7 @@ export default function CollectionPage({ kind }: { kind: Kind }) {
           <div className="grid grid-cols-1 justify-items-center gap-4 sm:grid-cols-2">
             {revealed?.map((card, index) => (
               <div key={`${card.id}-${index}`} className="w-full max-w-[16rem]">
-                <CollectionCard card={card} mode="full" />
+                <CollectionCard card={card} mode="full" contextName={orgQuery.data?.name} />
               </div>
             ))}
           </div>

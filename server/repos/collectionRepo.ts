@@ -13,6 +13,7 @@ import {
   matchParticipants,
   matches,
   playerMarketValueHistory,
+  playerMatchPoints,
   players,
   statReports,
   users,
@@ -93,6 +94,12 @@ export type AlbumCard = {
   body: string | null;
   hasImage: boolean;
   ownedQuantity: number;
+  points: number | null;
+  goals: number | null;
+  assists: number | null;
+  marketValue: number | null;
+  valueDelta: number | null;
+  side: "blue" | "red" | null;
 };
 
 export type AlbumQuery = {
@@ -507,6 +514,19 @@ function decodeCursor(value: string | null | undefined): Cursor | null {
   }
 }
 
+function finiteNumber(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function cardSide(playerId: number | null, teams: { teamA?: number[]; teamB?: number[] } | null): "blue" | "red" | null {
+  if (playerId == null || teams == null) return null;
+  if (teams.teamB?.includes(playerId)) return "blue";
+  if (teams.teamA?.includes(playerId)) return "red";
+  return null;
+}
+
 function mapAlbumRow(row: {
   id: number;
   sourceKey: string;
@@ -528,6 +548,12 @@ function mapAlbumRow(row: {
   userId: number | null;
   avatarVersion: number | null;
   quantity: number | null;
+  points: number | null;
+  goals: number | null;
+  assists: number | null;
+  marketValue: number | null;
+  valueDelta: number | null;
+  matchTeams: { teamA?: number[]; teamB?: number[] } | null;
 }): AlbumCard {
   return {
     id: row.id,
@@ -550,6 +576,12 @@ function mapAlbumRow(row: {
     body: row.body,
     hasImage: Boolean(row.imagePath),
     ownedQuantity: row.quantity ?? 0,
+    points: finiteNumber(row.points),
+    goals: finiteNumber(row.goals),
+    assists: finiteNumber(row.assists),
+    marketValue: finiteNumber(row.marketValue),
+    valueDelta: finiteNumber(row.valueDelta),
+    side: cardSide(row.playerId, row.matchTeams),
   };
 }
 
@@ -575,6 +607,12 @@ const albumSelection = {
   userId: players.userId,
   avatarVersion: users.avatarVersion,
   quantity: collectionOwnership.quantity,
+  points: playerMatchPoints.points,
+  goals: playerMatchPoints.goals,
+  assists: playerMatchPoints.assists,
+  marketValue: players.marketValue,
+  valueDelta: playerMarketValueHistory.delta,
+  matchTeams: matches.matchTeams,
 };
 
 function albumQuery(viewerId: number) {
@@ -586,7 +624,16 @@ function albumQuery(viewerId: number) {
     .leftJoin(
       collectionOwnership,
       and(eq(collectionOwnership.cardId, collectionCards.id), eq(collectionOwnership.userId, viewerId)),
-    );
+    )
+    .leftJoin(
+      playerMatchPoints,
+      and(eq(playerMatchPoints.matchId, collectionCards.matchId), eq(playerMatchPoints.playerId, collectionCards.playerId)),
+    )
+    .leftJoin(
+      playerMarketValueHistory,
+      and(eq(playerMarketValueHistory.matchId, collectionCards.matchId), eq(playerMarketValueHistory.playerId, collectionCards.playerId)),
+    )
+    .leftJoin(matches, eq(matches.id, collectionCards.matchId));
 }
 
 async function albumProgress(collectionId: number, viewerId: number): Promise<AlbumProgress> {
@@ -652,6 +699,8 @@ export async function getAlbum(collection: Collection, query: AlbumQuery): Promi
     .limit(limit + 1);
 
   const page = rows.slice(0, limit);
+  const cards = page.map(mapAlbumRow);
+  await attachTotmTotals(db, collection, cards);
   const last = page.at(-1);
   const [packRow] = await db
     .select()
@@ -667,7 +716,7 @@ export async function getAlbum(collection: Collection, query: AlbumQuery): Promi
       createdBy: collection.createdBy,
       createdAt: collection.createdAt,
     },
-    cards: page.map(mapAlbumRow),
+    cards,
     nextCursor: rows.length > limit && last ? encodeCursor(last.sortRank, last.occurredAt, last.id) : null,
     pack: {
       nextPackAt: nextPackAt ? nextPackAt.toISOString() : null,
@@ -690,9 +739,59 @@ async function cardsByIds(tx: Tx, collectionId: number, viewerId: number, ids: n
       collectionOwnership,
       and(eq(collectionOwnership.cardId, collectionCards.id), eq(collectionOwnership.userId, viewerId)),
     )
+    .leftJoin(
+      playerMatchPoints,
+      and(eq(playerMatchPoints.matchId, collectionCards.matchId), eq(playerMatchPoints.playerId, collectionCards.playerId)),
+    )
+    .leftJoin(
+      playerMarketValueHistory,
+      and(eq(playerMarketValueHistory.matchId, collectionCards.matchId), eq(playerMarketValueHistory.playerId, collectionCards.playerId)),
+    )
+    .leftJoin(matches, eq(matches.id, collectionCards.matchId))
     .where(and(eq(collectionCards.collectionId, collectionId), inArray(collectionCards.id, ids)));
   const byId = new Map(rows.map((row) => [row.id, mapAlbumRow(row)]));
-  return ids.map((id) => byId.get(id)).filter((card): card is AlbumCard => card != null);
+  const cards = ids.map((id) => byId.get(id)).filter((card): card is AlbumCard => card != null);
+  const [collection] = await tx.select().from(collections).where(eq(collections.id, collectionId)).limit(1);
+  if (collection) await attachTotmTotals(tx, collection, cards);
+  return cards;
+}
+
+async function attachTotmTotals(tx: Tx | typeof db, collection: Collection, cards: AlbumCard[]): Promise<void> {
+  const targets = cards.filter(
+    (card) => card.cardType === "totm" && card.playerId != null && typeof card.payload.month === "string",
+  );
+  const months = [...new Set(targets.map((card) => String(card.payload.month)))];
+  for (const month of months) {
+    const range = monthRangeUtc(month);
+    const playerIds = [...new Set(targets.filter((card) => card.payload.month === month).map((card) => card.playerId!))];
+    if (playerIds.length === 0) continue;
+    const totals = await tx
+      .select({
+        playerId: playerMatchPoints.playerId,
+        points: sql<number>`coalesce(sum(${playerMatchPoints.points}), 0)::float`,
+        goals: sql<number>`coalesce(sum(${playerMatchPoints.goals}), 0)::int`,
+        assists: sql<number>`coalesce(sum(${playerMatchPoints.assists}), 0)::int`,
+      })
+      .from(playerMatchPoints)
+      .innerJoin(matches, eq(matches.id, playerMatchPoints.matchId))
+      .where(and(
+        orgMatchFilter(collection),
+        eq(matches.isFriendly, false),
+        inArray(matches.status, ["scored", "closed"]),
+        gte(matches.date, range.start),
+        lt(matches.date, range.end),
+        inArray(playerMatchPoints.playerId, playerIds),
+      ))
+      .groupBy(playerMatchPoints.playerId);
+    const byPlayer = new Map(totals.map((row) => [row.playerId, row]));
+    for (const card of targets) {
+      if (card.payload.month !== month || card.playerId == null) continue;
+      const row = byPlayer.get(card.playerId);
+      card.points = finiteNumber(row?.points) ?? 0;
+      card.goals = finiteNumber(row?.goals) ?? 0;
+      card.assists = finiteNumber(row?.assists) ?? 0;
+    }
+  }
 }
 
 export async function openPack(collectionId: number, userId: number): Promise<{ cards: AlbumCard[]; nextPackAt: string }> {

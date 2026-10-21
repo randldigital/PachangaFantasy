@@ -563,9 +563,19 @@
   100% { transform: translateX(130%); }
 }
 
-.collection-portrait-frame {
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%);
+.collection-portrait-fade {
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 14%, #000 86%, transparent),
+    linear-gradient(to bottom, transparent, #000 12%, #000 82%, transparent);
+  mask-image:
+    linear-gradient(to right, transparent, #000 14%, #000 86%, transparent),
+    linear-gradient(to bottom, transparent, #000 12%, #000 82%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  mask-repeat: no-repeat, no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
 }
 
 .collection-shimmer {
