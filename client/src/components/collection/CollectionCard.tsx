@@ -260,12 +260,30 @@ const CARD_FRAME: Record<string, string> = {
 
 const PORTRAIT_STYLE = { top: "2%", height: "70%", left: "12%", right: "12%" };
 
+const MVP_PORTRAIT_STYLE = { top: "9%", height: "61%", left: "9%", right: "9%" };
+
 const HERO_CORNER: Record<string, { left: string; top: string }> = {
   player: { left: "8%", top: "6%" },
-  mvp: { left: "12%", top: "11%" },
   totm: { left: "12%", top: "14%" },
   hattrick: { left: "18%", top: "14%" },
 };
+
+/** Dark panel inside the MVP frame's upper-left shield. */
+const MVP_HERO_BOX = { left: "3.2%", top: "11.2%", width: "12.6%", height: "11%" };
+
+/** Glyph size that fills the shield width for this points string. */
+function mvpPointsSize(value: string): { value: string; label: string } {
+  const chars = Math.max(value.length, 1);
+  const byWidth = 0.112 / (chars * 0.7);
+  const valueCqw = Math.min(byWidth, 0.098) * 100;
+  return {
+    value: `${valueCqw.toFixed(2)}cqw`,
+    label: `${(valueCqw * 0.38).toFixed(2)}cqw`,
+  };
+}
+
+/** Local testing only. Production builds keep each player's own photo. */
+const TEST_PORTRAIT_USER_ID = import.meta.env.DEV ? 12 : null;
 
 function CardFrame({ src }: { src: string }) {
   const [failed, setFailed] = useState(false);
@@ -285,18 +303,22 @@ function Portrait({
   card,
   full,
   showImage,
+  fade = true,
 }: {
   card: AlbumCard;
   full: boolean;
   showImage: boolean;
+  fade?: boolean;
 }) {
-  const avatar = useAvatarUrl(showImage ? card.userId : null, card.avatarVersion ?? undefined);
+  const portraitUserId = showImage ? (TEST_PORTRAIT_USER_ID ?? card.userId) : null;
+  const avatar = useAvatarUrl(portraitUserId, TEST_PORTRAIT_USER_ID != null ? undefined : card.avatarVersion ?? undefined);
   if (avatar) {
-    return <img src={avatar} alt="" className="collection-portrait-fade h-full w-full object-cover object-[center_22%]" />;
+    return <img src={avatar} alt="" className={cn(fade && "collection-portrait-fade", "h-full w-full object-cover object-[center_22%]")} />;
   }
   return (
     <div className={cn(
-      "collection-portrait-fade flex h-full items-center justify-center font-black text-slate-100",
+      fade && "collection-portrait-fade",
+      "flex h-full items-center justify-center font-black text-slate-100",
       full ? "text-7xl" : "text-5xl",
     )}>
       {card.emoji || initialsOf(card.playerName || "?")}
@@ -332,9 +354,9 @@ function CardArt({
   return (
     <div
       className="pointer-events-none absolute z-[1] overflow-hidden"
-      style={PORTRAIT_STYLE}
+      style={card.cardType === "mvp" ? MVP_PORTRAIT_STYLE : PORTRAIT_STYLE}
     >
-      <Portrait card={card} full={full} showImage={showImage} />
+      <Portrait card={card} full={full} showImage={showImage} fade={card.cardType !== "mvp"} />
     </div>
   );
 }
@@ -475,6 +497,47 @@ function FaceCopy({
   );
 }
 
+function MvpPlate({
+  card,
+  full,
+  locale,
+  t,
+  rarity,
+}: {
+  card: AlbumCard;
+  full: boolean;
+  locale: string;
+  t: Translator;
+  rarity?: string;
+}) {
+  const name = card.playerName || t("collection.unknownPlayer");
+  const when = eventDate(card.occurredAt, locale);
+  const score = scoreContext(card);
+  const counts = typeof card.goals === "number" || typeof card.assists === "number"
+    ? [countPhrase(card.goals ?? 0, "goal", t), countPhrase(card.assists ?? 0, "assist", t)].join(" · ")
+    : "";
+  const result = matchOutcome(card, t);
+  const fact = full ? "text-[3.3cqw] tracking-tight" : "text-[4cqw] tracking-tight";
+  return (
+    <>
+      <div className="pointer-events-none absolute inset-x-[18%] top-[72%] z-30 flex h-[8.4%] flex-col items-center justify-center text-center text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.9)]">
+        {rarity ? <div className={cn("font-bold uppercase leading-none tracking-[0.16em]", full ? "text-[2.6cqw]" : "text-[3.3cqw]")}>{rarity}</div> : null}
+        <div className={cn("max-w-full truncate font-black uppercase leading-none tracking-wide", full ? "text-[4.6cqw]" : "text-[6cqw]")}>{name}</div>
+      </div>
+      <div className="pointer-events-none absolute inset-x-[18%] top-[82.2%] z-30 flex h-[6.4%] flex-col justify-center text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.9)]">
+        <div className={cn("flex items-baseline justify-between gap-1.5 font-bold uppercase leading-none", fact)}>
+          <span className="min-w-0 flex-1 truncate text-left">{when}</span>
+          {score ? <span className="shrink-0 text-right">{score}</span> : null}
+        </div>
+        <div className={cn("mt-px flex items-baseline justify-between gap-1.5 font-bold uppercase leading-none", fact)}>
+          <span className="min-w-0 flex-1 truncate text-left">{counts}</span>
+          {result ? <span className="shrink-0 text-right">{result}</span> : null}
+        </div>
+      </div>
+    </>
+  );
+}
+
 function Pitch() {
   return (
     <svg viewBox="0 0 100 150" className="h-full w-full" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
@@ -581,19 +644,35 @@ export default function CollectionCard({
       <CardArt card={card} full={full} showImage={showImage} />
       {hero ? (
         <div
-          className="pointer-events-none absolute z-10 text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]"
-          style={HERO_CORNER[card.cardType] ?? { left: "8%", top: "6%" }}
+          className={cn(
+            "pointer-events-none absolute text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.95)]",
+            card.cardType === "mvp" ? "z-30 flex flex-col items-center justify-center text-center" : "z-10",
+          )}
+          style={card.cardType === "mvp" ? MVP_HERO_BOX : (HERO_CORNER[card.cardType] ?? { left: "8%", top: "6%" })}
         >
-          <div className={cn("font-black tabular-nums leading-none", full ? "text-3xl" : "text-lg")}>{hero.value}</div>
-          <div className={cn("font-bold uppercase tracking-[0.14em]", full ? "text-[10px]" : "text-[7px]")}>{t(hero.labelKey)}</div>
+          <div
+            className={cn("font-black tabular-nums leading-none", card.cardType === "mvp" ? null : full ? "text-3xl" : "text-lg")}
+            style={card.cardType === "mvp" ? { fontSize: mvpPointsSize(hero.value).value } : undefined}
+          >{hero.value}</div>
+          <div
+            className={cn(
+              "font-bold uppercase leading-none",
+              card.cardType === "mvp" ? "tracking-[0.06em]" : full ? "text-[10px] tracking-[0.14em]" : "text-[7px] tracking-[0.14em]",
+            )}
+            style={card.cardType === "mvp" ? { fontSize: mvpPointsSize(hero.value).label } : undefined}
+          >{t(hero.labelKey)}</div>
         </div>
       ) : null}
       {card.cardType === "match" ? (
         <MatchBoard card={card} full={full} locale={i18n.language} t={t} rarity={framed ? rarity : undefined} />
+      ) : card.cardType === "mvp" ? (
+        <MvpPlate card={card} full={full} locale={i18n.language} t={t} rarity={rarity} />
       ) : (
         <div className={cn(
           "absolute z-10",
-          framed ? "inset-x-[16%] bottom-[12%] [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]" : "inset-x-2 bottom-[7%] z-20 [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]",
+          framed
+            ? "inset-x-[16%] bottom-[12%] [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]"
+            : "inset-x-2 bottom-[7%] z-20 [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]",
         )}>
           <FaceCopy card={card} full={full} locale={i18n.language} t={t} rarity={framed ? rarity : undefined} contextName={contextName} />
         </div>
@@ -629,7 +708,7 @@ export default function CollectionCard({
   );
 
   const className = cn(
-    "relative flex aspect-[5/7] w-full flex-col overflow-hidden text-left",
+    "relative flex aspect-[5/7] w-full flex-col overflow-hidden text-left [container-type:inline-size]",
     framed ? "bg-transparent text-white" : "rounded-2xl border-[3px] p-2",
     framed ? null : shell,
     full && "collection-card-reveal",
