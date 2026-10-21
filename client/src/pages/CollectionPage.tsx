@@ -12,6 +12,7 @@ import { ApiError, describeApiError } from "@/lib/apiError";
 import { apiUrl } from "@/lib/apiBase";
 import { queryKeys } from "@/lib/queryKeys";
 import CollectionCard, { cardTitle, type AlbumCard } from "@/components/collection/CollectionCard";
+import PackReveal from "@/components/collection/PackReveal";
 import { groupAlbum, sectionTotals } from "@/components/collection/albumSections";
 import type { Club, League } from "@shared/schema";
 
@@ -236,19 +237,13 @@ export default function CollectionPage({ kind }: { kind: Kind }) {
       </Dialog>
 
       <Dialog open={revealed != null} onOpenChange={(open) => { if (!open) setRevealed(null); }}>
-        <DialogContent className="max-h-[92dvh] overflow-y-auto border-transparent bg-slate-950/75 p-4 text-white shadow-none sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-center text-sm font-semibold uppercase tracking-[0.18em] text-slate-300">
-              {t("collection.packReveal")}
-            </DialogTitle>
+        <DialogContent className="max-h-[92dvh] overflow-y-auto border-slate-800 bg-slate-950/95 p-4 text-white shadow-none sm:max-w-2xl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t("collection.packReveal")}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-1 justify-items-center gap-4 sm:grid-cols-2">
-            {revealed?.map((card, index) => (
-              <div key={`${card.id}-${index}`} className="w-full max-w-[16rem]">
-                <CollectionCard card={card} mode="full" contextName={orgQuery.data?.name} />
-              </div>
-            ))}
-          </div>
+          {revealed ? (
+            <PackReveal cards={revealed} contextName={orgQuery.data?.name} onClose={() => setRevealed(null)} />
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

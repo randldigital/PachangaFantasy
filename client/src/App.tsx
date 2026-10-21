@@ -16,6 +16,7 @@ import Overview from "@/pages/Overview";
 import LeagueHub from "@/pages/LeagueHub";
 import ClubHub from "@/pages/ClubHub";
 import CollectionPage from "@/pages/CollectionPage";
+import CollectionIntro from "@/components/collection/CollectionIntro";
 import Billing from "@/pages/Billing";
 import Analytics from "@/pages/Analytics";
 import Landing from "@/pages/Landing";
@@ -106,6 +107,7 @@ function App() {
         <TooltipProvider>
           <div className="min-h-screen bg-primary text-text-primary pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
             <Toaster />
+            <CollectionIntro />
             <Router />
           </div>
         </TooltipProvider>

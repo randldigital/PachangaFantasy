@@ -1,4 +1,4 @@
-import { leagues, type League, type InsertLeague } from "@shared/schema";
+import { collections, leagues, type League, type InsertLeague } from "@shared/schema";
 import { db } from "../db";
 import { eq, or, sql } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
@@ -60,11 +60,16 @@ export async function deleteLeague(id: number): Promise<void> {
   await db.delete(leagues).where(eq(leagues.id, id));
 }
 
-export async function getUserLeagues(userId: number): Promise<League[]> {
-  return await db.select().from(leagues).where(
-    or(
-      eq(leagues.createdBy, userId),
-      sql`${leagues.participants} @> ${JSON.stringify([userId])}`,
-    ),
-  );
+export async function getUserLeagues(userId: number): Promise<Array<League & { hasCollection: boolean }>> {
+  const rows = await db
+    .select({ league: leagues, collectionId: collections.id })
+    .from(leagues)
+    .leftJoin(collections, eq(collections.leagueId, leagues.id))
+    .where(
+      or(
+        eq(leagues.createdBy, userId),
+        sql`${leagues.participants} @> ${JSON.stringify([userId])}`,
+      ),
+    );
+  return rows.map((row) => ({ ...row.league, hasCollection: row.collectionId != null }));
 }
