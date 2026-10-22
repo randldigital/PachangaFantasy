@@ -282,7 +282,18 @@ function ExtraForm({ kind, orgId, onCreated }: { kind: Kind; orgId: number; onCr
   const [body, setBody] = useState("");
   const [rarity, setRarity] = useState("common");
   const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>();
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(undefined);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   const submit = async () => {
     if (!file) {
@@ -322,18 +333,50 @@ function ExtraForm({ kind, orgId, onCreated }: { kind: Kind; orgId: number; onCr
   return (
     <section className="space-y-3 rounded-xl border border-slate-700 bg-slate-900/70 p-4">
       <h2 className="text-lg font-semibold text-white">{t("collection.extraTitle")}</h2>
-      <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t("collection.extraFields.title")} className="w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white" />
-      <input value={subtitle} onChange={(event) => setSubtitle(event.target.value)} placeholder={t("collection.extraFields.subtitle")} className="w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white" />
-      <textarea value={body} onChange={(event) => setBody(event.target.value)} placeholder={t("collection.extraFields.body")} className="w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white" />
-      <select value={rarity} onChange={(event) => setRarity(event.target.value)} className="rounded-md border border-slate-600 bg-slate-950 px-2 py-2 text-sm text-white">
-        {["common", "rare", "epic", "legendary"].map((option) => (
-          <option key={option} value={option}>{t(`collection.rarity.${option}`)}</option>
-        ))}
-      </select>
-      <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="block text-sm text-slate-300" />
-      <Button disabled={saving || title.trim().length === 0} onClick={submit} className="bg-emerald-600 hover:bg-emerald-700">
-        {t("collection.extraCreate")}
-      </Button>
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem] sm:items-start">
+        <div className="space-y-3">
+          <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t("collection.extraFields.title")} className="w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white" />
+          <input value={subtitle} onChange={(event) => setSubtitle(event.target.value)} placeholder={t("collection.extraFields.subtitle")} className="w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white" />
+          <textarea value={body} onChange={(event) => setBody(event.target.value)} placeholder={t("collection.extraFields.body")} className="w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white" />
+          <select value={rarity} onChange={(event) => setRarity(event.target.value)} className="rounded-md border border-slate-600 bg-slate-950 px-2 py-2 text-sm text-white">
+            {["common", "rare", "epic", "legendary"].map((option) => (
+              <option key={option} value={option}>{t(`collection.rarity.${option}`)}</option>
+            ))}
+          </select>
+          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="block text-sm text-slate-300" />
+          <Button disabled={saving || title.trim().length === 0} onClick={submit} className="bg-emerald-600 hover:bg-emerald-700">
+            {t("collection.extraCreate")}
+          </Button>
+        </div>
+        <div className="mx-auto w-44">
+          <CollectionCard
+            mode="full"
+            previewSrc={previewUrl}
+            card={{
+              id: 0,
+              sourceKey: "extra:preview",
+              cardType: "extra",
+              rarity,
+              status: "active",
+              playerId: null,
+              userId: null,
+              avatarVersion: null,
+              playerName: null,
+              emoji: null,
+              matchId: null,
+              seasonKey: null,
+              occurredAt: new Date(0).toISOString(),
+              periodKey: null,
+              payload: {},
+              title,
+              subtitle,
+              body,
+              hasImage: Boolean(previewUrl),
+              ownedQuantity: 1,
+            }}
+          />
+        </div>
+      </div>
     </section>
   );
 }

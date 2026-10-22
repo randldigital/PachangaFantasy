@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
+import fs from "node:fs/promises";
 import sharp from "sharp";
 import { and, eq } from "drizzle-orm";
 import {
@@ -227,6 +228,13 @@ describe("collection", () => {
       .field("rarity", "common")
       .attach("image", image, "ball.jpg");
     expect(created.status).toBe(201);
+    const stored = collectionRepo.extraImageFile(created.body.card.imagePath);
+    expect(stored).toBeTruthy();
+    const saved = await sharp(stored!).metadata();
+    expect(saved.format).toBe("jpeg");
+    expect(saved.width).toBe(256);
+    expect(saved.height).toBe(256);
+    expect((await fs.stat(stored!)).size).toBeLessThanOrEqual(80 * 1024);
     const forbidden = await request(app)
       .post(`/api/leagues/${league.id}/collection/extras`)
       .set(auth(members[1].token))

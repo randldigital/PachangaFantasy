@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import type { Express, Response } from "express";
 import multer from "multer";
-import sharp from "sharp";
 import { z } from "zod";
 import {
   isCardRarity,
@@ -19,9 +18,9 @@ import * as collectionRepo from "../repos/collectionRepo";
 import * as leagueRepo from "../repos/leagueRepo";
 import type { AuthRequest } from "../types";
 import type { Collection } from "@shared/schema";
+import { compressAvatar } from "./avatars";
 
-const EXTRA_MAX_BYTES = 200 * 1024;
-const UPLOAD_LIMIT_BYTES = 2 * 1024 * 1024;
+const UPLOAD_LIMIT_BYTES = 8 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const upload = multer({
@@ -43,20 +42,6 @@ const extraPatch = z.object({
   rarity: z.enum(["common", "rare", "epic", "legendary"]).optional(),
 });
 
-async function compressExtra(input: Buffer): Promise<Buffer> {
-  const base = sharp(input, { failOn: "error" })
-    .rotate()
-    .resize(800, 800, { fit: "inside", withoutEnlargement: true });
-  let encoded = await base.clone().jpeg({ quality: 70 }).toBuffer();
-  for (const quality of [60, 50, 40, 30]) {
-    if (encoded.byteLength <= EXTRA_MAX_BYTES) {
-      break;
-    }
-    encoded = await base.clone().jpeg({ quality }).toBuffer();
-  }
-  return encoded;
-}
-
 function albumQuery(req: AuthRequest) {
   const season = typeof req.query.season === "string" && req.query.season.length > 0 ? req.query.season : undefined;
   const cardType = isCardType(req.query.type) ? (req.query.type as CardType) : undefined;
@@ -77,7 +62,7 @@ async function readImage(req: AuthRequest): Promise<{ buffer: Buffer } | { error
     return { error: "Only JPEG, PNG, and WebP images are accepted" };
   }
   try {
-    return { buffer: await compressExtra(file.buffer) };
+    return { buffer: await compressAvatar(file.buffer) };
   } catch {
     return { error: "Only JPEG, PNG, and WebP images are accepted" };
   }

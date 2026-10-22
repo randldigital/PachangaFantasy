@@ -36,6 +36,32 @@
     />
   </head>
   <body>
+    <svg width="0" height="0" class="pointer-events-none absolute" aria-hidden="true">
+      <filter id="extra-tint-rare" color-interpolation-filters="sRGB">
+        <feColorMatrix type="matrix" values="0.2126 0.7152 0.0722 0 0  0.2126 0.7152 0.0722 0 0  0.2126 0.7152 0.0722 0 0  0 0 0 1 0" />
+        <feComponentTransfer>
+          <feFuncR type="table" tableValues="0.01 0.72" />
+          <feFuncG type="table" tableValues="0.22 1" />
+          <feFuncB type="table" tableValues="0.34 1" />
+        </feComponentTransfer>
+      </filter>
+      <filter id="extra-tint-epic" color-interpolation-filters="sRGB">
+        <feColorMatrix type="matrix" values="0.2126 0.7152 0.0722 0 0  0.2126 0.7152 0.0722 0 0  0.2126 0.7152 0.0722 0 0  0 0 0 1 0" />
+        <feComponentTransfer>
+          <feFuncR type="table" tableValues="0.20 0.86" />
+          <feFuncG type="table" tableValues="0.04 0.58" />
+          <feFuncB type="table" tableValues="0.38 1" />
+        </feComponentTransfer>
+      </filter>
+      <filter id="extra-tint-legendary" color-interpolation-filters="sRGB">
+        <feColorMatrix type="matrix" values="0.2126 0.7152 0.0722 0 0  0.2126 0.7152 0.0722 0 0  0.2126 0.7152 0.0722 0 0  0 0 0 1 0" />
+        <feComponentTransfer>
+          <feFuncR type="table" tableValues="0.36 1" />
+          <feFuncG type="table" tableValues="0.16 0.78" />
+          <feFuncB type="table" tableValues="0.02 0.28" />
+        </feComponentTransfer>
+      </filter>
+    </svg>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
