@@ -251,15 +251,20 @@ export function cardTitle(card: AlbumCard, t: Translator): string {
   return scoreContext(card) || t("collection.cards.match");
 }
 
-/**
- * Fills the shield. A decimal separator is narrow, so "20,2" stays close to "20"
- * and only shrinks enough to remain inside the box.
- */
-function heroTextSize(value: string, box: HeroBox): { value: string; label: string } {
-  const width = Number.parseFloat(box.width) / 100;
+function heroEm(value: string): number {
   let em = 0;
   for (const ch of value) em += ch === "," || ch === "." ? 0.4 : 0.7;
-  const fitted = (width * 0.94) / Math.max(em, 0.7);
+  return Math.max(em, 0.7);
+}
+
+/**
+ * One size for every value in a shield, a little larger than the digits' minimum.
+ * "13" and "15,5" match. The size fits "00,0"; a longer number still shrinks.
+ */
+export function heroTextSize(value: string, box: HeroBox): { value: string; label: string } {
+  const width = Number.parseFloat(box.width) / 100;
+  const em = Math.max(heroEm(value), heroEm("00,0"));
+  const fitted = (width * 1.06) / em;
   const cap = Math.min(width * 0.68, 0.09);
   const valueCqw = Math.min(fitted, cap) * 100;
   return {

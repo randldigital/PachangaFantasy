@@ -40,28 +40,28 @@ function window(top: string, height: string, left: string, right: string): SafeB
 export const FRAME_LAYOUT: Record<string, FrameSafeArea> = {
   player: {
     src: "/collection/frames/base.png",
-    portrait: window("7%", "68%", "9%", "8%"),
+    portrait: window("8%", "66%", "10%", "9%"),
     hero: { left: "4%", top: "11.5%", width: "12%", height: "8.5%" },
     name: bay("77.2%", "6.4%"),
     facts: bay("85.2%", "4%"),
   },
   mvp: {
     src: "/collection/frames/mvp.png",
-    portrait: window("7.1%", "62.9%", "8%", "8%"),
+    portrait: window("8.1%", "60.9%", "9%", "9%"),
     hero: { left: "3.2%", top: "11.2%", width: "12.6%", height: "11%" },
     name: bay("72%", "8.4%"),
     facts: bay("82.2%", "6.4%"),
   },
   hattrick: {
     src: "/collection/frames/hattrick.png",
-    portrait: window("10%", "62.5%", "7.5%", "7.5%"),
+    portrait: window("11%", "60.5%", "8.5%", "8.5%"),
     hero: { left: "11%", top: "12.2%", width: "14%", height: "8.6%" },
     name: bay("73.4%", "6.4%"),
     facts: bay("81.6%", "5.6%"),
   },
   totm: {
     src: "/collection/frames/totm.png",
-    portrait: window("7.2%", "63.8%", "8%", "8%"),
+    portrait: window("8.2%", "61.8%", "9%", "9%"),
     hero: { left: "6.5%", top: "15.5%", width: "12.2%", height: "7.4%" },
     name: bay("73.4%", "8.2%"),
     facts: bay("83%", "5.2%"),
@@ -75,7 +75,7 @@ export const FRAME_LAYOUT: Record<string, FrameSafeArea> = {
   },
   extra: {
     src: "/collection/frames/extra.png",
-    portrait: window("6.4%", "68.8%", "6.5%", "6.5%"),
+    portrait: window("7.4%", "66.8%", "7.5%", "7.5%"),
     name: bay("73.8%", "5%"),
     facts: bay("82.9%", "6.9%"),
   },

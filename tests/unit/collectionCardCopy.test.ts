@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardHero, factDetail, hattrickKicker, matchOutcome } from "@/components/collection/CollectionCard";
+import { cardHero, factDetail, hattrickKicker, heroTextSize, matchOutcome } from "@/components/collection/CollectionCard";
 
 const t = (key: string, options?: Record<string, unknown>) =>
   options?.count != null ? `${key}:${options.count}` : key;
@@ -51,5 +51,14 @@ describe("card hero", () => {
     expect(matchOutcome({ side: "red", payload: score }, t)).toBe("collection.cards.victory");
     expect(matchOutcome({ side: "blue", payload: score }, t)).toBe("collection.cards.defeat");
     expect(matchOutcome({ side: "blue", payload: { teamBGoals: 3, teamAGoals: 3 } }, t)).toBe("collection.cards.draw");
+  });
+
+  it("keeps the shield number the same size with or without a decimal", () => {
+    const shield = { left: "4%", top: "11.5%", width: "12%", height: "8.5%" };
+    const whole = heroTextSize("13", shield);
+    const decimal = heroTextSize("15,5", shield);
+    expect(decimal.value).toBe(whole.value);
+    expect(decimal.label).toBe(whole.label);
+    expect(heroTextSize("8", shield).value).toBe(whole.value);
   });
 });
