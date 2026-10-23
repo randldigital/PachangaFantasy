@@ -13,8 +13,13 @@ import { apiUrl } from "@/lib/apiBase";
 import { queryKeys } from "@/lib/queryKeys";
 import CollectionCard, { cardTitle, type AlbumCard } from "@/components/collection/CollectionCard";
 import PackReveal from "@/components/collection/PackReveal";
+import { HubAdSlot } from "@/components/AdSlot";
 import { groupAlbum, sectionTotals } from "@/components/collection/albumSections";
+import { isAdsEnabled, useAuthFeatures } from "@/lib/features";
 import type { Club, League } from "@shared/schema";
+import { shouldRenderHubAd } from "@shared/domain/entitlements";
+
+const PACK_OPEN_SMARTLINK = "https://asiafilm.org/4/307634c1bb862bb036fe83f4da3a66dd";
 
 type Kind = "league" | "club";
 
@@ -38,6 +43,14 @@ export default function CollectionPage({ kind }: { kind: Kind }) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { data: features } = useAuthFeatures();
+  const adsOn = isAdsEnabled(features);
+  const { data: billing } = useQuery<{ planCode: string }>({
+    queryKey: queryKeys.billingSubject(kind, orgId),
+    queryFn: () => api.get<{ planCode: string }>(`/api/billing/subject/${kind}/${orgId}`),
+    enabled: Number.isFinite(orgId),
+  });
+  const showAds = adsOn && shouldRenderHubAd(billing?.planCode);
   const queryClient = useQueryClient();
   const [cards, setCards] = useState<AlbumCard[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -102,6 +115,9 @@ export default function CollectionPage({ kind }: { kind: Kind }) {
   };
 
   const openPack = async () => {
+    if (showAds) {
+      window.open(PACK_OPEN_SMARTLINK, "_blank", "noopener,noreferrer");
+    }
     setOpening(true);
     try {
       const result = await api.post<{ cards: AlbumCard[]; nextPackAt: string }>(`/api/${kind}s/${orgId}/collection/packs/open`);
@@ -137,6 +153,8 @@ export default function CollectionPage({ kind }: { kind: Kind }) {
           </div>
         </div>
 
+        {showAds ? <HubAdSlot className="w-full my-0" /> : null}
+
         {album?.collection == null && !albumQuery.isLoading ? (
           <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-6 text-slate-300">
             <p>{isAdmin ? t("collection.missingAdmin") : t("collection.missingMember")}</p>
@@ -160,7 +178,7 @@ export default function CollectionPage({ kind }: { kind: Kind }) {
                       : t("collection.packWait", { time: album.pack?.nextPackAt ? new Date(album.pack.nextPackAt).toLocaleString() : "" })}
                   </p>
                 </div>
-                <Button disabled={opening || !album.pack?.ready} onClick={openPack} className="bg-amber-500 text-slate-950 hover:bg-amber-400">
+                <Button disabled={opening || !album.pack?.ready} onClick={() => void openPack()} className="bg-amber-500 text-slate-950 hover:bg-amber-400">
                   {t("collection.openPack")}
                 </Button>
               </div>
